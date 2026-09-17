@@ -210,8 +210,25 @@ test("RSU: l'aliquota si calcola sul totale dell'anno, non sulla tranche", () =>
   const altoDoppio = prospetto({ ...base, ral: 60000, grants: [uno, due] });
   vicino(altoDoppio.nettoTotale, altoSolo.nettoTotale * 2, 1);
 
-  // l'orizzonte ha 36 caselle mensili, buchi compresi
-  assert.equal(solo.mesi.length, 36);
+  // L'orizzonte e' diviso in trimestri **solari**, buchi compresi: tre anni a
+  // partire da meta' settembre ne attraversano tredici, non dodici, perche' il
+  // primo e l'ultimo sono tagliati a meta'. Allineare le colonne ai trimestri
+  // veri vale la colonna in piu': una finestra mobile darebbe barre che non
+  // corrispondono a nessun trimestre di nessun piano.
+  assert.equal(solo.trimestri.length, 13);
+  // ogni tranche cade in uno e un solo trimestre: la somma deve tornare
+  vicino(
+    solo.trimestri.reduce((s, q) => s + q.unita, 0),
+    solo.unitaTotali,
+    1e-6
+  );
+  // i trimestri sono consecutivi e partono dal trimestre solare di oggi
+  assert.equal(solo.trimestri[0].da, "2026-07-01");
+  assert.equal(solo.trimestri[1].da, "2026-10-01");
+  assert.deepEqual(
+    solo.trimestri.slice(0, 4).map((q) => q.trimestre),
+    [3, 4, 1, 2]
+  );
 });
 
 test("la curva marginale ha una gobba, e il picco non e' dove sembra", () => {
@@ -287,4 +304,57 @@ test("RSU: i dollari diventano unita' col prezzo del giorno del grant", () => {
   // le tranche sommano sempre le unita' del grant, qualunque sia il prezzo
   const ts = tranche({ ...base, prezzoGrant: 142.88 });
   vicino(ts.reduce((s, t) => s + t.unita, 0), 139.9776, 1e-3);
+});
+
+test("ESPP: il tetto del piano taglia prima di comprare", () => {
+  // 10.625 $ per finestra non e' un numero tondo a caso: e' il limite fiscale
+  // di 25.000 $ l'anno di valore di mercato, che con il 15% di sconto si
+  // comprano con 21.250 $ di contributi, cioe' 10.625 a semestre.
+  const dentro = simulaEspp({
+    ral: 60000, accantonato: 4000, prezzoInizio: 100, prezzoFine: 100, cambio: 1.15,
+    piano: { ...PIANO_ESPP, frazioni: true },
+  });
+  // 4.000 € fanno 4.600 $: il tetto non morde e non toglie niente
+  vicino(dentro.accantonatoUsd, 4600);
+  vicino(dentro.oltreIlTetto, 0);
+
+  const oltre = simulaEspp({
+    ral: 200000, accantonato: 15000, prezzoInizio: 100, prezzoFine: 100, cambio: 1.15,
+    piano: { ...PIANO_ESPP, frazioni: true },
+  });
+  // 15.000 € fanno 17.250 $, ma nell'acquisto ne entrano solo 10.625
+  vicino(oltre.accantonatoLordoUsd, 17250);
+  vicino(oltre.accantonatoUsd, 10625);
+  // il resto torna in euro, e torna tutto: non sparisce e non compra azioni
+  vicino(oltre.oltreIlTetto, (17250 - 10625) / 1.15);
+  vicino(oltre.speso, 10625 / 0.85 / 1.15 * 0.85, 0.01);
+  // Ad azioni frazionarie il resto in busta E' esattamente il taglio del tetto:
+  // non c'e' nient'altro che avanzi. (Confrontarli con `>=` fallisce per un
+  // errore di virgola mobile, che qui non e' una tolleranza di comodo: sono lo
+  // stesso conto fatto in due ordini diversi.)
+  vicino(oltre.restoInBusta, oltre.oltreIlTetto, 1e-9);
+  vicino(oltre.restoInBusta, 15000 - oltre.speso);
+
+  // Ad azioni intere ci si aggiungono gli spiccioli che non fanno un'azione,
+  // quindi il resto e' strettamente maggiore del solo taglio del tetto. Serve
+  // un prezzo che lasci davvero un resto: a 100 $ lo sconto fa 85, e 10.625
+  // diviso 85 fa 125 azioni esatte — zero spiccioli, e il caso non proverebbe
+  // niente.
+  const intere = simulaEspp({
+    ral: 200000, accantonato: 15000, prezzoInizio: 106, prezzoFine: 106, cambio: 1.15,
+    piano: { ...PIANO_ESPP, frazioni: false },
+  });
+  assert.equal(intere.azioni, Math.floor(10625 / (106 * 0.85)));
+  assert.ok(
+    intere.restoInBusta > intere.oltreIlTetto,
+    `${intere.restoInBusta} deve superare ${intere.oltreIlTetto}`
+  );
+
+  // tetto a zero = nessun tetto, per i piani che non ce l'hanno
+  const senza = simulaEspp({
+    ral: 200000, accantonato: 15000, prezzoInizio: 100, prezzoFine: 100, cambio: 1.15,
+    piano: { ...PIANO_ESPP, frazioni: true, maxUsd: 0 },
+  });
+  vicino(senza.accantonatoUsd, 17250);
+  vicino(senza.oltreIlTetto, 0);
 });

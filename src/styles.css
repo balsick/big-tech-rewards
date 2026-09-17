@@ -1,77 +1,104 @@
-/* Un tema in variabili, definito una volta sulla radice e ridefinito per lo
-   scuro. Nessun framework: la pagina e' due moduli e qualche scheda, e un
-   foglio di stile scritto a mano pesa meno di quanto costerebbe configurarne
-   uno generato. */
+/* Un sistema in variabili, definito una volta e ridefinito per lo scuro.
+   Nessun framework: questa e' una pagina con due moduli e qualche scheda, e un
+   foglio scritto a mano pesa meno di quanto costerebbe configurarne uno.
+
+   Modalita': **Operate**. Non e' una pagina che deve convincere, e' uno
+   strumento in cui si sta dentro a fare un conto — quindi scala tipografica
+   fissa (non fluida), vocabolario di controlli uniforme, accento solo sulle
+   azioni e sugli stati, e niente coreografie al caricamento. */
 
 :root {
-  --bg: #f6f6f4;
+  --bg: #f5f5f3;
   --surface: #ffffff;
-  --surface-2: #f0f0ed;
-  --border: #dfdfd9;
-  --text: #16181a;
-  --text-2: #4a4f55;
-  --muted: #7c838b;
-  --accent: #2f6f4f;
-  --accent-ink: #1f5238;
-  --accent-soft: #e4efe8;
-  --good: #2f7d57;
-  --bad: #b23b32;
-  --warn: #a06a16;
-  --chart-1: #2f6f4f;
-  --chart-2: #3a6ea5;
-  --chart-3: #9a6a2f;
-  --chart-4: #7a4a8a;
-  --chart-5: #2f7f7f;
-  --radius: 14px;
-  --shadow: 0 1px 2px rgb(0 0 0 / 0.05), 0 8px 24px -16px rgb(0 0 0 / 0.18);
+  --surface-2: #eeeeeb;
+  --border: #dcdcd6;
+  --border-strong: #c3c3bb;
+  --text: #15171a;
+  --text-2: #4b5157;
+  --muted: #6b7278;
+  --accent: #2c6b4c;
+  --accent-ink: #1e5236;
+  --accent-soft: #e3efe8;
+  --good: #2b7a53;
+  --bad: #ad3a32;
+  --warn: #8f5d12;
+  --chart-1: #2c6b4c;
+  --chart-2: #38699e;
+  --chart-3: #8d6224;
+  --chart-4: #71437f;
+  --chart-5: #2a7676;
+
+  /* Scala fissa in rem: in un prodotto si guarda sempre alla stessa distanza,
+     e un titolo che si restringe dentro una colonna peggiora invece di
+     adattarsi. Passi di ~1.2, che qui e' il rapporto giusto perche' gli
+     elementi di testo sono tanti e un contrasto esagerato diventa rumore. */
+  --t-11: 0.6875rem;
+  --t-12: 0.75rem;
+  --t-13: 0.8125rem;
+  --t-15: 0.9375rem;
+  --t-16: 1rem;
+  --t-20: 1.25rem;
+  --t-24: 1.5rem;
+  --t-36: 2.25rem;
+
+  /* Una forma per ogni ruolo, e sempre la stessa. */
+  --r-field: 8px;
+  --r-card: 12px;
+  --r-pill: 999px;
+
+  --shadow: 0 1px 2px rgb(20 23 26 / 0.06), 0 10px 24px -18px rgb(20 23 26 / 0.3);
   color-scheme: light;
 }
 
+/* Lo scuro non e' l'inverso del chiaro: le superfici salgono di luminosita' con
+   la profondita', il testo secondario perde saturazione invece che contrasto. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #101214;
-    --surface: #191c1f;
-    --surface-2: #21252a;
-    --border: #2e343a;
-    --text: #eef1f3;
-    --text-2: #b6bec6;
-    --muted: #868f98;
-    --accent: #6fc396;
-    --accent-ink: #8ed7ad;
-    --accent-soft: #1d2b24;
-    --good: #6fc396;
-    --bad: #e8867c;
-    --warn: #d9ac5c;
-    --chart-1: #6fc396;
-    --chart-2: #7aa9de;
-    --chart-3: #d3a367;
-    --chart-4: #b691c9;
-    --chart-5: #6fc0c0;
-    --shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px -16px rgb(0 0 0 / 0.6);
+    --bg: #0e1012;
+    --surface: #17191c;
+    --surface-2: #1f2226;
+    --border: #2b3035;
+    --border-strong: #3d444b;
+    --text: #edf0f2;
+    --text-2: #b3bbc2;
+    --muted: #8b949b;
+    --accent: #66bd90;
+    --accent-ink: #8ad6ac;
+    --accent-soft: #1a2a22;
+    --good: #66bd90;
+    --bad: #e08278;
+    --warn: #d3a65c;
+    --chart-1: #66bd90;
+    --chart-2: #77a6da;
+    --chart-3: #cfa065;
+    --chart-4: #b28ec6;
+    --chart-5: #6bbcbc;
+    --shadow: 0 1px 2px rgb(0 0 0 / 0.5), 0 10px 24px -18px rgb(0 0 0 / 0.8);
     color-scheme: dark;
   }
 }
 
 :root[data-theme="dark"] {
-  --bg: #101214;
-  --surface: #191c1f;
-  --surface-2: #21252a;
-  --border: #2e343a;
-  --text: #eef1f3;
-  --text-2: #b6bec6;
-  --muted: #868f98;
-  --accent: #6fc396;
-  --accent-ink: #8ed7ad;
-  --accent-soft: #1d2b24;
-  --good: #6fc396;
-  --bad: #e8867c;
-  --warn: #d9ac5c;
-  --chart-1: #6fc396;
-  --chart-2: #7aa9de;
-  --chart-3: #d3a367;
-  --chart-4: #b691c9;
-  --chart-5: #6fc0c0;
-  --shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px -16px rgb(0 0 0 / 0.6);
+  --bg: #0e1012;
+  --surface: #17191c;
+  --surface-2: #1f2226;
+  --border: #2b3035;
+  --border-strong: #3d444b;
+  --text: #edf0f2;
+  --text-2: #b3bbc2;
+  --muted: #8b949b;
+  --accent: #66bd90;
+  --accent-ink: #8ad6ac;
+  --accent-soft: #1a2a22;
+  --good: #66bd90;
+  --bad: #e08278;
+  --warn: #d3a65c;
+  --chart-1: #66bd90;
+  --chart-2: #77a6da;
+  --chart-3: #cfa065;
+  --chart-4: #b28ec6;
+  --chart-5: #6bbcbc;
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.5), 0 10px 24px -18px rgb(0 0 0 / 0.8);
   color-scheme: dark;
 }
 
@@ -83,9 +110,40 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Inter, sans-serif;
-  font-size: 16px;
+  font-size: var(--t-16);
   line-height: 1.5;
   -webkit-text-size-adjust: 100%;
+  /* Ultima rete contro un contenuto incomprimibile: `clip` non crea un
+     contenitore di scroll, quindi non rompe lo `sticky` della testata. */
+  overflow-x: clip;
+}
+
+/* Le superfici che non abbiamo disegnato noi portano comunque il design: la
+   selezione, il cursore di testo, l'anello di focus, la barra di scorrimento.
+   Lasciarle ai valori del browser e' l'unico punto in cui si vede che una
+   pagina e' stata assemblata invece che costruita. */
+::selection {
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+}
+
+:root {
+  caret-color: var(--accent);
+  accent-color: var(--accent);
+  scrollbar-color: var(--border-strong) transparent;
+  scrollbar-width: thin;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+a {
+  color: var(--accent-ink);
+  text-underline-offset: 0.18em;
+  text-decoration-thickness: from-font;
 }
 
 .cifra {
@@ -93,19 +151,20 @@ body {
   font-feature-settings: "tnum";
 }
 
+/* I due passi per i numeri che sono una risposta, non un dato in tabella. */
 .big {
-  font-size: clamp(30px, 8vw, 42px);
-  font-weight: 650;
-  line-height: 1.04;
-  letter-spacing: -0.035em;
+  font-size: var(--t-36);
+  font-weight: 640;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
   font-variant-numeric: tabular-nums;
 }
 
 .mid {
-  font-size: clamp(24px, 6vw, 30px);
-  font-weight: 650;
-  line-height: 1.06;
-  letter-spacing: -0.03em;
+  font-size: var(--t-24);
+  font-weight: 640;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
 }
 
@@ -121,10 +180,6 @@ header.top {
   position: sticky;
   top: 0;
   z-index: 20;
-  /* 96% e non 88%: la sfocatura e' un vezzo, non un fondale. Dove
-     `backdrop-filter` non c'e' o non viene applicato (e su iOS vuole ancora il
-     prefisso) il 12% di trasparenza lasciava passare nitido lo spigolo delle
-     schede che scorrono sotto, e la testata sembrava bucata. */
   background: color-mix(in srgb, var(--bg) 96%, transparent);
   -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
@@ -134,15 +189,15 @@ header.top {
 .top-row {
   display: flex;
   align-items: center;
-  gap: 12px;
-  min-height: 56px;
+  gap: 10px;
+  min-height: 52px;
   flex-wrap: wrap;
-  padding: 8px 0;
+  padding: 8px 0 0;
 }
 
 .brand {
-  font-weight: 700;
-  letter-spacing: -0.02em;
+  font-weight: 680;
+  letter-spacing: -0.015em;
   margin-right: auto;
   display: flex;
   align-items: baseline;
@@ -151,14 +206,11 @@ header.top {
 }
 
 .brand small {
-  font-weight: 500;
+  font-weight: 450;
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--t-12);
 }
 
-/* Sul telefono la testata ha quattro cose da tenere su 375 px: il sottotitolo
-   e' l'unica che non serve a niente, e togliendolo la riga del nome sta accanto
-   ai controlli invece di spingerli a capo. */
 @media (max-width: 620px) {
   .brand small { display: none; }
 }
@@ -169,15 +221,16 @@ header.top {
   gap: 6px;
   color: var(--text-2);
   text-decoration: none;
-  font-size: 13px;
+  font-size: var(--t-13);
   font-weight: 600;
-  padding: 6px 10px;
+  padding: 6px 11px;
   border: 1px solid var(--border);
-  border-radius: 999px;
+  border-radius: var(--r-pill);
   background: var(--surface);
+  transition: color 150ms ease, border-color 150ms ease;
 }
 
-.repo-link:hover { color: var(--accent-ink); border-color: var(--accent); }
+.repo-link:hover { color: var(--accent-ink); border-color: var(--border-strong); }
 
 /* ------------------------------------------------------------- controlli */
 
@@ -186,7 +239,7 @@ header.top {
   padding: 2px;
   background: var(--surface-2);
   border: 1px solid var(--border);
-  border-radius: 999px;
+  border-radius: var(--r-pill);
   gap: 2px;
 }
 
@@ -196,34 +249,32 @@ header.top {
   background: transparent;
   color: var(--text-2);
   font: inherit;
-  font-size: 13px;
+  font-size: var(--t-13);
   font-weight: 600;
   padding: 5px 11px;
-  border-radius: 999px;
+  border-radius: var(--r-pill);
   cursor: pointer;
   white-space: nowrap;
-  /* Le opzioni possono essere un'icona o una parola: il flex tiene le due cose
-     centrate nello stesso modo, e la min-width fa si' che tre icone non
-     risultino piu' strette di tre parole. */
   display: inline-flex;
   align-items: center;
   justify-content: center;
   min-width: 2.1rem;
   min-height: 1.85rem;
+  transition: color 150ms ease, background-color 150ms ease;
 }
+
+.seg button:hover { color: var(--text); }
 
 .seg button[aria-pressed="true"] {
   background: var(--surface);
   color: var(--text);
-  box-shadow: 0 1px 2px rgb(0 0 0 / 0.08);
+  box-shadow: 0 1px 2px rgb(20 23 26 / 0.1);
 }
-
-.seg button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
 nav.tabs {
   display: flex;
-  gap: 4px;
-  padding: 12px 0 0;
+  gap: 2px;
+  padding: 10px 0 0;
   overflow-x: auto;
   scrollbar-width: none;
 }
@@ -237,11 +288,14 @@ nav.tabs button {
   background: transparent;
   color: var(--muted);
   font: inherit;
-  font-weight: 650;
+  font-weight: 640;
   padding: 8px 12px 10px;
   cursor: pointer;
   white-space: nowrap;
+  transition: color 150ms ease, border-color 150ms ease;
 }
+
+nav.tabs button:hover { color: var(--text-2); }
 
 nav.tabs button[aria-current="page"] { color: var(--text); border-bottom-color: var(--accent); }
 
@@ -250,136 +304,173 @@ nav.tabs button[aria-current="page"] { color: var(--text); border-bottom-color: 
 .card {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: var(--r-card);
   padding: 16px;
   box-shadow: var(--shadow);
 }
 
-.card + .card { margin-top: 16px; }
+.card + .card { margin-top: 14px; }
 
-/* Dentro una griglia lo spazio fra le schede lo fa il `gap`. La regola qui
-   sopra serve alle schede impilate in colonna, ma `+` non sa in che
-   contenitore si trova: applicata dentro una griglia spinge in basso ogni
-   scheda che non e' la prima, e le colonne della stessa riga partono da
-   altezze diverse. Da fuori sembra un errore di allineamento e invece e' un
-   margine di troppo. */
+/* Dentro una griglia lo spazio lo fa il `gap`. La regola qui sopra serve alle
+   schede impilate in colonna, ma `+` non sa in che contenitore si trova:
+   applicata dentro una griglia spinge in basso ogni scheda che non e' la
+   prima, e le colonne della stessa riga partono da altezze diverse. */
 .grid2 > .card + .card,
 .grid3 > .card + .card {
   margin-top: 0;
 }
 
-.card h2 { font-size: 15px; margin: 0 0 8px; letter-spacing: -0.01em; }
-
-.card h3 { font-size: 13px; margin: 16px 0 8px; color: var(--text-2); }
-
-.eyebrow {
-  font-size: 11.5px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  color: var(--muted);
+.card h2 {
+  font-size: var(--t-15);
+  font-weight: 660;
+  margin: 0 0 8px;
+  letter-spacing: -0.01em;
 }
 
-.note { font-size: 13px; color: var(--text-2); margin: 6px 0 0; text-wrap: pretty; }
+/* Piu' spazio sopra un'intestazione che sotto: e' quello che la lega al blocco
+   che introduce invece che a quello che chiude. */
+.card h3 {
+  font-size: var(--t-13);
+  margin: 20px 0 8px;
+  color: var(--text-2);
+  font-weight: 660;
+}
 
-.hint { font-size: 11.5px; color: var(--muted); margin: 3px 0 0; text-wrap: pretty; }
+.card h3:first-child { margin-top: 0; }
 
-.accent-card { border-left: 3px solid var(--accent); }
+/* Un campo che sta da solo dentro una scheda si porta il proprio spazio: nelle
+   griglie lo fa il `gap`, ma un campo singolo dopo l'aiuto di quello sopra
+   finirebbe appiccicato alla riga precedente. */
+.card > .campo { margin-top: 16px; }
 
-.good-card { border-left: 3px solid var(--good); }
+.card > .campo:first-child { margin-top: 0; }
 
-.warn-card { border-left: 3px solid var(--warn); }
+/* Un numero che risponde a un'intestazione le sta attaccato: il margine di
+   default del paragrafo lo staccava tanto da sembrare un blocco a se'. */
+.card p.big,
+.card p.mid { margin: 2px 0 0; }
+
+.note {
+  font-size: var(--t-13);
+  color: var(--text-2);
+  margin: 6px 0 0;
+  text-wrap: pretty;
+  max-width: 68ch;
+}
+
+.hint {
+  font-size: var(--t-11);
+  color: var(--muted);
+  margin: 4px 0 0;
+  text-wrap: pretty;
+  max-width: 68ch;
+}
 
 /* ------------------------------------------------------------------ layout */
 
 .tool {
   display: grid;
-  gap: 16px;
+  gap: 14px;
   align-items: start;
-  padding: 16px 0 0;
-  /* La colonna va dichiarata anche quando e' una sola.
-     Un grid senza `grid-template-columns` crea una colonna implicita `auto`,
-     e una traccia `auto` si dimensiona sul **min-content** dei figli: basta un
-     campo nativo o una tabella larga la' in fondo e la colonna si allarga oltre
-     il viewport, portandosi dietro tutte le schede. Da fuori si vede solo una
-     card col bordo destro fuori schermo e i bottoni tagliati, e sembra un
-     problema di padding. `minmax(0, …)` toglie quel minimo. */
+  padding: 14px 0 0;
+  /* La colonna va dichiarata anche quando e' una sola: una traccia `auto` si
+     dimensiona sul min-content dei figli, e basta un campo nativo o una
+     tabella larga per portare fuori schermo il bordo di tutte le schede. */
   grid-template-columns: minmax(0, 1fr);
 }
 
-/* Stessa ragione per i figli: in un grid l'`auto` di `min-width` non e' zero,
-   e un contenuto incomprimibile lo sfrutta. */
-.tool > * {
-  min-width: 0;
-}
+.tool > * { min-width: 0; }
 
+/* Sul telefono l'ordine e' quello del sorgente: **prima la risposta**, poi il
+   modulo, poi il dettaglio. Il numero per cui si apre la pagina non puo' stare
+   sotto duemila pixel di campi gia' compilati. */
 @media (min-width: 900px) {
-  .tool { grid-template-columns: 22rem minmax(0, 1fr); gap: 24px; }
-  .tool > .panel { position: sticky; top: 76px; }
+  .tool {
+    grid-template-columns: 22rem minmax(0, 1fr);
+    gap: 20px;
+  }
+  .tool > .panel {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+    position: sticky;
+    top: 72px;
+  }
+  .tool > .sintesi { grid-column: 2; grid-row: 1; }
+  .tool > .dettagli { grid-column: 2; grid-row: 2; }
 }
 
 .grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 
-.grid3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
+/* 190 e non 150: sotto quella soglia due colonne ci stanno ma le righe
+   "nome a sinistra / cifra a destra" vanno a capo tre volte, e una scheda di
+   riepilogo che si legge su quattro righe per voce non riepiloga piu' niente.
+   Meglio una colonna sola, piena. */
+.grid3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
+
+/* Due campi affiancati devono avere gli input alla stessa altezza anche quando
+   una delle due etichette va a capo. Il subgrid e' l'unico modo di allinearli
+   davvero: senza, ogni colonna impila per conto suo. */
+.grid2.allinea {
+  grid-template-rows: auto auto auto;
+}
+
+.grid2.allinea > .campo {
+  display: grid;
+  grid-template-rows: subgrid;
+  grid-row: span 3;
+  gap: 0;
+}
 
 /* ------------------------------------------------------------------- campi */
 
 label.lab {
   display: block;
-  font-size: 12px;
-  font-weight: 650;
+  font-size: var(--t-12);
+  font-weight: 620;
   color: var(--text-2);
-  margin-bottom: 4px;
+  margin-bottom: 5px;
+  align-self: end;
 }
 
 input.inp, select.inp {
   width: 100%;
   font: inherit;
+  font-size: var(--t-16);
   font-variant-numeric: tabular-nums;
   padding: 9px 10px;
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--r-field);
   background: var(--surface-2);
   color: var(--text);
   min-width: 0;
+  transition: border-color 150ms ease, background-color 150ms ease;
 }
+
+input.inp:hover, select.inp:hover { border-color: var(--border-strong); }
 
 input.inp:focus-visible, select.inp:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: -1px;
   background: var(--surface);
+  border-color: var(--accent);
+}
+
+input.inp:disabled, select.inp:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 input.inp[aria-invalid="true"] { border-color: var(--bad); }
 
-/* Il campetto del tetto di scaglione: sta dentro la riga di aiuto sotto
-   l'aliquota, percio' e' piu' piccolo del campo che descrive. */
-input.inp.soglia {
-  width: 6.5rem;
-  padding: 2px 6px;
-  font-size: 11px;
-  display: inline-block;
-}
+input.inp::placeholder { color: var(--muted); }
 
 /* I campi data, che ogni motore disegna a modo suo.
  *
- * Due difetti diversi, e nessuno dei due si vede sul desktop dove si sviluppa:
- *
- * 1. **WebKit centra il valore.** Su iPhone "1 apr 2026" finisce in mezzo al
- *    campo mentre ogni altro campo della pagina ha il testo a sinistra: il
- *    modulo sembra disallineato e non si capisce perche'. `appearance: none`
- *    piu' `text-align: left` lo riportano in riga con gli altri.
- *
- * 2. **Blink ci mette l'icona sopra l'ultima cifra.** "01/04/2026" piu'
- *    l'icona del calendario vogliono ~140 px e sotto quella soglia il browser
- *    non manda niente a capo: sovrappone. Non e' un overflow e non e' una
- *    sovrapposizione fra box — e' solo il contenuto schiacciato, percio' non lo
- *    rileva nessun controllo sulle geometrie.
- *
- * La coppia resta affiancata, perche' due date sono un intervallo e si leggono
- * da sinistra a destra: impilarle a tutta larghezza costa tre dita di scroll e
- * fa sembrare i due campi piu' importanti di tutto il resto del modulo. Quello
- * che si stringe e' il loro contenuto, e solo dove serve. */
+ * WebKit **centra** il valore: su iPhone la data finiva in mezzo al campo
+ * mentre ogni altro campo della pagina ha il testo a sinistra. Blink invece
+ * mette l'icona del calendario **sopra** l'ultima cifra dell'anno quando lo
+ * spazio scende sotto i ~140 px. Nessuno dei due e' un overflow, quindi
+ * nessun controllo sulle geometrie li rileva. */
 input.inp[type="date"] {
   appearance: none;
   -webkit-appearance: none;
@@ -387,163 +478,242 @@ input.inp[type="date"] {
   min-height: 2.6rem;
 }
 
-input.inp[type="date"]::-webkit-date-and-time-value {
-  text-align: left;
-}
+input.inp[type="date"]::-webkit-date-and-time-value { text-align: left; }
 
-/* L'icona del calendario: la stessa larghezza in meno che serviva. */
 input.inp[type="date"]::-webkit-calendar-picker-indicator {
   margin: 0 0 0 2px;
   padding: 0;
-  opacity: 0.55;
+  opacity: 0.5;
+  transition: opacity 150ms ease;
 }
 
-input.inp[type="date"]::-webkit-calendar-picker-indicator:hover {
-  opacity: 1;
-}
+input.inp[type="date"]::-webkit-calendar-picker-indicator:hover { opacity: 1; }
 
-/* Sotto i 400 px il valore rimpicciolisce quel tanto che basta a starci con
-   l'icona accanto invece che sotto. */
 @media (max-width: 400px) {
-  input.inp[type="date"] {
-    font-size: 15px;
-    padding-inline: 7px;
-  }
+  input.inp[type="date"] { font-size: var(--t-15); padding-inline: 7px; }
 }
 
-/* Solo sugli schermi davvero stretti (i 320 px dei telefoni piccoli) non c'e'
-   proprio spazio per due, e allora si impila. La classe serve ai browser senza
-   `:has()`; il selettore con `:has()` prende da solo le coppie che verranno. */
 @media (max-width: 350px) {
   .grid2.has-date,
-  .grid2:has(input[type="date"]) {
-    /* `minmax(0, …)` e non `1fr`: `1fr` vale `minmax(auto, 1fr)`, e su WebKit
-       il min-content di un campo data e' piu' largo di quanto sembri — la
-       traccia si allarga per contenerlo e la griglia sfonda il bordo della
-       scheda, portandosi dietro lo scroll orizzontale di tutta la pagina.
-       E' lo stesso motivo per cui `.grid2` lo usa gia' nel caso a due
-       colonne: qui mancava solo nell'override. */
-    grid-template-columns: minmax(0, 1fr);
-  }
+  .grid2:has(input[type="date"]) { grid-template-columns: minmax(0, 1fr); }
 }
 
-/* L'ultima rete: il contenuto di un campo nativo non e' sotto il nostro
-   controllo, e su un telefono uno scroll orizzontale di pochi pixel e' un
-   difetto che si sente a ogni gesto senza che si capisca da dove venga.
-   `clip` non crea un contenitore di scroll, quindi non rompe lo `position:
-   sticky` della testata come farebbe `hidden`. */
-body {
-  overflow-x: clip;
+input.inp.soglia {
+  width: 6.5rem;
+  padding: 2px 6px;
+  font-size: var(--t-11);
+  display: inline-block;
 }
 
-.row-inline { display: flex; gap: 8px; align-items: flex-end; }
+.row-inline { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+
+/* ----------------------------------------------------------------- bottoni */
 
 button.btn {
   appearance: none;
   font: inherit;
-  font-size: 13px;
-  font-weight: 650;
-  padding: 8px 12px;
-  border-radius: 10px;
-  border: 1px solid var(--border);
-  background: var(--surface-2);
+  font-size: var(--t-13);
+  font-weight: 620;
+  padding: 8px 13px;
+  border-radius: var(--r-field);
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
   color: var(--text);
   cursor: pointer;
   white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  /* Un bottone si muove poco e in fretta: 150 ms in entrata, 160 in pressione.
+     Serve a dire "ho sentito", non a farsi guardare. */
+  transition: transform 150ms ease, border-color 150ms ease, background-color 150ms ease;
 }
 
 button.btn:hover { border-color: var(--accent); color: var(--accent-ink); }
 
-button.btn.primary { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-ink); }
+button.btn:active { transform: translateY(1px); transition-duration: 100ms; }
+
+button.btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+  border-color: var(--border);
+  color: var(--text-2);
+  transform: none;
+}
+
+button.btn:disabled:hover { border-color: var(--border); color: var(--text-2); }
+
+button.btn.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+:root[data-theme="dark"] button.btn.primary,
+:root:not([data-theme="light"]) button.btn.primary { color: #0e1012; }
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) button.btn.primary { color: #fff; }
+}
+
+button.btn.primary:hover { background: var(--accent-ink); border-color: var(--accent-ink); color: #fff; }
 
 button.btn.link {
   border: 0;
   background: transparent;
-  padding: 2px 0;
+  padding: 3px 0;
   color: var(--accent-ink);
   text-decoration: underline;
-  text-underline-offset: 2px;
-  font-size: 12px;
+  text-underline-offset: 0.2em;
+  font-size: var(--t-12);
 }
 
-button.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+button.btn.link:hover { color: var(--accent); }
 
-input[type="range"] {
-  width: 100%;
-  accent-color: var(--accent);
-  margin: 6px 0 0;
+button.btn.link:active { transform: none; }
+
+button.icon-btn {
+  appearance: none;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--muted);
+  border-radius: var(--r-field);
+  width: 2.15rem;
+  height: 2.15rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex: 0 0 auto;
+  transition: color 150ms ease, border-color 150ms ease;
 }
+
+button.icon-btn:hover { color: var(--bad); border-color: var(--bad); }
+
+/* ------------------------------------------------------- slider e opzioni */
+
+input[type="range"] { width: 100%; margin: 8px 0 0; }
 
 .ticks {
   display: flex;
   justify-content: space-between;
-  font-size: 10.5px;
+  font-size: var(--t-11);
   color: var(--muted);
   font-variant-numeric: tabular-nums;
-  margin-top: -2px;
+  margin-top: 2px;
 }
 
-.check { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-2); }
+.check { display: flex; align-items: center; gap: 8px; font-size: var(--t-13); color: var(--text-2); }
 
-.check input { accent-color: var(--accent); width: 16px; height: 16px; }
+.check input { width: 16px; height: 16px; }
+
+/* --------------------------------------------------- l'aiuto a richiesta */
+
+/* Le spiegazioni lunghe stanno dietro a un bottone e non sotto ogni campo: in
+   uno strumento la prosa in linea si legge una volta e poi diventa rumore fra
+   un campo e l'altro. Il popover nasce nel top layer del browser, quindi non
+   viene tagliato dai contenitori che scorrono — che e' il modo in cui questi
+   pannelli si rompono di solito. */
+button.info {
+  appearance: none;
+  border: 1px solid var(--border-strong);
+  background: transparent;
+  color: var(--muted);
+  width: 1.05rem;
+  height: 1.05rem;
+  border-radius: var(--r-pill);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  margin-left: 6px;
+  vertical-align: -1px;
+  transition: color 150ms ease, border-color 150ms ease;
+}
+
+button.info:hover { color: var(--accent-ink); border-color: var(--accent); }
+
+[popover].pop {
+  max-width: min(32ch, calc(100vw - 32px));
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  background: var(--surface);
+  color: var(--text-2);
+  font-size: var(--t-13);
+  line-height: 1.45;
+  box-shadow: 0 2px 4px rgb(20 23 26 / 0.08), 0 16px 32px -20px rgb(20 23 26 / 0.45);
+  inset: auto;
+  position: fixed;
+  text-wrap: pretty;
+}
+
+[popover].pop p { margin: 0; }
+
+[popover].pop p + p { margin-top: 8px; }
+
+[popover].pop::backdrop { background: transparent; }
 
 /* ------------------------------------------------------------------- liste */
 
-ul.lines { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 7px; }
+ul.lines { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 7px; }
 
-ul.lines li { display: flex; align-items: baseline; gap: 10px; font-size: 14px; }
+ul.lines li { display: flex; align-items: baseline; gap: 12px; font-size: var(--t-15); }
 
-ul.lines li > span:first-child { flex: 1 1 auto; min-width: 0; }
+ul.lines li > span:first-child { flex: 1 1 auto; min-width: 0; color: var(--text-2); }
 
 ul.lines li > span:last-child { flex: 0 0 auto; font-variant-numeric: tabular-nums; }
 
-li.sum { border-top: 1px solid var(--text); margin-top: 4px; padding-top: 8px; font-weight: 700; }
+li.sum {
+  border-top: 1px solid var(--border-strong);
+  margin-top: 5px;
+  padding-top: 9px;
+  font-weight: 660;
+}
+
+li.sum > span:first-child { color: var(--text); }
 
 .neg { color: var(--bad); }
 
 .pos { color: var(--good); }
 
 /* La tabella delle vestizioni: sei colonne, che su un telefono non ci stanno.
-   `width: 100%` da solo non le fa scorrere — le **schiaccia**, fino a
-   comprimere ogni cella al suo min-content, e i valori di colonne diverse
-   finiscono attaccati ("1/3" "41,99" "29,18 €" diventa "1/341,9929,18 €").
-   Il `min-width` le da' lo spazio che le serve e lascia scorrere il box che la
-   contiene, che e' il modo giusto di stringere una tabella di dati: i numeri
-   restano leggibili e si scorre di lato, invece di avere tutto visibile e
-   niente comprensibile. */
+   `width: 100%` da solo non le fa scorrere, le **schiaccia** fino al
+   min-content, e i valori di colonne diverse finiscono attaccati. */
 table.tbl {
   width: 100%;
   min-width: 25rem;
   border-collapse: collapse;
-  font-size: 13px;
+  font-size: var(--t-13);
 }
 
 table.tbl th {
   text-align: left;
-  font-size: 11px;
-  text-transform: uppercase;
+  font-size: var(--t-11);
   letter-spacing: 0.02em;
   color: var(--muted);
-  padding: 0 12px 6px 0;
-  font-weight: 700;
+  padding: 0 12px 7px 0;
+  font-weight: 660;
   position: sticky;
   top: 0;
   background: var(--surface);
 }
 
 table.tbl td {
-  padding: 6px 12px 6px 0;
+  padding: 7px 12px 7px 0;
   border-top: 1px solid var(--border);
   font-variant-numeric: tabular-nums;
-  /* Un importo spezzato su due righe non e' un importo. */
   white-space: nowrap;
 }
 
-/* Le colonne allineate a destra: lo spazio va messo **a sinistra**.
-   Azzerare il `padding-right` le fa finire a filo del bordo (giusto), ma senza
-   nulla dal lato opposto il valore tocca la colonna precedente appena e' lungo
-   abbastanza: "1/3" e "41,99" diventano "1/341,99", e lo stesso fanno le
-   intestazioni ("TRANCHE" + "UNITÀ" = "TRANCHEUNITÀ"). */
+/* Lo spazio delle colonne a destra va messo **a sinistra**: azzerare solo il
+   padding-right le fa toccare la colonna precedente appena il valore e' lungo
+   ("1/3" + "41,99" letto come "1/341,99"). */
 table.tbl td.r,
 table.tbl th.r {
   text-align: right;
@@ -551,34 +721,29 @@ table.tbl th.r {
   padding-left: 14px;
 }
 
-/* Su uno schermo stretto una colonna in meno vale piu' di una colonna in piu':
-   "1/12" e' l'unico dato della riga che si ricava guardando le altre. */
+/* Su uno schermo stretto una colonna in meno vale piu' di una in piu'. */
 @media (max-width: 620px) {
-  table.tbl .opz {
-    display: none;
-  }
+  table.tbl .opz { display: none; }
 }
 
 .scroll-y {
   max-height: 340px;
   overflow: auto;
-  /* Arrivato in fondo alla tabella, lo scroll non deve rubare quello della
-     pagina: su un telefono e' il modo piu' rapido di restare incastrati. */
   overscroll-behavior: contain;
 }
 
-.chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 
 .chip {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: 12px;
+  gap: 7px;
+  font-size: var(--t-12);
   color: var(--text-2);
   background: var(--surface-2);
   border: 1px solid var(--border);
-  border-radius: 999px;
-  padding: 3px 9px;
+  border-radius: var(--r-pill);
+  padding: 3px 10px;
 }
 
 .dot { width: 9px; height: 9px; border-radius: 3px; flex: 0 0 auto; }
@@ -587,9 +752,13 @@ table.tbl th.r {
 
 .chart { width: 100%; height: auto; display: block; overflow: visible; }
 
-.chart text { fill: var(--muted); font-size: 9px; font-family: inherit; }
+.chart text { fill: var(--muted); font-size: 10px; font-family: inherit; }
 
 .chart .axis { stroke: var(--border); stroke-width: 1; }
+
+.chart .anno { fill: var(--text-2); font-weight: 660; }
+
+.chart .valore { fill: var(--text-2); font-size: 9.5px; font-variant-numeric: tabular-nums; }
 
 /* ------------------------------------------------------------------- piede */
 
@@ -600,42 +769,46 @@ footer.bottom {
   padding: 24px 0 40px;
 }
 
-footer.bottom h2 { font-size: 13px; margin: 0 0 4px; }
+footer.bottom h2 { font-size: var(--t-13); margin: 0 0 5px; font-weight: 660; }
 
-footer.bottom .disclaimer { display: grid; gap: 16px; }
+footer.bottom .disclaimer { display: grid; gap: 18px; }
 
 @media (min-width: 760px) {
-  footer.bottom .disclaimer { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; }
+  footer.bottom .disclaimer { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 26px; }
 }
 
-footer.bottom p { font-size: 12.5px; color: var(--text-2); margin: 0; text-wrap: pretty; }
+footer.bottom p { font-size: var(--t-12); color: var(--text-2); margin: 0; text-wrap: pretty; }
 
 footer.bottom .meta {
-  margin-top: 20px;
+  margin-top: 22px;
   padding-top: 16px;
   border-top: 1px solid var(--border);
   display: flex;
   flex-wrap: wrap;
   gap: 8px 18px;
-  font-size: 12px;
+  font-size: var(--t-12);
   color: var(--muted);
 }
-
-footer.bottom a { color: var(--accent-ink); }
 
 .sr {
   position: absolute;
   width: 1px;
   height: 1px;
   overflow: hidden;
-  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
   white-space: nowrap;
 }
 
+/* Un solo momento di movimento in tutta la pagina, e conviene spenderlo dove
+   una cosa **cambia**: il numero che si rifa' quando tocchi un campo. Niente
+   entrate scaglionate al caricamento — un prodotto si apre dentro un compito,
+   e chi ci entra non vuole guardarlo apparire. */
 @media (prefers-reduced-motion: no-preference) {
-  .card { animation: in 0.28s ease both; }
-  @keyframes in {
-    from { opacity: 0; transform: translateY(4px); }
+  .risposta {
+    animation: rifatto 220ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  @keyframes rifatto {
+    from { opacity: 0.4; transform: translateY(-2px); }
     to { opacity: 1; transform: none; }
   }
 }

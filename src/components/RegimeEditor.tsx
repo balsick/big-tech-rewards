@@ -1,5 +1,6 @@
 import { useStore } from "../state/store.tsx";
 import { Check, NumField, Segmented } from "./ui.tsx";
+import Info from "./Info.tsx";
 import { pct } from "../lib/format.ts";
 import {
   COMUNALE_TORINO,
@@ -109,13 +110,26 @@ export default function RegimeEditor({ ral }: { ral: number }) {
     <div>
       <p className="note">{t.tax.intro}</p>
 
-      <div className="card" style={{ margin: "12px 0", boxShadow: "none" }}>
-        <div className="eyebrow">{t.tax.marginalTitle}</div>
-        <div className="mid" style={{ fontSize: 26 }}>
+      {/* Niente scheda dentro la scheda: il blocco si stacca con una riga e
+          un po' d'aria, che basta a dire "questo e' il risultato" senza
+          costruire un secondo contenitore dentro il primo. */}
+      <div
+        style={{
+          margin: "14px 0",
+          paddingTop: 14,
+          borderTop: "1px solid var(--border)",
+        }}
+      >
+        <h3 style={{ marginTop: 0 }}>
+          {t.tax.marginalTitle}
+          <Info label={t.common.whatIsThis}>
+            <p>{t.tax.marginalWhy}</p>
+          </Info>
+        </h3>
+        <p className="mid" style={{ margin: 0 }}>
           {pct(m.aliquota, lang)}
-        </div>
+        </p>
         <p className="note">{t.tax.marginalLine(pct(m.aliquota, lang))}</p>
-        <p className="hint">{t.tax.marginalWhy}</p>
       </div>
 
       <h3>{t.tax.presets}</h3>

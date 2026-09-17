@@ -1,5 +1,6 @@
 import { useStore } from "../state/store.tsx";
 import { dateLong } from "../lib/format.ts";
+import Info from "./Info.tsx";
 
 // Il blocco del salvataggio: un tasto, cosa succede quando lo premi, e il modo
 // di tornare indietro.
@@ -38,7 +39,13 @@ export default function Salvataggio({
 
   return (
     <div>
-      <h3 style={{ marginTop: 0 }}>{t.salva.title}</h3>
+      <h3 style={{ marginTop: 0 }}>
+        {t.salva.title}
+        <Info label={t.common.whatIsThis}>
+          <p>{t.salva.where}</p>
+          <p>{t.salva.nothingLeaves}</p>
+        </Info>
+      </h3>
       <div className="row-inline" style={{ alignItems: "center", flexWrap: "wrap", gap: 10 }}>
         <button
           className={`btn ${quando && !sporco ? "" : "primary"}`}
@@ -55,8 +62,6 @@ export default function Salvataggio({
         ) : null}
       </div>
       {quando ? <p className="hint">{t.salva.savedOn(dateLong(quando.slice(0, 10), lang))}</p> : null}
-      <p className="hint">{t.salva.where}</p>
-      <p className="hint">{t.salva.nothingLeaves}</p>
     </div>
   );
 }

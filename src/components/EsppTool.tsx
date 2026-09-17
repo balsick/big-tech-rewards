@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useStore } from "../state/store.tsx";
 import { Card, Check, DateField, Disclosure, Line, NumField } from "./ui.tsx";
-import { eur, eur0, num, pct, todayISO, usd } from "../lib/format.ts";
+import Info from "./Info.tsx";
+import { Livello } from "./Icone.tsx";
+import { dateShort, eur, eur0, num, pct, todayISO, usd } from "../lib/format.ts";
 import {
   PIANO_ESPP,
   accantonamentoAtteso,
@@ -123,12 +125,42 @@ export default function EsppTool() {
   const alMinimo = () => setPrezzoFine(vInizio);
   const giaAlMinimo = Math.abs(vFine - vInizio) < 1e-9;
 
+  // Il numero per cui si apre la pagina sta **per primo** nel sorgente, quindi
+  // per primo sul telefono; sul desktop la griglia lo rimette in colonna
+  // destra, sopra il dettaglio, col modulo che resta fermo a sinistra.
+  const risposta = !e ? (
+    <Card>
+      <p className="note">{t.espp.missing}</p>
+    </Card>
+  ) : (
+    <Card>
+      <h2 className="risposta" style={{ marginBottom: 0 }} key={Math.round(e.guadagno)}>
+        {t.espp.youGain} <span className="big">{eur0(e.guadagno, lang)}</span>
+      </h2>
+      <p className="note">
+        {t.espp.gainLine(
+          pct(e.roi, lang),
+          eur0(e.esborso, lang),
+          num(e.azioni, lang, piano.frazioni ? 4 : 0),
+          eur0(e.controvalore, lang),
+          piano.mesi
+        )}
+      </p>
+      <p className="hint">
+        {t.espp.costBreak(eur0(e.speso, lang), eur0(Math.round(e.esborso) - Math.round(e.speso), lang))}{" "}
+        {t.espp.annualised(pct(e.roiAnnuo, lang))}
+      </p>
+    </Card>
+  );
+
   return (
     <div className="tool">
+      <div className="sintesi">{risposta}</div>
+
       <div className="panel">
         <Card>
           <h2>{t.espp.title}</h2>
-          <div className="grid2 has-date">
+          <div className="grid2 has-date allinea">
             <DateField label={t.espp.windowStart} value={inizio} onChange={setInizio} />
             <DateField label={t.espp.windowEnd} value={acquisto} onChange={setAcquisto} />
           </div>
@@ -189,12 +221,22 @@ export default function EsppTool() {
             ) : null}
           </div>
 
-          <h3>{t.common.ral}</h3>
-          <NumField lang={lang} label={t.common.ral} suffix="€" dec={0} value={ral} onChange={setRal} />
-          <p className="hint">{t.common.ralWhy}</p>
+          <NumField
+            lang={lang}
+            label={t.common.ral}
+            suffix="€"
+            dec={0}
+            value={ral}
+            onChange={setRal}
+            info={
+              <Info label={t.common.whatIsThis}>
+                <p>{t.common.ralWhy}</p>
+                <p>{t.common.ralWhy2}</p>
+              </Info>
+            }
+          />
 
-          <h3>{t.common.price}</h3>
-          <div className="grid2">
+          <div className="grid2 allinea" style={{ marginTop: 18 }}>
             <NumField
               lang={lang}
               label={t.common.priceStart}
@@ -205,7 +247,7 @@ export default function EsppTool() {
                 prezzoInizio !== null
                   ? t.common.manual
                   : storicoInizio
-                    ? `${t.common.fromHistory} — ${storicoInizio.closeOn}`
+                    ? `${t.common.fromHistory} ${dateShort(storicoInizio.closeOn, lang)}`
                     : t.common.fromQuote
               }
             />
@@ -217,24 +259,25 @@ export default function EsppTool() {
               onChange={setPrezzoFine}
               hint={
                 prezzoFine !== null
-                  ? t.common.manual
+                  ? giaAlMinimo
+                    ? t.espp.atMinimumOn
+                    : t.common.manual
                   : quote
-                    ? `${t.common.fromQuote} — ${quote.date}`
+                    ? `${t.common.fromQuote} ${dateShort(quote.date, lang)}`
                     : storicoFine
-                      ? `${t.common.fromHistory} — ${storicoFine.closeOn}`
+                      ? `${t.common.fromHistory} ${dateShort(storicoFine.closeOn, lang)}`
                       : t.common.fromQuote
               }
             />
           </div>
           <div className="row-inline" style={{ marginTop: 10 }}>
-            <button
-              className={`btn ${giaAlMinimo ? "" : "primary"}`}
-              type="button"
-              onClick={alMinimo}
-              aria-pressed={giaAlMinimo}
-            >
+            <button className="btn" type="button" onClick={alMinimo}>
+              <Livello />
               {t.espp.atMinimum}
             </button>
+            <Info label={t.espp.atMinimum}>
+              <p>{t.espp.atMinimumHint}</p>
+            </Info>
             {prezzoFine !== null || prezzoInizio !== null ? (
               <button
                 className="btn link"
@@ -248,9 +291,7 @@ export default function EsppTool() {
               </button>
             ) : null}
           </div>
-          <p className="hint">{t.espp.atMinimumHint}</p>
 
-          <h3>{t.common.fx}</h3>
           <NumField
             lang={lang}
             label={t.common.fx}
@@ -298,6 +339,19 @@ export default function EsppTool() {
                   value={piano.maxPct}
                   onChange={(v) => setPiano({ ...piano, maxPct: Math.max(1, Math.round(v)) })}
                 />
+                <NumField
+                  lang={lang}
+                  label={t.espp.capUsd}
+                  suffix="$"
+                  dec={0}
+                  value={piano.maxUsd}
+                  onChange={(v) => setPiano({ ...piano, maxUsd: Math.max(0, v) })}
+                  info={
+                    <Info label={t.common.whatIsThis}>
+                      <p>{t.espp.capUsdHint}</p>
+                    </Info>
+                  }
+                />
               </div>
               <div style={{ display: "grid", gap: 8, marginTop: 10 }}>
                 <Check
@@ -335,48 +389,18 @@ export default function EsppTool() {
         </Card>
       </div>
 
-      <div>
-        <Card className="accent-card">
-          <h2>{t.espp.lookbackTitle}</h2>
-          <p className="note">{t.espp.lookback}</p>
-          <p className="note">{t.espp.incomeWarning}</p>
-          <p className="hint">{t.espp.guaranteed(pct(minimoGarantito(piano.sconto), lang))}</p>
-        </Card>
-
+      <div className="dettagli">
         {quoteFallita && !quote ? (
-          <Card delay={40} className="warn-card">
+          <Card>
             <p className="note">{t.common.quoteMissing}</p>
           </Card>
         ) : null}
 
-        {!e ? (
-          <Card delay={60}>
-            <p className="note">{t.espp.missing}</p>
-          </Card>
-        ) : (
+        {e ? (
           <>
-            <Card delay={60}>
-              <div className="eyebrow">{t.espp.youGain}</div>
-              <div className="big">{eur0(e.guadagno, lang)}</div>
-              <p className="note">
-                {t.espp.gainLine(
-                  pct(e.roi, lang),
-                  eur0(e.esborso, lang),
-                  num(e.azioni, lang, piano.frazioni ? 4 : 0),
-                  eur0(e.controvalore, lang),
-                  piano.mesi
-                )}
-              </p>
-              <p className="hint">
-                {t.espp.costBreak(eur0(e.speso, lang), eur0(Math.round(e.esborso) - Math.round(e.speso), lang))}
-                {" — "}
-                {t.espp.annualised(pct(e.roiAnnuo, lang))}
-              </p>
-            </Card>
-
-            <Card delay={120}>
-              <div className="eyebrow">{t.espp.payslipTitle}</div>
-              <div className="mid">{eur0(e.trattenuta, lang)}</div>
+            <Card>
+              <h2>{t.espp.payslipTitle}</h2>
+              <p className="mid">{eur0(e.trattenuta, lang)}</p>
               <p className="note">{t.espp.payslipLine(eur0(e.beneficio, lang), pct(e.aliquota, lang))}</p>
               <p className="note">
                 {t.espp.payslipRest(
@@ -385,9 +409,29 @@ export default function EsppTool() {
                   e.cedolino < 0 ? t.espp.lower : t.espp.higher
                 )}
               </p>
+              {/* Senza questa riga il "resto che torna in busta" diventa di
+                  colpo enorme e non si capisce perche': il tetto e' l'unica
+                  cosa che lo spiega. */}
+              {e.oltreIlTetto > 0.5 ? (
+                <p className="hint">
+                  {t.espp.capHit(eur0(e.oltreIlTetto, lang), usd(piano.maxUsd, lang, 0))}
+                </p>
+              ) : null}
             </Card>
 
-            <Card delay={180}>
+            <Card>
+              <h2>{t.espp.ralEquivTitle}</h2>
+              <p className="mid">{eur0(e.ralEquivalente, lang)}</p>
+              <p className="note">
+                {t.espp.ralEquivLine(
+                  Math.round(e.quotaSuRal * 100),
+                  eur0(e.guadagno, lang),
+                  eur0(e.perMese, lang)
+                )}
+              </p>
+            </Card>
+
+            <Card>
               <h2>{t.espp.stepsTitle}</h2>
               <ul className="lines">
                 <Line
@@ -400,11 +444,7 @@ export default function EsppTool() {
                   hint={t.espp.steps.buyHint(`${num(piano.sconto, lang, 2)}%`, usd(e.prezzoRiferimento, lang))}
                   value={usd(e.prezzoAcquisto, lang)}
                 />
-                <Line
-                  name={t.espp.steps.savedUsd}
-                  hint={eur(accantonato, lang)}
-                  value={usd(e.accantonatoUsd, lang)}
-                />
+                <Line name={t.espp.steps.savedUsd} hint={eur(accantonato, lang)} value={usd(e.accantonatoUsd, lang)} />
                 <Line
                   name={t.espp.steps.bought}
                   hint={piano.frazioni ? undefined : t.espp.steps.boughtHint}
@@ -413,31 +453,36 @@ export default function EsppTool() {
                 <Line name={t.espp.steps.cost} value={eur(e.speso, lang)} />
                 <Line name={t.espp.steps.rest} value={eur(e.restoInBusta, lang)} />
                 <Line name={t.espp.steps.value} value={eur(e.controvalore, lang)} />
-                <Line name={t.espp.steps.tax} value={`−${eur(e.trattenuta, lang)}`} tone="neg" />
+                <Line name={t.espp.steps.tax} value={`\u2212${eur(e.trattenuta, lang)}`} tone="neg" />
                 <Line name={t.espp.steps.out} value={eur(e.esborso, lang)} sum />
               </ul>
             </Card>
 
-            <Card delay={240}>
-              <div className="eyebrow">{t.espp.ralEquivTitle}</div>
-              <div className="mid">{eur0(e.ralEquivalente, lang)}</div>
-              <p className="note">
-                {t.espp.ralEquivLine(
-                  Math.round(e.quotaSuRal * 100),
-                  eur0(e.guadagno, lang),
-                  eur0(e.perMese, lang)
-                )}
-              </p>
-            </Card>
-
             {vFine < vInizio ? (
-              <Card delay={300} className="good-card">
+              <Card>
                 <h2>{t.espp.fellTitle}</h2>
                 <p className="note">{t.espp.fell(usd(vInizio, lang), usd(vFine, lang))}</p>
               </Card>
             ) : null}
           </>
-        )}
+        ) : null}
+
+        {/* La spiegazione sta **dopo** il risultato: chi arriva qui vuole prima
+            il numero, e il regolamento lo legge se quel numero lo sorprende. */}
+        <Card>
+          <h2>{t.espp.howTitle}</h2>
+          <ul className="lines" style={{ gap: 12 }}>
+            <li style={{ display: "block" }}>
+              <strong style={{ fontSize: "var(--t-13)" }}>{t.espp.how1Title}</strong>
+              <p className="note" style={{ marginTop: 2 }}>{t.espp.how1}</p>
+            </li>
+            <li style={{ display: "block" }}>
+              <strong style={{ fontSize: "var(--t-13)" }}>{t.espp.how2Title}</strong>
+              <p className="note" style={{ marginTop: 2 }}>{t.espp.how2}</p>
+            </li>
+          </ul>
+          <p className="hint">{t.espp.guaranteed(pct(minimoGarantito(piano.sconto), lang))}</p>
+        </Card>
       </div>
     </div>
   );

@@ -140,6 +140,17 @@ export interface AnnoRSU {
   tranche: Tranche[];
 }
 
+export interface PeriodoGrafico {
+  /** l'inizio del periodo, ISO */
+  da: string;
+  anno: number;
+  /** 1..4 */
+  trimestre: number;
+  per: { grant: string; unita: number }[];
+  unita: number;
+  lordoEur: number;
+}
+
 export interface Prospetto {
   tranche: Tranche[];
   /** solo quelle che cadono nell'orizzonte e non sono ancora vestite */
@@ -148,8 +159,8 @@ export interface Prospetto {
   unitaTotali: number;
   lordoTotale: number;
   nettoTotale: number;
-  /** mese per mese, per il grafico */
-  mesi: { mese: string; per: { grant: string; unita: number }[]; unita: number; lordoEur: number }[];
+  /** trimestre per trimestre, per il grafico */
+  trimestri: PeriodoGrafico[];
 }
 
 export interface IpotesiRSU {
@@ -201,14 +212,27 @@ export function prospetto(i: IpotesiRSU, regime?: Regime): Prospetto {
       };
     });
 
-  // Il grafico vuole una riga per mese anche quando in quel mese non vesta
-  // niente: i buchi sono l'informazione, non il rumore.
-  const mesi: Prospetto["mesi"] = [];
-  const n = Math.round(i.orizzonte * 12);
-  for (let k = 0; k < n; k++) {
-    const d = piuMesi(i.oggi, k);
-    const mese = d.slice(0, 7);
-    const dentro = future.filter((t) => t.data.slice(0, 7) === mese);
+  // Il grafico va a **trimestri**, non a mesi.
+  //
+  // Trentasei colonne su un telefono sono larghe cinque pixel, e nove su dieci
+  // sono vuote: un piano trimestrale produce al massimo dodici vestizioni in
+  // tre anni. Il mese non aggiunge niente che il trimestre non dica gia' — la
+  // granularita' del grafico deve essere quella del piano, non quella del
+  // calendario — e a dodici colonne le barre tornano larghe abbastanza da
+  // portarsi dietro il proprio valore scritto sopra.
+  //
+  // I periodi vuoti restano nell'elenco: sono l'informazione, non il rumore.
+  const trimestri: PeriodoGrafico[] = [];
+  const nMesi = Math.round(i.orizzonte * 12);
+  // Si parte dall'inizio del trimestre solare in cui cade oggi, cosi' le
+  // colonne coincidono con i trimestri veri e non con una finestra mobile.
+  const meseOggi = Number(i.oggi.slice(5, 7));
+  const inizio = `${i.oggi.slice(0, 4)}-${String(Math.floor((meseOggi - 1) / 3) * 3 + 1).padStart(2, "0")}-01`;
+  for (let k = 0; k < Math.ceil(nMesi / 3) + 1; k++) {
+    const da = piuMesi(inizio, k * 3);
+    const a = piuMesi(inizio, (k + 1) * 3);
+    if (da >= fine) break;
+    const dentro = future.filter((t) => t.data >= da && t.data < a);
     const per = i.grants
       .map((g) => ({
         grant: g.id,
@@ -216,7 +240,14 @@ export function prospetto(i: IpotesiRSU, regime?: Regime): Prospetto {
       }))
       .filter((x) => x.unita > 0);
     const unita = dentro.reduce((s, t) => s + t.unita, 0);
-    mesi.push({ mese, per, unita, lordoEur: unita * perAzioneEur });
+    trimestri.push({
+      da,
+      anno: Number(da.slice(0, 4)),
+      trimestre: Math.floor(Number(da.slice(5, 7)) / 3) + 1,
+      per,
+      unita,
+      lordoEur: unita * perAzioneEur,
+    });
   }
 
   return {
@@ -226,7 +257,7 @@ export function prospetto(i: IpotesiRSU, regime?: Regime): Prospetto {
     unitaTotali: future.reduce((s, t) => s + t.unita, 0),
     lordoTotale: anni.reduce((s, a) => s + a.lordoEur, 0),
     nettoTotale: anni.reduce((s, a) => s + a.nettoEur, 0),
-    mesi,
+    trimestri,
   };
 }
 

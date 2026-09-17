@@ -23,6 +23,22 @@ export interface PianoEspp {
   mesi: number;
   /** tetto contributivo del piano, in percentuale della retribuzione */
   maxPct: number;
+  /**
+   * Tetto in dollari per periodo, oltre il quale la trattenuta non compra piu'
+   * azioni e torna indietro.
+   *
+   * Non e' una regola aziendale, e' il limite fiscale americano: 25.000 dollari
+   * l'anno di valore di mercato alla data di concessione. Con il 15% di sconto
+   * quei 25.000 di valore si comprano con 21.250 di contributi, cioe' 10.625
+   * per finestra semestrale — ed e' il motivo per cui il numero e' quello e non
+   * un altro.
+   *
+   * Morde solo sopra una certa retribuzione: con il 15% su sei mesi ci si
+   * arriva intorno ai 123.000 euro di RAL. Sotto non si vede, e sopra si vede
+   * eccome, perche' la parte oltre il tetto resta ferma per mesi senza comprare
+   * niente.
+   */
+  maxUsd: number;
   /** i giorni dell'anno in cui cade un acquisto, come MM-GG */
   acquisti: string[];
   /** il piano compra anche frazioni di azione? quasi mai */
@@ -34,6 +50,7 @@ export const PIANO_ESPP: PianoEspp = {
   lookback: true,
   mesi: 6,
   maxPct: 15,
+  maxUsd: 10625,
   acquisti: ["04-01", "10-01"],
   frazioni: false,
 };
@@ -53,7 +70,12 @@ export interface IpotesiEspp {
 export interface EsitoEspp {
   prezzoRiferimento: number; // USD: il minore dei due, se c'e' il lookback
   prezzoAcquisto: number; // USD
+  /** quello che entra davvero nell'acquisto, tetto compreso */
   accantonatoUsd: number;
+  /** quanto e' stato messo da parte prima del tetto */
+  accantonatoLordoUsd: number;
+  /** EUR che tornano indietro perche' oltre il tetto del piano */
+  oltreIlTetto: number;
   azioni: number;
   speso: number; // EUR effettivamente convertiti in azioni
   restoInBusta: number; // EUR che non compra un'azione intera e torna indietro
@@ -92,7 +114,12 @@ export function simulaEspp(i: IpotesiEspp, regime?: Regime): EsitoEspp {
     : i.prezzoFine;
   const prezzoAcquisto = riferimento * (1 - piano.sconto / 100);
 
-  const accantonatoUsd = i.accantonato * i.cambio;
+  // Il tetto del piano taglia prima di comprare: la parte oltre non diventa
+  // azioni, torna in busta insieme al resto che non fa un'azione intera.
+  const accantonatoLordoUsd = i.accantonato * i.cambio;
+  const tetto = piano.maxUsd > 0 ? piano.maxUsd : Infinity;
+  const accantonatoUsd = Math.min(accantonatoLordoUsd, tetto);
+  const oltreIlTetto = i.cambio > 0 ? Math.max(0, accantonatoLordoUsd - accantonatoUsd) / i.cambio : 0;
   const grezze = prezzoAcquisto > 0 ? accantonatoUsd / prezzoAcquisto : 0;
   const azioni = piano.frazioni ? Math.round(grezze * 1e4) / 1e4 : Math.floor(grezze);
 
@@ -118,6 +145,8 @@ export function simulaEspp(i: IpotesiEspp, regime?: Regime): EsitoEspp {
     prezzoRiferimento: riferimento,
     prezzoAcquisto,
     accantonatoUsd,
+    accantonatoLordoUsd,
+    oltreIlTetto,
     azioni,
     speso,
     restoInBusta,

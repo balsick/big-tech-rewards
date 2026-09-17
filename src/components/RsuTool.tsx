@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useStore } from "../state/store.tsx";
 import { Card, Check, DateField, Disclosure, Line, NumField, Segmented, Select } from "./ui.tsx";
+import Info from "./Info.tsx";
+import { Chiudi, Piu } from "./Icone.tsx";
 import VestingChart, { coloreGrant } from "./VestingChart.tsx";
 import { dateShort, eur, eur0, num, pct, todayISO, usd } from "../lib/format.ts";
 import {
@@ -156,8 +158,36 @@ export default function RsuTool() {
     { id: "mensile", label: t.rsu.schedule.mensile },
   ];
 
+  // Il numero per cui si apre la pagina sta **per primo** nel sorgente, quindi
+  // per primo sul telefono; sul desktop la griglia lo rimette in colonna
+  // destra, sopra il dettaglio, col modulo che resta fermo a sinistra.
+  const perAnno = p.nettoTotale / Math.max(1, orizzonte);
+  const risposta = !p.future.length ? (
+    <Card>
+      <p className="note">{t.rsu.noVesting}</p>
+    </Card>
+  ) : (
+    <Card>
+      <h2 className="risposta" style={{ marginBottom: 0 }} key={Math.round(p.nettoTotale)}>
+        {t.rsu.horizonTitle(orizzonte)} <span className="big">{eur0(p.nettoTotale, lang)}</span>
+      </h2>
+      <p className="note">
+        {t.rsu.totalLine(num(p.unitaTotali, lang, 2), eur0(p.lordoTotale, lang))}
+      </p>
+      <p className="hint">
+        {t.rsu.salaryCompare(
+          Math.round((p.lordoTotale / Math.max(1, orizzonte) / Math.max(1, ral)) * 100),
+          eur0(stipendio.netto, lang),
+          eur0(stipendio.netto + perAnno, lang)
+        )}
+      </p>
+    </Card>
+  );
+
   return (
     <div className="tool">
+      <div className="sintesi">{risposta}</div>
+
       <div className="panel">
         <Card>
           <h2>{t.rsu.grants}</h2>
@@ -181,21 +211,26 @@ export default function RsuTool() {
                 />
                 {grants.length > 1 ? (
                   <button
-                    className="btn"
+                    className="icon-btn"
                     type="button"
                     onClick={() => setGrants((gs) => gs.filter((x) => x.id !== g.id))}
                     aria-label={`${t.rsu.removeGrant}: ${g.etichetta}`}
                   >
-                    ×
+                    <Chiudi />
                   </button>
                 ) : null}
               </div>
-              <div className="grid2 has-date">
+              <div className="grid2 has-date allinea">
                 <DateField label={t.rsu.grantDate} value={g.data} onChange={(v) => patch(g.id, { data: v })} />
                 <NumField
                   lang={lang}
                   label={t.rsu.grantValue}
                   suffix="$"
+                  info={
+                    <Info label={t.common.whatIsThis}>
+                      <p>{t.rsu.grantValueWhy}</p>
+                    </Info>
+                  }
                   dec={0}
                   value={g.valoreUsd}
                   onChange={(v) => patch(g.id, { valoreUsd: v })}
@@ -300,32 +335,44 @@ export default function RsuTool() {
               ]);
             }}
           >
-            + {t.rsu.addGrant}
+            <Piu />
+            {t.rsu.addGrant}
           </button>
 
-          <p className="hint" style={{ marginTop: 10 }}>
-            {t.rsu.grantValueWhy}
-          </p>
+          <NumField
+            lang={lang}
+            label={t.common.ral}
+            suffix="€"
+            dec={0}
+            value={ral}
+            onChange={setRal}
+            info={
+              <Info label={t.common.whatIsThis}>
+                <p>{t.common.ralWhy}</p>
+                <p>{t.common.ralWhy2}</p>
+              </Info>
+            }
+          />
 
-          <h3>{t.common.ral}</h3>
-          <NumField lang={lang} label={t.common.ral} suffix="€" dec={0} value={ral} onChange={setRal} />
-          <p className="hint">{t.common.ralWhy}</p>
-
-          <h3>{t.common.price}</h3>
-          <div className="grid2">
+          <div className="grid2 allinea" style={{ marginTop: 18 }}>
             <NumField
               lang={lang}
               label={t.common.price}
               suffix="$"
+              info={
+                <Info label={t.common.whatIsThis}>
+                  <p>{t.rsu.priceNote}</p>
+                </Info>
+              }
               value={vPrezzo}
               onChange={setPrezzo}
               hint={
                 prezzo !== null
                   ? t.common.manual
                   : quote
-                    ? `${t.common.fromQuote} — ${quote.date}`
+                    ? `${t.common.fromQuote} ${dateShort(quote.date, lang)}`
                     : ultimo
-                      ? `${t.common.fromHistory} — ${ultimo.closeOn}`
+                      ? `${t.common.fromHistory} ${dateShort(ultimo.closeOn, lang)}`
                       : undefined
               }
             />
@@ -338,7 +385,7 @@ export default function RsuTool() {
               hint={cambio !== null ? t.common.manual : t.common.fxHint}
             />
           </div>
-          <p className="hint">{t.rsu.priceNote}</p>
+
 
           <h3>{t.rsu.horizon}</h3>
           <Segmented<"1" | "3" | "5">
@@ -346,9 +393,9 @@ export default function RsuTool() {
             value={String(orizzonte) as "1" | "3" | "5"}
             onChange={(v) => setOrizzonte(Number(v))}
             options={[
-              { id: "1", label: `1 ${t.rsu.years}` },
-              { id: "3", label: `3 ${t.rsu.years}` },
-              { id: "5", label: `5 ${t.rsu.years}` },
+              { id: "1", label: t.rsu.anni(1) },
+              { id: "3", label: t.rsu.anni(3) },
+              { id: "5", label: t.rsu.anni(5) },
             ]}
           />
 
@@ -373,22 +420,12 @@ export default function RsuTool() {
         </Card>
       </div>
 
-      <div>
-        <Card>
-          <h2>{t.rsu.title}</h2>
-          <p className="note">{t.rsu.intro}</p>
-          <p className="note">{t.rsu.whyProspect}</p>
-        </Card>
-
-        {!p.future.length ? (
-          <Card delay={60}>
-            <p className="note">{t.rsu.noVesting}</p>
-          </Card>
-        ) : (
+      <div className="dettagli">
+        {p.future.length ? (
           <>
-            <Card delay={60}>
-              <div style={{ display: "flex", alignItems: "baseline", gap: 12, flexWrap: "wrap" }}>
-                <h2 style={{ marginRight: "auto", marginBottom: 0 }}>{t.rsu.chartTitle}</h2>
+            <Card>
+              <div className="row-inline" style={{ justifyContent: "space-between", marginBottom: 10 }}>
+                <h2 style={{ margin: 0 }}>{t.rsu.chartTitle}</h2>
                 <Segmented<"eur" | "unita">
                   label={t.rsu.chartTitle}
                   value={scala}
@@ -399,9 +436,7 @@ export default function RsuTool() {
                   ]}
                 />
               </div>
-              <div style={{ marginTop: 12 }}>
-                <VestingChart p={p} grants={grants} lang={lang} mostraEuro={scala === "eur"} />
-              </div>
+              <VestingChart p={p} grants={grants} lang={lang} mostraEuro={scala === "eur"} />
               <div className="chips">
                 {grants.map((g, i) => (
                   <span className="chip" key={g.id}>
@@ -413,29 +448,13 @@ export default function RsuTool() {
               <p className="hint">{t.rsu.chartHint}</p>
             </Card>
 
-            <Card delay={120}>
-              <div className="eyebrow">{t.rsu.totalTitle}</div>
-              <div className="big">{eur0(p.nettoTotale, lang)}</div>
-              <p className="note">
-                {t.rsu.totalLine(num(p.unitaTotali, lang, 2), eur0(p.lordoTotale, lang), eur0(p.nettoTotale, lang))}
-              </p>
-              <p className="hint">
-                {t.rsu.salaryCompare(
-                  Math.round((p.lordoTotale / Math.max(1, orizzonte) / Math.max(1, ral)) * 100)
-                )}{" "}
-                {stipendio.netto > 0
-                  ? `— ${eur0(stipendio.netto, lang)} → ${eur0(stipendio.netto + p.nettoTotale / Math.max(1, orizzonte), lang)} ${t.common.net}/${t.common.year}`
-                  : ""}
-              </p>
-            </Card>
-
-            <div className="grid3" style={{ marginTop: 16 }}>
-              {p.anni.map((a, i) => (
-                <Card key={a.anno} delay={150 + i * 40}>
-                  <div className="eyebrow">{t.rsu.yearTitle(a.anno)}</div>
-                  <div className="mid" style={{ fontSize: 24 }}>
+            <div className="grid3" style={{ marginTop: 14 }}>
+              {p.anni.map((a) => (
+                <Card key={a.anno}>
+                  <h3 style={{ margin: 0, fontSize: "var(--t-15)", color: "var(--text)" }}>{a.anno}</h3>
+                  <p className="mid" style={{ margin: "4px 0 0" }}>
                     {eur0(a.nettoEur, lang)}
-                  </div>
+                  </p>
                   <ul className="lines">
                     <Line name={t.rsu.yearUnits} value={num(a.unita, lang, 2)} />
                     <Line name={t.rsu.yearGross} value={eur0(a.lordoEur, lang)} />
@@ -445,12 +464,22 @@ export default function RsuTool() {
                       hint={t.rsu.yearSharesHint}
                       value={num(a.azioniNette, lang, 0)}
                     />
+                    {/* Il numero che rende paragonabile un anno di RSU a uno
+                        stipendio: e' la domanda che uno si fa davvero guardando
+                        queste schede, e con RAL e lordo separati la si deve
+                        fare a mente. */}
+                    <Line
+                      name={t.rsu.yearRalEquiv}
+                      hint={t.rsu.yearRalEquivHint}
+                      value={eur0(ral + a.lordoEur, lang)}
+                      sum
+                    />
                   </ul>
                 </Card>
               ))}
             </div>
 
-            <Card delay={320}>
+            <Card>
               <h2>{t.rsu.tableTitle}</h2>
               <div className="scroll-y">
                 <table className="tbl">
@@ -495,13 +524,21 @@ export default function RsuTool() {
                   </tbody>
                 </table>
               </div>
-              <p className="hint">{t.rsu.fractionNote}</p>
               <p className="hint">
                 {usd(vPrezzo, lang)} {t.common.perShare} · {t.common.fx} {num(vCambio, lang, 4)}
+                <Info label={t.common.whatIsThis}>
+                  <p>{t.rsu.fractionNote}</p>
+                </Info>
               </p>
             </Card>
           </>
-        )}
+        ) : null}
+
+        <Card>
+          <h2>{t.rsu.title}</h2>
+          <p className="note">{t.rsu.intro}</p>
+          <p className="note">{t.rsu.whyProspect}</p>
+        </Card>
       </div>
     </div>
   );

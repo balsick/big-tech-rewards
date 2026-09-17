@@ -1,5 +1,6 @@
 import { useId, useState, type ReactNode } from "react";
 import { parseNum, toField, type Lang } from "../lib/format.ts";
+import { Chevron } from "./Icone.tsx";
 
 // I mattoncini. Poche cose, e una regola: un campo che accetta un numero
 // accetta anche un conto ("1200+300"), perche' e' cosi' che la gente arriva al
@@ -38,6 +39,7 @@ export function NumField({
   dec = 2,
   id: forced,
   disabled,
+  info,
 }: {
   label: string;
   value: number;
@@ -48,6 +50,8 @@ export function NumField({
   dec?: number;
   id?: string;
   disabled?: boolean;
+  /** la spiegazione lunga, dietro al bottoncino accanto all'etichetta */
+  info?: ReactNode;
 }) {
   const auto = useId();
   const id = forced ?? auto;
@@ -56,10 +60,11 @@ export function NumField({
   const valido = testo === null || parseNum(testo) !== null;
 
   return (
-    <div>
+    <div className="campo">
       <label className="lab" htmlFor={id}>
         {label}
         {suffix ? <span style={{ color: "var(--muted)", fontWeight: 500 }}> {suffix}</span> : null}
+        {info}
       </label>
       <input
         id={id}
@@ -76,7 +81,7 @@ export function NumField({
         }}
         onBlur={() => setTesto(null)}
       />
-      {hint ? <p className="hint">{hint}</p> : null}
+      {hint ? <p className="hint">{hint}</p> : <span />}
     </div>
   );
 }
@@ -94,12 +99,12 @@ export function DateField({
 }) {
   const id = useId();
   return (
-    <div>
+    <div className="campo">
       <label className="lab" htmlFor={id}>
         {label}
       </label>
       <input id={id} className="inp cifra" type="date" value={value} onChange={(e) => onChange(e.target.value)} />
-      {hint ? <p className="hint">{hint}</p> : null}
+      {hint ? <p className="hint">{hint}</p> : <span />}
     </div>
   );
 }
@@ -147,7 +152,7 @@ export function Select<T extends string>({
 }) {
   const id = useId();
   return (
-    <div>
+    <div className="campo">
       <label className="lab" htmlFor={id}>
         {label}
       </label>
@@ -158,7 +163,7 @@ export function Select<T extends string>({
           </option>
         ))}
       </select>
-      {hint ? <p className="hint">{hint}</p> : null}
+      {hint ? <p className="hint">{hint}</p> : <span />}
     </div>
   );
 }
@@ -226,7 +231,8 @@ export function Disclosure({
   return (
     <div>
       <button className="btn link" type="button" onClick={() => setOpen(!open)} aria-expanded={open}>
-        {open ? "−" : "+"} {label}
+        <Chevron aperto={open} />
+        {label}
       </button>
       {open ? <div style={{ marginTop: 10 }}>{children}</div> : null}
     </div>
