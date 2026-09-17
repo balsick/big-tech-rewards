@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "Simulatori RSU ed ESPP con la fiscalita italiana. Static, client-side, zero telemetria.",
+  "description": "RSU and ESPP simulators under Italian payroll taxation. Static, client-side, zero telemetry.",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",

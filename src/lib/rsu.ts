@@ -1,80 +1,79 @@
-import { dalLordoAlNetto, marginale, type Regime } from "./tax.ts";
+import { grossToNet, marginalRate, type TaxRegime } from "./tax.ts";
 
-// Le RSU: unita' assegnate che diventano azioni un pezzo per volta.
+// RSUs: granted units that turn into shares a slice at a time.
 //
-// Due cose, e sono diverse. **Le unita' sono il fatto**: quante ne sono state
-// assegnate e quando diventano tue, e non cambiano perche' il mercato ha avuto
-// una brutta giornata. **Il valore e' una lente**: quanto varrebbero a un certo
-// prezzo, utile a capire l'ordine di grandezza e inutile a qualsiasi altro
-// scopo, perche' quei soldi non sono tuoi e domani e' un altro prezzo.
+// Two things, and they are different. **The units are the fact**: how many were
+// granted and when they become yours, and they do not change because the market
+// had a bad day. **The value is a lens**: what they would be worth at a given
+// price, useful for the order of magnitude and useless for anything else,
+// because that money is not yours and tomorrow is another price.
 //
-// Il pezzo che questo strumento aggiunge e' la **prospettiva**: con un grant
-// nuovo ogni anno e vestizioni trimestrali, in un anno qualsiasi vestono pezzi
-// di tre o quattro grant diversi, e il totale che cade in quell'anno decide
-// l'aliquota con cui viene tassato tutto il resto. Un grant per volta e' il
-// modo sbagliato di guardarlo: per questo qui i grant sono una lista e
-// l'orizzonte e' di tre anni.
+// What this tool adds is the **projection**. With a new grant every year and
+// quarterly vesting, in any given year slices of three or four different grants
+// vest, and the total landing in that year sets the rate for all of it. One
+// grant at a time is the wrong way to look at it: hence a list of grants and a
+// three-year horizon.
 
-export type Cadenza = "annuale" | "30-30-40" | "trimestrale" | "mensile";
+export type VestingSchedule = "annual" | "30-30-40" | "quarterly" | "monthly";
 
 export interface Grant {
   id: string;
-  etichetta: string;
-  /** data dell'assegnazione, ISO */
-  data: string;
+  label: string;
+  /** grant date, ISO */
+  date: string;
   /**
-   * Il valore assegnato, in dollari.
+   * The value granted, in dollars.
    *
-   * E' cosi' che un grant viene comunicato — «ti diamo 20.000 dollari in RSU» —
-   * e non in unita': le unita' sono il *risultato*, e le fissa il prezzo del
-   * giorno dell'assegnazione. Chiederle in input vorrebbe dire far fare a mano
-   * la divisione che il piano ha gia' fatto.
+   * This is how a grant is communicated — "we are giving you $20,000 in RSUs" —
+   * and not in units: the units are the *result*, and the share price on the
+   * grant date sets them. Asking for units would mean doing by hand the
+   * division the plan has already done.
    */
-  valoreUsd: number;
+  valueUsd: number;
   /**
-   * Il prezzo del giorno dell'assegnazione, che converte i dollari in unita'.
+   * The share price on the grant date, which turns dollars into units.
    *
-   * Sta nel grant e non fra i parametri globali perche' e' una proprieta' di
-   * *quel* grant: due assegnazioni di anni diversi valgono lo stesso in dollari
-   * e un numero di azioni completamente diverso, ed e' esattamente la ragione
-   * per cui un grant vecchio oggi vale piu' di uno nuovo.
+   * It belongs to the grant and not to the global parameters because it is a
+   * property of *that* grant: two awards from different years are worth the
+   * same in dollars and a completely different number of shares, which is
+   * exactly why an old grant is worth more today than a new one.
    */
-  prezzoGrant: number;
-  cadenza: Cadenza;
-  /** durata complessiva del piano, in anni */
-  anni: number;
-  /** se le vestizioni si allineano al calendario del piano invece che al grant */
-  dateFisse: boolean;
+  priceAtGrant: number;
+  schedule: VestingSchedule;
+  /** total length of the plan, in years */
+  years: number;
+  /** whether vesting snaps to the plan calendar instead of the grant date */
+  usePlanDates: boolean;
 }
 
-/** Le unita' che quel grant ha prodotto: dollari assegnati / prezzo del giorno. */
-export const unitaDelGrant = (g: Grant): number =>
-  g.prezzoGrant > 0 ? g.valoreUsd / g.prezzoGrant : 0;
+/** The units that grant produced: dollars awarded / price on the day. */
+export const grantUnits = (g: Grant): number =>
+  g.priceAtGrant > 0 ? g.valueUsd / g.priceAtGrant : 0;
 
-/** I giorni in cui il piano fa vestire, come MM-GG. */
-export const CALENDARIO_VESTING = ["02-20", "05-20", "08-20", "11-20"];
+/** The days the plan vests on, as MM-DD. */
+export const VESTING_CALENDAR = ["02-20", "05-20", "08-20", "11-20"];
 
 /**
- * Il giorno si schiaccia sul mese corto: un grant del 31 gennaio vesta il 28
- * febbraio, non il 3 marzo.
+ * The day clamps to a short month: a grant made on 31 January vests on 28
+ * February, not on 3 March.
  */
-export function piuMesi(iso: string, mesi: number): string {
+export function addMonths(iso: string, months: number): string {
   const [y, m, d] = iso.split("-").map(Number);
-  const tot = m - 1 + mesi;
-  const anno = y + Math.floor(tot / 12);
-  const mese = (tot % 12) + 1;
-  const ultimo = new Date(Date.UTC(anno, mese, 0)).getUTCDate();
-  return `${anno}-${String(mese).padStart(2, "0")}-${String(Math.min(d, ultimo)).padStart(2, "0")}`;
+  const total = m - 1 + months;
+  const year = y + Math.floor(total / 12);
+  const month = (total % 12) + 1;
+  const last = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  return `${year}-${String(month).padStart(2, "0")}-${String(Math.min(d, last)).padStart(2, "0")}`;
 }
 
-/** La prima data del calendario del piano che cade da `iso` compreso in avanti. */
-function prossimaFissa(iso: string, calendario: string[]): string {
-  const anno = Number(iso.slice(0, 4));
-  const giorni = [...calendario].sort();
-  for (const a of [anno, anno + 1]) {
-    for (const md of giorni) {
-      const data = `${a}-${md}`;
-      if (data >= iso) return data;
+/** The first plan-calendar date falling on or after `iso`. */
+function nextPlanDate(iso: string, calendar: string[]): string {
+  const year = Number(iso.slice(0, 4));
+  const days = [...calendar].sort();
+  for (const y of [year, year + 1]) {
+    for (const md of days) {
+      const date = `${y}-${md}`;
+      if (date >= iso) return date;
     }
   }
   return iso;
@@ -82,184 +81,181 @@ function prossimaFissa(iso: string, calendario: string[]): string {
 
 export interface Tranche {
   grant: string;
-  etichetta: string;
-  data: string;
-  unita: number;
-  indice: number;
-  totali: number;
+  label: string;
+  date: string;
+  units: number;
+  index: number;
+  total: number;
 }
 
 /**
- * Le tranche di un grant.
+ * The tranches of a grant.
  *
- * Le quote restano frazionarie — il 30% di 479 e' 143,7, non 144 — perche' e'
- * cosi' che il piano e' scritto: l'arrotondamento ad azioni intere avviene al
- * vesting, su quello che resta dopo la trattenuta, e la frazione che avanza
- * l'azienda la paga in contanti in busta. Arrotondare qui vorrebbe dire
- * arrotondare due volte, e la seconda sul numero sbagliato.
+ * The slices stay fractional — 30% of 479 is 143.7, not 144 — because that is
+ * how the plan is written: rounding to whole shares happens at vesting, on what
+ * is left after withholding, and the leftover fraction is paid in cash.
+ * Rounding here would mean rounding twice, the second time on the wrong number.
  */
-export function tranche(g: Grant, calendario = CALENDARIO_VESTING): Tranche[] {
-  const anni = Math.max(1, Math.round(g.anni));
-  const unitaTotali = unitaDelGrant(g);
-  const quote: number[] =
-    g.cadenza === "30-30-40"
+export function tranches(g: Grant, calendar = VESTING_CALENDAR): Tranche[] {
+  const years = Math.max(1, Math.round(g.years));
+  const totalUnits = grantUnits(g);
+  const slices: number[] =
+    g.schedule === "30-30-40"
       ? [0.3, 0.3, 0.4]
-      : g.cadenza === "annuale"
-        ? Array.from({ length: anni }, () => 1 / anni)
-        : g.cadenza === "trimestrale"
-          ? Array.from({ length: anni * 4 }, () => 1 / (anni * 4))
-          : Array.from({ length: anni * 12 }, () => 1 / (anni * 12));
-  const passo = g.cadenza === "trimestrale" ? 3 : g.cadenza === "mensile" ? 1 : 12;
+      : g.schedule === "annual"
+        ? Array.from({ length: years }, () => 1 / years)
+        : g.schedule === "quarterly"
+          ? Array.from({ length: years * 4 }, () => 1 / (years * 4))
+          : Array.from({ length: years * 12 }, () => 1 / (years * 12));
+  const step = g.schedule === "quarterly" ? 3 : g.schedule === "monthly" ? 1 : 12;
 
-  let dato = 0;
-  return quote.map((q, i) => {
+  let given = 0;
+  return slices.map((q, i) => {
     const u =
-      i === quote.length - 1
-        ? Math.round((unitaTotali - dato) * 1e4) / 1e4
-        : Math.round(unitaTotali * q * 1e4) / 1e4;
-    dato += u;
-    const naturale = piuMesi(g.data, passo * (i + 1));
-    // Le date fisse valgono per le cadenze che ci stanno dentro: allineare una
-    // vestizione annuale al calendario trimestrale la sposterebbe di mesi.
-    const data =
-      g.dateFisse && (g.cadenza === "trimestrale" || g.cadenza === "mensile")
-        ? prossimaFissa(naturale, calendario)
-        : naturale;
-    return { grant: g.id, etichetta: g.etichetta, data, unita: u, indice: i + 1, totali: quote.length };
+      i === slices.length - 1
+        ? Math.round((totalUnits - given) * 1e4) / 1e4
+        : Math.round(totalUnits * q * 1e4) / 1e4;
+    given += u;
+    const natural = addMonths(g.date, step * (i + 1));
+    // Fixed dates apply to the schedules they fit: snapping an annual vest to a
+    // quarterly calendar would move it by months.
+    const date =
+      g.usePlanDates && (g.schedule === "quarterly" || g.schedule === "monthly")
+        ? nextPlanDate(natural, calendar)
+        : natural;
+    return { grant: g.id, label: g.label, date, units: u, index: i + 1, total: slices.length };
   });
 }
 
-export interface AnnoRSU {
-  anno: number;
-  unita: number;
-  lordoEur: number;
-  aliquota: number;
-  nettoEur: number;
-  /** azioni che arrivano davvero sul conto, il resto se lo prende la trattenuta */
-  azioniNette: number;
-  tranche: Tranche[];
+export interface RsuYear {
+  year: number;
+  units: number;
+  grossEur: number;
+  taxRate: number;
+  netEur: number;
+  /** shares that actually reach your account; the rest go to withholding */
+  netShares: number;
+  tranches: Tranche[];
 }
 
-export interface PeriodoGrafico {
-  /** l'inizio del periodo, ISO */
-  da: string;
-  anno: number;
+export interface ChartPeriod {
+  /** start of the period, ISO */
+  from: string;
+  year: number;
   /** 1..4 */
-  trimestre: number;
-  per: { grant: string; unita: number }[];
-  unita: number;
-  lordoEur: number;
+  quarter: number;
+  byGrant: { grant: string; units: number }[];
+  units: number;
+  grossEur: number;
 }
 
-export interface Prospetto {
-  tranche: Tranche[];
-  /** solo quelle che cadono nell'orizzonte e non sono ancora vestite */
-  future: Tranche[];
-  anni: AnnoRSU[];
-  unitaTotali: number;
-  lordoTotale: number;
-  nettoTotale: number;
-  /** trimestre per trimestre, per il grafico */
-  trimestri: PeriodoGrafico[];
+export interface Projection {
+  tranches: Tranche[];
+  /** only the ones inside the horizon that have not vested yet */
+  upcoming: Tranche[];
+  years: RsuYear[];
+  totalUnits: number;
+  totalGross: number;
+  totalNet: number;
+  /** quarter by quarter, for the chart */
+  quarters: ChartPeriod[];
 }
 
-export interface IpotesiRSU {
+export interface RsuInput {
   grants: Grant[];
-  /** USD per azione */
-  prezzo: number;
-  /** dollari per un euro */
-  cambio: number;
-  ral: number;
-  /** da che giorno parte l'orizzonte */
-  oggi: string;
-  /** quanti anni guardare avanti */
-  orizzonte: number;
-  calendario?: string[];
+  /** USD per share */
+  price: number;
+  /** dollars per euro */
+  fxRate: number;
+  salary: number;
+  /** the day the horizon starts from */
+  today: string;
+  /** how many years to look ahead */
+  horizonYears: number;
+  calendar?: string[];
 }
 
 /**
- * La prospettiva a tre anni.
+ * The three-year projection.
  *
- * L'aliquota si calcola **per anno**, non per tranche: il fisco somma tutto
- * quello che vesta nello stesso anno allo stipendio di quell'anno, quindi una
- * tranche da 10.000 euro in un anno in cui ne vestono altre 30.000 e' tassata
- * al margine di 40.000, non al suo. Per questo il conto non si puo' fare grant
- * per grant, ed e' la ragione per cui questa funzione esiste.
+ * The rate is computed **per year**, not per tranche: the taxman adds up
+ * everything vesting in the same year on top of that year's salary, so a
+ * €10,000 tranche in a year where another €30,000 vests is taxed at the margin
+ * of €40,000, not of its own. That is why the calculation cannot be done grant
+ * by grant, and the reason this function exists.
  */
-export function prospetto(i: IpotesiRSU, regime?: Regime): Prospetto {
-  const cal = i.calendario ?? CALENDARIO_VESTING;
-  const tutte = i.grants.flatMap((g) => tranche(g, cal)).sort((a, b) => a.data.localeCompare(b.data));
-  const fine = piuMesi(i.oggi, Math.round(i.orizzonte * 12));
-  const future = tutte.filter((t) => t.data >= i.oggi && t.data < fine);
+export function project(i: RsuInput, regime?: TaxRegime): Projection {
+  const calendar = i.calendar ?? VESTING_CALENDAR;
+  const all = i.grants.flatMap((g) => tranches(g, calendar)).sort((a, b) => a.date.localeCompare(b.date));
+  const end = addMonths(i.today, Math.round(i.horizonYears * 12));
+  const upcoming = all.filter((t) => t.date >= i.today && t.date < end);
 
-  const perAzioneEur = i.cambio > 0 ? i.prezzo / i.cambio : 0;
+  const perUnitEur = i.fxRate > 0 ? i.price / i.fxRate : 0;
 
-  const anni = [...new Set(future.map((t) => Number(t.data.slice(0, 4))))]
+  const years = [...new Set(upcoming.map((t) => Number(t.date.slice(0, 4))))]
     .sort()
-    .map((anno) => {
-      const dellAnno = future.filter((t) => Number(t.data.slice(0, 4)) === anno);
-      const unita = dellAnno.reduce((s, t) => s + t.unita, 0);
-      const lordoEur = unita * perAzioneEur;
-      const m = lordoEur > 0 ? marginale({ ral: i.ral }, lordoEur, regime) : { quota: 1, aliquota: 0 };
+    .map((year) => {
+      const ofYear = upcoming.filter((t) => Number(t.date.slice(0, 4)) === year);
+      const units = ofYear.reduce((s, t) => s + t.units, 0);
+      const grossEur = units * perUnitEur;
+      const m = grossEur > 0 ? marginalRate({ salary: i.salary }, grossEur, regime) : { kept: 1, rate: 0 };
       return {
-        anno,
-        unita,
-        lordoEur,
-        aliquota: m.aliquota,
-        nettoEur: lordoEur * m.quota,
-        azioniNette: Math.floor(unita * m.quota),
-        tranche: dellAnno,
+        year,
+        units,
+        grossEur,
+        taxRate: m.rate,
+        netEur: grossEur * m.kept,
+        netShares: Math.floor(units * m.kept),
+        tranches: ofYear,
       };
     });
 
-  // Il grafico va a **trimestri**, non a mesi.
+  // The chart runs on **quarters**, not months.
   //
-  // Trentasei colonne su un telefono sono larghe cinque pixel, e nove su dieci
-  // sono vuote: un piano trimestrale produce al massimo dodici vestizioni in
-  // tre anni. Il mese non aggiunge niente che il trimestre non dica gia' — la
-  // granularita' del grafico deve essere quella del piano, non quella del
-  // calendario — e a dodici colonne le barre tornano larghe abbastanza da
-  // portarsi dietro il proprio valore scritto sopra.
-  //
-  // I periodi vuoti restano nell'elenco: sono l'informazione, non il rumore.
-  const trimestri: PeriodoGrafico[] = [];
-  const nMesi = Math.round(i.orizzonte * 12);
-  // Si parte dall'inizio del trimestre solare in cui cade oggi, cosi' le
-  // colonne coincidono con i trimestri veri e non con una finestra mobile.
-  const meseOggi = Number(i.oggi.slice(5, 7));
-  const inizio = `${i.oggi.slice(0, 4)}-${String(Math.floor((meseOggi - 1) / 3) * 3 + 1).padStart(2, "0")}-01`;
-  for (let k = 0; k < Math.ceil(nMesi / 3) + 1; k++) {
-    const da = piuMesi(inizio, k * 3);
-    const a = piuMesi(inizio, (k + 1) * 3);
-    if (da >= fine) break;
-    const dentro = future.filter((t) => t.data >= da && t.data < a);
-    const per = i.grants
+  // Thirty-six columns are five pixels wide on a phone, and nine out of ten are
+  // empty: a quarterly plan produces at most twelve vests in three years. The
+  // month adds nothing the quarter does not already say — the chart's
+  // granularity should be the plan's, not the calendar's — and at a dozen
+  // columns the bars are finally wide enough to carry their own value above
+  // them. Empty periods stay in the list: they are the information, not noise.
+  const quarters: ChartPeriod[] = [];
+  const horizonMonths = Math.round(i.horizonYears * 12);
+  // Start from the beginning of the calendar quarter today falls in, so the
+  // columns line up with real quarters rather than a rolling window.
+  const monthToday = Number(i.today.slice(5, 7));
+  const start = `${i.today.slice(0, 4)}-${String(Math.floor((monthToday - 1) / 3) * 3 + 1).padStart(2, "0")}-01`;
+  for (let k = 0; k < Math.ceil(horizonMonths / 3) + 1; k++) {
+    const from = addMonths(start, k * 3);
+    const to = addMonths(start, (k + 1) * 3);
+    if (from >= end) break;
+    const inside = upcoming.filter((t) => t.date >= from && t.date < to);
+    const byGrant = i.grants
       .map((g) => ({
         grant: g.id,
-        unita: dentro.filter((t) => t.grant === g.id).reduce((s, t) => s + t.unita, 0),
+        units: inside.filter((t) => t.grant === g.id).reduce((s, t) => s + t.units, 0),
       }))
-      .filter((x) => x.unita > 0);
-    const unita = dentro.reduce((s, t) => s + t.unita, 0);
-    trimestri.push({
-      da,
-      anno: Number(da.slice(0, 4)),
-      trimestre: Math.floor(Number(da.slice(5, 7)) / 3) + 1,
-      per,
-      unita,
-      lordoEur: unita * perAzioneEur,
+      .filter((x) => x.units > 0);
+    const units = inside.reduce((s, t) => s + t.units, 0);
+    quarters.push({
+      from,
+      year: Number(from.slice(0, 4)),
+      quarter: Math.floor(Number(from.slice(5, 7)) / 3) + 1,
+      byGrant,
+      units,
+      grossEur: units * perUnitEur,
     });
   }
 
   return {
-    tranche: tutte,
-    future,
-    anni,
-    unitaTotali: future.reduce((s, t) => s + t.unita, 0),
-    lordoTotale: anni.reduce((s, a) => s + a.lordoEur, 0),
-    nettoTotale: anni.reduce((s, a) => s + a.nettoEur, 0),
-    trimestri,
+    tranches: all,
+    upcoming,
+    years,
+    totalUnits: upcoming.reduce((s, t) => s + t.units, 0),
+    totalGross: years.reduce((s, y) => s + y.grossEur, 0),
+    totalNet: years.reduce((s, y) => s + y.netEur, 0),
+    quarters,
   };
 }
 
-/** Lo stipendio nudo, per mostrare di quanto le RSU cambiano l'anno. */
-export const soloStipendio = (ral: number, regime?: Regime) => dalLordoAlNetto({ ral }, regime);
+/** Salary on its own, to show how much the RSUs change the year. */
+export const salaryOnly = (salary: number, regime?: TaxRegime) => grossToNet({ salary }, regime);

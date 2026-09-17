@@ -1,21 +1,20 @@
 import reference from "../data/reference-prices.json" with { type: "json" };
 
-// Le quotazioni, e il motivo per cui non arrivano dal browser.
+// Quotes, and why they do not come from the browser.
 //
-// Il fornitore che ha le chiusure storiche (Yahoo) **non manda gli header
-// CORS**: una fetch dalla pagina viene bloccata dal browser, e non c'e' niente
-// che il codice del client possa fare al riguardo. Le alternative CORS-aperte
-// per le azioni vogliono una chiave, e una chiave in un bundle statico e'
-// una chiave pubblica.
+// The provider that has the historical closes (Yahoo) **does not send CORS
+// headers**: a fetch from the page is blocked by the browser, and there is
+// nothing client code can do about it. The CORS-open alternatives for equities
+// want an API key, and a key inside a static bundle is a public key.
 //
-// Quindi il prezzo lo prende la CI: un workflow schedulato legge il simbolo da
-// un GitHub secret, scarica la quotazione nel runner e scrive `quote.json`
-// dentro il deploy. La pagina lo legge dalla propria origine — nessun CORS,
-// nessuna chiave nel bundle, nessuna richiesta a terzi mentre navighi — e il
-// prezzo e' fermo al massimo all'ultima chiusura. Resta sempre riscrivibile a
-// mano, che e' l'unica cosa che funziona comunque.
+// So CI fetches the price: a scheduled workflow reads the symbol from a GitHub
+// secret, downloads the quote inside the runner and writes `quote.json` into
+// the deployment. The page reads it from its own origin — no CORS, no key in
+// the bundle, no third-party request while you browse — and the price is at
+// most one close old. It always stays overwritable by hand, which is the only
+// thing that works regardless.
 
-export interface PuntoStorico {
+export interface HistoricalPoint {
   date: string;
   close: number;
   closeOn: string;
@@ -31,19 +30,19 @@ export interface Quote {
   generatedAt?: string;
 }
 
-export const storico: PuntoStorico[] = (reference as { prices: PuntoStorico[] }).prices;
-export const storicoAggiornato: string = (reference as { updated: string }).updated;
-export const dateChiave: string[] = (reference as { keyDates: string[] }).keyDates;
+export const history: HistoricalPoint[] = (reference as { prices: HistoricalPoint[] }).prices;
+export const historyUpdated: string = (reference as { updated: string }).updated;
+export const keyDates: string[] = (reference as { keyDates: string[] }).keyDates;
 
-/** L'ultima chiusura salvata nei sorgenti a una data, o la prima se e' prima di tutte. */
-export function storicoAllaData(data: string): PuntoStorico | null {
-  if (!storico.length) return null;
-  const prima = storico.filter((p) => p.date <= data);
-  return prima.length ? prima[prima.length - 1] : storico[0];
+/** The last close stored in the sources at a date, or the first one if earlier than all. */
+export function historyAt(date: string): HistoricalPoint | null {
+  if (!history.length) return null;
+  const before = history.filter((p) => p.date <= date);
+  return before.length ? before[before.length - 1] : history[0];
 }
 
-/** Il prezzo generato in CI. `null` se il file non c'e' o non e' leggibile. */
-export async function caricaQuote(): Promise<Quote | null> {
+/** The price generated in CI. `null` if the file is missing or unreadable. */
+export async function loadQuote(): Promise<Quote | null> {
   try {
     const res = await fetch(`${import.meta.env.BASE_URL}quote.json`, { cache: "no-cache" });
     if (!res.ok) return null;
@@ -55,14 +54,14 @@ export async function caricaQuote(): Promise<Quote | null> {
 }
 
 /**
- * Il cambio in diretta, quando serve piu' fresco di una chiusura.
+ * The exchange rate live, when a close is not fresh enough.
  *
- * Frankfurter e' l'unica fonte di questa pagina che il browser puo' chiamare da
- * solo: manda `access-control-allow-origin: *` e non vuole chiavi. Pubblica i
- * riferimenti BCE, che sono giornalieri — quindi non e' "in tempo reale", e'
- * "di oggi". Non sa niente delle azioni, solo valute.
+ * Frankfurter is the only source on this page the browser can call by itself:
+ * it sends `access-control-allow-origin: *` and wants no key. It publishes ECB
+ * reference rates, which are daily — so this is not "real time", it is "today".
+ * It knows nothing about equities, only currencies.
  */
-export async function cambioLive(): Promise<{ eurusd: number; date: string } | null> {
+export async function liveFxRate(): Promise<{ eurusd: number; date: string } | null> {
   try {
     const res = await fetch("https://api.frankfurter.dev/v1/latest?base=EUR&symbols=USD");
     if (!res.ok) return null;

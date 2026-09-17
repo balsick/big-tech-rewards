@@ -3,72 +3,73 @@ import { Check, NumField, Segmented } from "./ui.tsx";
 import Info from "./Info.tsx";
 import { pct } from "../lib/format.ts";
 import {
-  COMUNALE_TORINO,
-  REGIONALE_PIEMONTE,
-  marginale,
-  type Addizionale,
-  type Regime,
-  type Scaglione,
+  MUNICIPAL_TURIN,
+  REGIONAL_PIEDMONT,
+  marginalRate,
+  type Bracket,
+  type Surtax,
+  type TaxRegime,
 } from "../lib/tax.ts";
 
-// Le addizionali, e perche' sono modificabili.
+// Local surtaxes, and why they are editable.
 //
-// Tutto il resto di questo conto e' nazionale: gli scaglioni IRPEF, le aliquote
-// INPS, le detrazioni. Le addizionali no — cambiano per regione e per comune, e
-// su una RAL da 50.000 valgono quasi 1.800 euro l'anno. Scriverle come costanti
-// vorrebbe dire scrivere uno strumento che funziona in un solo comune d'Italia.
+// Everything else in this calculation is national: the income tax brackets, the
+// social security rates, the credits. Not the surtaxes — they change by region
+// and by municipality, and they come to nearly 1,800 euro a year on a 50,000
+// salary. Hard-coding them would mean writing a tool that works in exactly one
+// Italian town.
 //
-// Sta dentro i due strumenti e non in una schermata sua perche' non e' uno
-// strumento: e' la taratura di quelli che ci sono. Le RSU e l'ESPP rispondono
-// «quanto mi arriva», e questo pannello e' il pezzo di quella risposta che
-// dipende da dove abiti — non una terza domanda.
+// It sits inside the two tools rather than on a screen of its own because it is
+// not a tool: it is the calibration of the ones that are here. RSUs and ESPP
+// answer "how much reaches me", and this panel is the part of that answer that
+// depends on where you live — not a third question.
 
-function ScaglioniEditor({
-  titolo,
-  valore,
+function BracketsEditor({
+  title,
+  brackets,
   onChange,
-  esenzione,
-  onEsenzione,
+  exemption,
+  onExemption,
 }: {
-  titolo: string;
-  valore: Scaglione[];
-  onChange: (s: Scaglione[]) => void;
-  esenzione?: number;
-  onEsenzione?: (v: number) => void;
+  title: string;
+  brackets: Bracket[];
+  onChange: (b: Bracket[]) => void;
+  exemption?: number;
+  onExemption?: (v: number) => void;
 }) {
   const { t, lang } = useStore();
-  const set = (i: number, patch: Partial<Scaglione>) =>
-    onChange(valore.map((s, k) => (k === i ? { ...s, ...patch } : s)));
+  const set = (i: number, patch: Partial<Bracket>) =>
+    onChange(brackets.map((b, k) => (k === i ? { ...b, ...patch } : b)));
 
   return (
     <div>
-      <h3>{titolo}</h3>
+      <h3>{title}</h3>
       <div className="grid2">
-        {valore.map((s, i) => (
+        {brackets.map((b, i) => (
           <NumField
             key={i}
             lang={lang}
             dec={2}
             label={
-              s.fino === null
+              b.upTo === null
                 ? t.tax.over
-                : `${t.tax.upTo} ${s.fino.toLocaleString(lang === "it" ? "it-IT" : "en-GB")}`
+                : `${t.tax.upTo} ${b.upTo.toLocaleString(lang === "it" ? "it-IT" : "en-GB")}`
             }
             suffix="%"
-            value={s.aliquota}
-            onChange={(v) => set(i, { aliquota: v })}
+            value={b.rate}
+            onChange={(v) => set(i, { rate: v })}
             hint={
-              s.fino === null ? undefined : (
+              b.upTo === null ? undefined : (
                 <>
                   {t.tax.upTo}{" "}
                   <input
-                    className="inp cifra soglia"
+                    className="inp tnum threshold"
                     inputMode="numeric"
-                    aria-label={`${t.tax.upTo} — ${titolo}`}
-                    value={s.fino}
+                    aria-label={`${t.tax.upTo} — ${title}`}
+                    value={b.upTo}
                     onChange={(e) => {
                       const n = Number(e.target.value.replace(/\D/g, ""));
-                      set(i, { fino: Number.isFinite(n) ? n : 0 });
+                      set(i, { upTo: Number.isFinite(n) ? n : 0 });
                     }}
                   />
                 </>
@@ -77,15 +78,15 @@ function ScaglioniEditor({
           />
         ))}
       </div>
-      {onEsenzione ? (
+      {onExemption ? (
         <div style={{ marginTop: 12 }}>
           <NumField
             lang={lang}
             dec={2}
             label={t.tax.exemption}
             suffix="€"
-            value={esenzione ?? 0}
-            onChange={onEsenzione}
+            value={exemption ?? 0}
+            onChange={onExemption}
             hint={t.tax.exemptionHint}
           />
         </div>
@@ -94,32 +95,26 @@ function ScaglioniEditor({
   );
 }
 
-const PIATTA = (a: number): Addizionale => ({ scaglioni: [{ fino: null, aliquota: a }], esenzione: 0 });
+const FLAT = (rate: number): Surtax => ({ brackets: [{ upTo: null, rate }], exemption: 0 });
 
-/** Il pannello di taratura: precompilato Torino, tutto riscrivibile. */
-export default function RegimeEditor({ ral }: { ral: number }) {
+/** The calibration panel: prefilled for Turin, every figure overwritable. */
+export default function RegimeEditor({ salary }: { salary: number }) {
   const { t, lang, regime, setRegime, resetRegime } = useStore();
-  const patch = (p: Partial<Regime>) => setRegime({ ...regime, ...p });
+  const patch = (p: Partial<TaxRegime>) => setRegime({ ...regime, ...p });
 
-  // La cosa che serve davvero vederla cambiare mentre si tocca un'aliquota:
-  // il marginale e' l'unico numero di questo pannello che finisce nei due
-  // strumenti, quindi sta in cima e si rifa' a ogni tasto.
-  const m = marginale({ ral }, 1000, regime);
+  // The one thing worth watching change while you touch a rate: the marginal
+  // rate is the only number in this panel that reaches the two tools, so it
+  // sits at the top and redraws on every keystroke.
+  const m = marginalRate({ salary }, 1000, regime);
 
   return (
     <div>
       <p className="note">{t.tax.intro}</p>
 
-      {/* Niente scheda dentro la scheda: il blocco si stacca con una riga e
-          un po' d'aria, che basta a dire "questo e' il risultato" senza
-          costruire un secondo contenitore dentro il primo. */}
-      <div
-        style={{
-          margin: "14px 0",
-          paddingTop: 14,
-          borderTop: "1px solid var(--border)",
-        }}
-      >
+      {/* No card inside a card: the block separates with a rule and some air,
+          which is enough to say "this is the result" without building a second
+          container inside the first. */}
+      <div style={{ margin: "14px 0", paddingTop: 14, borderTop: "1px solid var(--border)" }}>
         <h3 style={{ marginTop: 0 }}>
           {t.tax.marginalTitle}
           <Info label={t.common.whatIsThis}>
@@ -127,103 +122,99 @@ export default function RegimeEditor({ ral }: { ral: number }) {
           </Info>
         </h3>
         <p className="mid" style={{ margin: 0 }}>
-          {pct(m.aliquota, lang)}
+          {pct(m.rate, lang)}
         </p>
-        <p className="note">{t.tax.marginalLine(pct(m.aliquota, lang))}</p>
+        <p className="note">{t.tax.marginalLine(pct(m.rate, lang))}</p>
       </div>
 
       <h3>{t.tax.presets}</h3>
-      <Segmented<"torino" | "piatta">
+      <Segmented<"turin" | "flat">
         label={t.tax.presets}
-        value={
-          regime.regionale.scaglioni.length > 1 || regime.comunale.scaglioni.length > 1
-            ? "torino"
-            : "piatta"
-        }
+        value={regime.regional.brackets.length > 1 || regime.municipal.brackets.length > 1 ? "turin" : "flat"}
         onChange={(v) =>
           patch(
-            v === "torino"
-              ? { regionale: REGIONALE_PIEMONTE, comunale: COMUNALE_TORINO }
-              : { regionale: PIATTA(1.23), comunale: PIATTA(0.8) }
+            v === "turin"
+              ? { regional: REGIONAL_PIEDMONT, municipal: MUNICIPAL_TURIN }
+              : { regional: FLAT(1.23), municipal: FLAT(0.8) }
           )
         }
         options={[
-          { id: "torino", label: t.tax.presetTorino },
-          { id: "piatta", label: t.tax.presetFlat },
+          { id: "turin", label: t.tax.presetTurin },
+          { id: "flat", label: t.tax.presetFlat },
         ]}
       />
 
-      <ScaglioniEditor
-        titolo={t.tax.regional}
-        valore={regime.regionale.scaglioni}
-        onChange={(s) => patch({ regionale: { ...regime.regionale, scaglioni: s } })}
+      <BracketsEditor
+        title={t.tax.regional}
+        brackets={regime.regional.brackets}
+        onChange={(b) => patch({ regional: { ...regime.regional, brackets: b } })}
       />
 
-      <ScaglioniEditor
-        titolo={t.tax.municipal}
-        valore={regime.comunale.scaglioni}
-        onChange={(s) => patch({ comunale: { ...regime.comunale, scaglioni: s } })}
-        esenzione={regime.comunale.esenzione}
-        onEsenzione={(v) => patch({ comunale: { ...regime.comunale, esenzione: v } })}
+      <BracketsEditor
+        title={t.tax.municipal}
+        brackets={regime.municipal.brackets}
+        onChange={(b) => patch({ municipal: { ...regime.municipal, brackets: b } })}
+        exemption={regime.municipal.exemption}
+        onExemption={(v) => patch({ municipal: { ...regime.municipal, exemption: v } })}
       />
 
-      <ScaglioniEditor
-        titolo={t.tax.irpef}
-        valore={regime.scaglioni}
-        onChange={(s) => patch({ scaglioni: s })}
+      <BracketsEditor
+        title={t.tax.incomeTax}
+        brackets={regime.brackets}
+        onChange={(b) => patch({ brackets: b })}
       />
-      <p className="hint">{t.tax.irpefHint}</p>
+      <p className="hint">{t.tax.incomeTaxHint}</p>
 
-      <h3>{t.tax.inps}</h3>
+      <h3>{t.tax.socialSecurity}</h3>
       <div className="grid2">
         <NumField
           lang={lang}
-          label={t.tax.inpsRate}
+          label={t.tax.ssRate}
           suffix="%"
           dec={4}
-          value={regime.inps.aliquota}
-          onChange={(v) => patch({ inps: { ...regime.inps, aliquota: v } })}
+          value={regime.socialSecurity.rate}
+          onChange={(v) => patch({ socialSecurity: { ...regime.socialSecurity, rate: v } })}
         />
         <NumField
           lang={lang}
-          label={t.tax.inpsMinor}
+          label={t.tax.ssMinor}
           suffix="%"
           dec={4}
-          value={regime.inps.minori}
-          onChange={(v) => patch({ inps: { ...regime.inps, minori: v } })}
-          hint={t.tax.inpsMinorHint}
+          value={regime.socialSecurity.minorRates}
+          onChange={(v) => patch({ socialSecurity: { ...regime.socialSecurity, minorRates: v } })}
+          hint={t.tax.ssMinorHint}
         />
         <NumField
           lang={lang}
-          label={t.tax.inpsFirstBand}
+          label={t.tax.ssFirstBand}
           suffix="€"
           dec={0}
-          value={regime.inps.primaFascia}
-          onChange={(v) => patch({ inps: { ...regime.inps, primaFascia: v } })}
-          hint={t.tax.inpsFirstBandHint}
+          value={regime.socialSecurity.firstBandCap}
+          onChange={(v) => patch({ socialSecurity: { ...regime.socialSecurity, firstBandCap: v } })}
+          hint={t.tax.ssFirstBandHint}
         />
         <NumField
           lang={lang}
-          label={t.tax.inpsCeiling}
+          label={t.tax.ssCeiling}
           suffix="€"
           dec={0}
-          value={regime.inps.massimale}
-          onChange={(v) => patch({ inps: { ...regime.inps, massimale: v } })}
-          hint={t.tax.inpsCeilingHint}
+          value={regime.socialSecurity.ceiling}
+          onChange={(v) => patch({ socialSecurity: { ...regime.socialSecurity, ceiling: v } })}
+          hint={t.tax.ssCeilingHint}
         />
       </div>
       <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
         <Check
           label={t.tax.applyCeiling}
-          checked={regime.inps.applicaMassimale}
-          onChange={(v) => patch({ inps: { ...regime.inps, applicaMassimale: v } })}
+          checked={regime.socialSecurity.applyCeiling}
+          onChange={(v) => patch({ socialSecurity: { ...regime.socialSecurity, applyCeiling: v } })}
         />
         <NumField
           lang={lang}
           label={t.tax.months}
           dec={0}
-          value={regime.mensilita}
-          onChange={(v) => patch({ mensilita: Math.max(1, v) })}
+          value={regime.payPeriods}
+          onChange={(v) => patch({ payPeriods: Math.max(1, v) })}
           hint={t.tax.monthsHint}
         />
         <button className="btn" type="button" onClick={resetRegime}>

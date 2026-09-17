@@ -28,10 +28,9 @@ export const monthShort = (ym: string, l: Lang) =>
 export const todayISO = () => new Date().toISOString().slice(0, 10);
 
 /**
- * Un numero si puo' scrivere come un conto: "1200+300" per due voci, "24/3"
- * per la propria parte. Virgola o punto, indifferente. `null` quando il conto
- * non e' finito: un operatore in fondo mentre si sta ancora scrivendo non e'
- * un errore.
+ * A number can be written as a sum: "1200+300" for two entries, "24/3" for your
+ * own share. Comma or dot, either works. `null` when the sum is not finished: a
+ * trailing operator while you are still typing is not an error.
  */
 export function parseNum(raw: string): number | null {
   const t = raw.trim().replace(/\s| /g, "").replace(/[−–—]/g, "-").replace(/[x×]/gi, "*").replace(/÷/g, "/");
@@ -61,13 +60,13 @@ export function parseNum(raw: string): number | null {
 }
 
 /**
- * Come si scrive un numero in un campo: virgola in italiano, punto in inglese,
- * e senza gli zeri decimali che non servono.
+ * How a number is written into a field: comma in Italian, dot in English, and
+ * without the decimal zeros nobody needs.
  *
- * Gli zeri si tolgono **solo dopo la virgola**: una regex che li toglieva dalla
- * fine qualunque cosa ci fosse prima trasformava 60000 in 6, e un campo RAL che
- * si riscrive da solo a sei euro non lo segnala nessuno, perche' e' un numero
- * plausibile in un posto sbagliato.
+ * Zeros are stripped **only after the decimal separator**: a regex that took
+ * them off the end whatever came before turned 60000 into 6, and a salary field
+ * rewriting itself to six euro is something nobody reports, because it is a
+ * plausible number in the wrong place.
  */
 export const toField = (v: number, l: Lang, dec = 2) => {
   let s = v.toFixed(dec);

@@ -1,12 +1,12 @@
 import { useStore } from "../state/store.tsx";
 import { REPO } from "../lib/meta.ts";
-import { ANNO_FISCALE } from "../lib/tax.ts";
-import { storicoAggiornato } from "../lib/prices.ts";
+import { TAX_YEAR } from "../lib/tax.ts";
+import { historyUpdated } from "../lib/prices.ts";
 
-// Il piede dice tre cose, e le dice tutte e tre per esteso perche' sono la
-// ragione per cui uno strumento del genere puo' stare online senza fare danni:
-// non raccoglie niente, non e' ufficiale, e chi l'ha scritto non garantisce
-// nulla. Non sono note a margine: sono il contratto con chi legge.
+// The footer says three things, and it says all three in full, because they are
+// the reason a tool like this can be online without doing harm: it collects
+// nothing, it is not official, and whoever wrote it guarantees nothing. These
+// are not small print — they are the contract with whoever is reading.
 
 export default function Footer() {
   const { t } = useStore();
@@ -32,9 +32,9 @@ export default function Footer() {
             {t.footer.source}
           </a>
           <span>
-            {t.footer.taxYear}: {ANNO_FISCALE}
+            {t.footer.taxYear}: {TAX_YEAR}
           </span>
-          <span className="cifra">{storicoAggiornato}</span>
+          <span className="tnum">{historyUpdated}</span>
         </div>
       </div>
     </footer>

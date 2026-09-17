@@ -2,16 +2,16 @@ import { it, type Dict } from "./it.ts";
 import { en } from "./en.ts";
 
 export type Lang = "it" | "en";
-export const DIZIONARI: Record<Lang, Dict> = { it, en };
+export const DICTIONARIES: Record<Lang, Dict> = { it, en };
 export type { Dict };
 
-/** La lingua del browser, se la conosciamo; altrimenti italiano, come il fisco. */
-export function linguaIniziale(): Lang {
+/** The browser's language if we know it; otherwise Italian, like the tax code. */
+export function initialLang(): Lang {
   try {
-    const salvata = localStorage.getItem("btr:lang");
-    if (salvata === "it" || salvata === "en") return salvata;
+    const saved = localStorage.getItem("btr:lang");
+    if (saved === "it" || saved === "en") return saved;
   } catch {
-    /* localStorage negato in navigazione privata: non e' un errore */
+    /* localStorage denied in private browsing: not an error */
   }
   const nav = typeof navigator !== "undefined" ? navigator.language : "";
   return nav.toLowerCase().startsWith("it") ? "it" : "en";

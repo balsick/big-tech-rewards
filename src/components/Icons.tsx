@@ -1,10 +1,10 @@
-// Le icone, disegnate e non scritte.
+// Icons, drawn rather than typed.
 //
-// Un glifo unicode al posto di un'icona non e' un'icona: "×" cambia peso e
-// forma da un sistema all'altro, e accanto a un'icona vera si vede che non e'
-// della stessa famiglia — su iOS "☀" veniva addirittura promosso a emoji
-// colorata accanto a una luna monocromatica. Qui sono tutte disegnate con lo
-// stesso tratto (1.75 su una griglia di 24) e prendono il colore dal testo.
+// A unicode glyph standing in for an icon is not an icon: "×" changes weight
+// and shape from one system to the next, and next to a real icon you can see it
+// does not belong to the same family — on iOS "☀" was even promoted to a
+// coloured emoji next to a monochrome moon. These are all drawn on the same
+// 24-unit grid with the same 1.75 stroke, and take their colour from the text.
 
 const base = {
   viewBox: "0 0 24 24",
@@ -17,47 +17,45 @@ const base = {
   focusable: "false" as const,
 };
 
-export const Sole = ({ size = 14 }: { size?: number }) => (
+export const Sun = ({ size = 14 }: { size?: number }) => (
   <svg width={size} height={size} {...base}>
     <circle cx="12" cy="12" r="4.2" />
     <path d="M12 2.6v2.2M12 19.2v2.2M2.6 12h2.2M19.2 12h2.2M5.4 5.4l1.6 1.6M17 17l1.6 1.6M18.6 5.4L17 7M7 17l-1.6 1.6" />
   </svg>
 );
 
-export const Luna = ({ size = 14 }: { size?: number }) => (
+export const Moon = ({ size = 14 }: { size?: number }) => (
   <svg width={size} height={size} {...base} fill="currentColor" stroke="none">
     <path d="M12.6 2a1 1 0 0 0-.86 1.52A7.2 7.2 0 0 1 3.6 13.9a1 1 0 0 0-1.3 1.2A10 10 0 1 0 12.6 2Z" />
   </svg>
 );
 
-export const Chiudi = ({ size = 15 }: { size?: number }) => (
+export const Close = ({ size = 15 }: { size?: number }) => (
   <svg width={size} height={size} {...base}>
     <path d="M6 6l12 12M18 6L6 18" />
   </svg>
 );
 
-export const Piu = ({ size = 14 }: { size?: number }) => (
+export const Plus = ({ size = 14 }: { size?: number }) => (
   <svg width={size} height={size} {...base}>
     <path d="M12 5v14M5 12h14" />
   </svg>
 );
 
-/** Il chevron della sezione richiudibile: ruota, non cambia glifo. */
-export const Chevron = ({ size = 14, aperto = false }: { size?: number; aperto?: boolean }) => (
+/** The disclosure chevron: it rotates, it does not swap glyph. */
+export const Chevron = ({ size = 14, open = false }: { size?: number; open?: boolean }) => (
   <svg
     width={size}
     height={size}
     {...base}
-    style={{
-      transform: aperto ? "rotate(90deg)" : "none",
-      transition: "transform 160ms ease",
-    }}
+    style={{ transform: open ? "rotate(90deg)" : "none", transition: "transform 160ms ease" }}
   >
     <path d="M9 5l7 7-7 7" />
   </svg>
 );
 
-export const Livello = ({ size = 14 }: { size?: number }) => (
+/** A flat line after a rise: the "try the floor" scenario. */
+export const FlatLine = ({ size = 14 }: { size?: number }) => (
   <svg width={size} height={size} {...base}>
     <path d="M4 18h16M7 14l3.5-4 3 3L18 7" />
   </svg>

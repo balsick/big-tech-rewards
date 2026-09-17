@@ -1,146 +1,147 @@
 #!/usr/bin/env node
-// Le quotazioni le prende la CI, non il browser.
+// Quotes are fetched by CI, not by the browser.
 //
-// Il motivo e' tecnico e non c'e' modo di aggirarlo dal client: il fornitore
-// che ha le chiusure storiche **non manda gli header CORS**, quindi una fetch
-// dalla pagina viene bloccata dal browser. Le alternative CORS-aperte per le
-// azioni vogliono una chiave, e una chiave dentro un bundle statico e' una
-// chiave pubblica.
+// The reason is technical and there is no way around it from the client: the
+// provider that has the historical closes **does not send CORS headers**, so a
+// fetch from the page is blocked by the browser. The CORS-open alternatives for
+// equities want an API key, and a key inside a static bundle is a public key.
 //
-// Quindi: questo script gira nel runner, legge il simbolo da un secret, e
-// scrive due file che finiscono nel deploy. La pagina li legge dalla propria
-// origine — nessun CORS, nessuna chiave nel bundle, nessuna richiesta a terzi
-// mentre uno naviga.
+// So: this script runs in the runner, reads the symbol from a secret, and
+// writes two files that end up in the deployment. The page reads them from its
+// own origin — no CORS, no key in the bundle, no third-party request while
+// anyone is browsing.
 //
-// Il simbolo non compare da nessuna parte nei sorgenti ne' nell'output: entra
-// dall'ambiente, resta nel runner, e i file che scrive contengono solo numeri.
+// The symbol appears nowhere in the sources and nowhere in the output: it comes
+// in from the environment, stays in the runner, and the files it writes contain
+// only numbers.
 //
-//   QUOTE_SYMBOL=...  node scripts/fetch-quote.mjs [--history] [--soft]
+//   QUOTE_SYMBOL=... node scripts/fetch-quote.mjs [--history] [--soft]
 //
-//   --history  aggiunge al file storico le date del piano ormai passate
-//   --soft     non fallisce se la rete non risponde: lascia i file come sono
+//   --history  add the plan dates that have now passed to the history file
+//   --soft     do not fail if the network is down: leave the files as they are
 
 import fs from "node:fs";
 import path from "node:path";
 
-const RADICE = path.resolve(import.meta.dirname, "..");
-const QUOTE = path.join(RADICE, "public", "quote.json");
-const STORICO = path.join(RADICE, "src", "data", "reference-prices.json");
+const ROOT = path.resolve(import.meta.dirname, "..");
+const QUOTE = path.join(ROOT, "public", "quote.json");
+const HISTORY = path.join(ROOT, "src", "data", "reference-prices.json");
 
 const argv = new Set(process.argv.slice(2));
-const CON_STORICO = argv.has("--history");
+const WITH_HISTORY = argv.has("--history");
 const SOFT = argv.has("--soft");
 
-const SIMBOLO = process.env.QUOTE_SYMBOL;
-// Il cambio non identifica nessuna azienda, quindi puo' stare in chiaro.
-const SIMBOLO_FX = process.env.FX_SYMBOL ?? "EURUSD=X";
+const SYMBOL = process.env.QUOTE_SYMBOL;
+// The exchange rate identifies no company, so it can stay in the clear.
+const FX_SYMBOL = process.env.FX_SYMBOL ?? "EURUSD=X";
 
-function morire(messaggio) {
-  // Mai stampare il simbolo: questo log e' pubblico su un repo pubblico.
-  console.error(`fetch-quote: ${messaggio}`);
+function die(message) {
+  // Never print the symbol: this log is public on a public repository.
+  console.error(`fetch-quote: ${message}`);
   process.exit(SOFT ? 0 : 1);
 }
 
-if (!SIMBOLO) morire("manca QUOTE_SYMBOL nell'ambiente (impostalo come GitHub secret)");
+if (!SYMBOL) die("QUOTE_SYMBOL is missing from the environment (set it as a GitHub secret)");
 
-/** Le chiusure giornaliere di un simbolo, in un intervallo. */
-async function chiusure(simbolo, daSec, aSec) {
+/** Daily closes for a symbol, over a range. */
+async function closes(symbol, fromSec, toSec) {
   const url =
-    `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(simbolo)}` +
-    `?interval=1d&period1=${daSec}&period2=${aSec}`;
+    `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}` +
+    `?interval=1d&period1=${fromSec}&period2=${toSec}`;
   const res = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" } });
-  if (!res.ok) throw new Error(`il fornitore ha risposto ${res.status}`);
+  if (!res.ok) throw new Error(`the provider answered ${res.status}`);
   const j = await res.json();
   const r = j?.chart?.result?.[0];
-  const stamp = r?.timestamp ?? [];
+  const stamps = r?.timestamp ?? [];
   const close = r?.indicators?.quote?.[0]?.close ?? [];
   const out = [];
-  stamp.forEach((t, i) => {
+  stamps.forEach((t, i) => {
     const c = close[i];
     if (typeof c === "number" && Number.isFinite(c)) {
       out.push({ date: new Date(t * 1000).toISOString().slice(0, 10), close: c });
     }
   });
-  if (!out.length) throw new Error("il fornitore non ha restituito nessuna chiusura");
+  if (!out.length) throw new Error("the provider returned no closes at all");
   return out;
 }
 
-const arrotonda = (v, d) => Number(v.toFixed(d));
-const allaData = (serie, data) => {
-  const prima = serie.filter((x) => x.date <= data);
-  return prima.length ? prima[prima.length - 1] : null;
+const round = (v, d) => Number(v.toFixed(d));
+const at = (series, date) => {
+  const before = series.filter((x) => x.date <= date);
+  return before.length ? before[before.length - 1] : null;
 };
 
-const oggi = new Date().toISOString().slice(0, 10);
-// Undici anni indietro: copre tutto lo storico del piano e sta in una richiesta.
-const DA = Math.floor(Date.UTC(new Date().getUTCFullYear() - 11, 0, 1) / 1000);
-const A = Math.floor(Date.now() / 1000) + 86400;
+const today = new Date().toISOString().slice(0, 10);
+// Eleven years back: covers the whole plan history and fits in one request.
+const FROM = Math.floor(Date.UTC(new Date().getUTCFullYear() - 11, 0, 1) / 1000);
+const TO = Math.floor(Date.now() / 1000) + 86400;
 
-let azione, cambio;
+let equity, fx;
 try {
-  [azione, cambio] = await Promise.all([chiusure(SIMBOLO, DA, A), chiusure(SIMBOLO_FX, DA, A)]);
+  [equity, fx] = await Promise.all([closes(SYMBOL, FROM, TO), closes(FX_SYMBOL, FROM, TO)]);
 } catch (e) {
-  morire(`quotazioni non disponibili: ${e.message}`);
+  die(`quotes unavailable: ${e.message}`);
 }
 
 // ------------------------------------------------------------------ quote.json
 
-const ultima = azione[azione.length - 1];
-const ultimoFx = cambio[cambio.length - 1];
-const precedente = fs.existsSync(QUOTE) ? JSON.parse(fs.readFileSync(QUOTE, "utf8")) : {};
+const last = equity[equity.length - 1];
+const lastFx = fx[fx.length - 1];
+const previous = fs.existsSync(QUOTE) ? JSON.parse(fs.readFileSync(QUOTE, "utf8")) : {};
 
-const nuovaQuote = {
-  $comment: precedente.$comment ??
-    "Generato da scripts/fetch-quote.mjs in CI. Il simbolo arriva da un GitHub secret e non compare qui.",
-  date: ultima.date,
-  close: arrotonda(ultima.close, 4),
-  eurusd: arrotonda(ultimoFx.close, 6),
-  eurusdOn: ultimoFx.date,
+const nextQuote = {
+  $comment:
+    previous.$comment ??
+    "Generated by scripts/fetch-quote.mjs in CI. The symbol comes from a GitHub secret and does not appear here.",
+  date: last.date,
+  close: round(last.close, 4),
+  eurusd: round(lastFx.close, 6),
+  eurusdOn: lastFx.date,
   currency: "USD",
   generatedAt: new Date().toISOString(),
-  // Una chiusura di tre giorni fa non e' un errore (nel weekend e' la norma),
-  // ma piu' di una settimana vuol dire che qualcosa si e' rotto a monte.
-  stale: (Date.parse(oggi) - Date.parse(ultima.date)) / 86400000 > 7,
+  // A close from three days ago is not an error (at a weekend it is the norm),
+  // but more than a week means something upstream has broken.
+  stale: (Date.parse(today) - Date.parse(last.date)) / 86400000 > 7,
 };
 
-fs.writeFileSync(QUOTE, `${JSON.stringify(nuovaQuote, null, 2)}\n`);
-console.log(`fetch-quote: quote.json aggiornato alla chiusura del ${ultima.date}`);
+fs.writeFileSync(QUOTE, `${JSON.stringify(nextQuote, null, 2)}\n`);
+console.log(`fetch-quote: quote.json updated to the close of ${last.date}`);
 
-// --------------------------------------------------------------- storico
+// --------------------------------------------------------------- history
 
-if (CON_STORICO) {
-  const file = JSON.parse(fs.readFileSync(STORICO, "utf8"));
-  const chiave = file.keyDates;
-  const presenti = new Set(file.prices.map((p) => p.date));
-  const anni = new Set(file.prices.map((p) => Number(p.date.slice(0, 4))));
-  anni.add(new Date().getUTCFullYear());
+if (WITH_HISTORY) {
+  const file = JSON.parse(fs.readFileSync(HISTORY, "utf8"));
+  const keyDates = file.keyDates;
+  const present = new Set(file.prices.map((p) => p.date));
+  const years = new Set(file.prices.map((p) => Number(p.date.slice(0, 4))));
+  years.add(new Date().getUTCFullYear());
 
-  const aggiunte = [];
-  for (const anno of [...anni].sort()) {
-    for (const md of chiave) {
-      const data = `${anno}-${md}`;
-      // Solo date del piano gia' passate: una data futura non ha una chiusura,
-      // e scriverla con l'ultima disponibile sarebbe un numero inventato.
-      if (data > oggi || presenti.has(data)) continue;
-      const a = allaData(azione, data);
-      const f = allaData(cambio, data);
-      if (!a || !f) continue;
-      aggiunte.push({
-        date: data,
-        close: arrotonda(a.close, 4),
-        closeOn: a.date,
-        eurusd: arrotonda(f.close, 6),
+  const added = [];
+  for (const year of [...years].sort()) {
+    for (const md of keyDates) {
+      const date = `${year}-${md}`;
+      // Only plan dates that have already passed: a future date has no close,
+      // and writing it with the latest available one would be a made-up number.
+      if (date > today || present.has(date)) continue;
+      const e = at(equity, date);
+      const f = at(fx, date);
+      if (!e || !f) continue;
+      added.push({
+        date,
+        close: round(e.close, 4),
+        closeOn: e.date,
+        eurusd: round(f.close, 6),
         eurusdOn: f.date,
       });
     }
   }
 
-  if (aggiunte.length) {
-    file.prices = [...file.prices, ...aggiunte].sort((x, y) => x.date.localeCompare(y.date));
-    file.updated = oggi;
-    fs.writeFileSync(STORICO, `${JSON.stringify(file, null, 2)}\n`);
-    console.log(`fetch-quote: ${aggiunte.length} date del piano aggiunte allo storico`);
+  if (added.length) {
+    file.prices = [...file.prices, ...added].sort((x, y) => x.date.localeCompare(y.date));
+    file.updated = today;
+    fs.writeFileSync(HISTORY, `${JSON.stringify(file, null, 2)}\n`);
+    console.log(`fetch-quote: ${added.length} plan dates added to the history`);
   } else {
-    console.log("fetch-quote: nessuna data nuova da aggiungere allo storico");
+    console.log("fetch-quote: no new dates to add to the history");
   }
 }

@@ -1,15 +1,15 @@
 {
   "$comment": [
-    "Chiusure di riferimento dello strumento del piano, nei soli giorni che il piano usa:",
-    "il 20 di febbraio/maggio/agosto/novembre (le vestizioni) e il 1 di aprile e di ottobre",
-    "(gli acquisti ESPP). Quando quel giorno il mercato era chiuso vale l'ultima chiusura",
-    "precedente, e closeOn dice di quando e'.",
-    "close e' in USD per azione; eurusd sono dollari per un euro, quindi gli euro si",
-    "MOLTIPLICANO per diventare dollari.",
-    "Il file si aggiorna da solo: .github/workflows/refresh-quote.yml aggiunge la riga il",
-    "giorno dopo ogni data del piano. Lo strumento non e' scritto da nessuna parte nei",
-    "sorgenti: il suo simbolo vive in un GitHub secret e resta nel runner.",
-    "Fonte: Yahoo Finance, chiusure giornaliere non aggiustate per i dividendi."
+    "Reference closing prices for the plan's instrument, on the days the plan uses:",
+    "the 20th of February/May/August/November (the vestings) and the 1st of April and",
+    "October (the ESPP purchases). When the market was shut on that day the previous",
+    "close applies, and closeOn says which day it is from.",
+    "close is in USD per share; eurusd is dollars per euro, so euro are MULTIPLIED to",
+    "become dollars.",
+    "The file updates itself: .github/workflows/refresh-quote.yml adds the row the day",
+    "after each plan date. The instrument is written nowhere in the sources: its symbol",
+    "lives in a GitHub secret and stays in the runner.",
+    "Source: Yahoo Finance, daily closes not adjusted for dividends."
   ],
   "currency": "USD",
   "keyDates": [

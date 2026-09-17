@@ -8,7 +8,7 @@ export const it = {
   nav: { espp: "ESPP", rsu: "RSU" },
   header: {
     repo: "Codice su GitHub",
-    theme: "Tema",
+    theme: "Theme",
     lang: "Lingua",
     themeLight: "Chiaro",
     themeDark: "Scuro",
@@ -28,10 +28,10 @@ export const it = {
     taxYear: "Parametri fiscali",
   },
   common: {
-    ral: "RAL",
-    ralWhy:
+    salary: "RAL",
+    salaryWhy:
       "RSU ed ESPP non sono guadagni di borsa: sono reddito da lavoro che si somma al tuo stipendio. Quindi non conta un’aliquota media, conta lo scaglione in cui quel reddito in più va a cadere — e per saperlo bisogna sapere da dove parti.",
-    ralWhy2:
+    salaryWhy2:
       "Serve solo a questo, e non lascia il dispositivo: non viene inviata da nessuna parte, e viene salvata soltanto se lo chiedi tu col tasto in fondo a questa colonna.",
     whatIsThis: "Che cos’è",
     price: "Prezzo azione",
@@ -71,24 +71,24 @@ export const it = {
     contribution: "Quanto accantoni",
     contributionHint: "percentuale della retribuzione trattenuta in busta ogni mese",
     saved: "Accantonato nel periodo",
-    savedHint: (pct: string, mesi: number) =>
-      `${pct} della RAL per ${mesi} mesi, mensilità aggiuntive incluse`,
+    savedHint: (pct: string, months: number) =>
+      `${pct} della RAL per ${months} mesi, mensilità aggiuntive incluse`,
     savedManual: "scritto a mano: la percentuale non lo governa più",
-    atMinimum: "Prova al minimo",
-    atMinimumHint:
+    flatStock: "Prova al minimo",
+    flatStockHint:
       "Mette il prezzo dell’acquisto uguale a quello d’inizio: il titolo non si muove e resta solo lo sconto. È il pavimento del piano — quello che prendi se il mercato non fa niente.",
-    atMinimumOn: "titolo fermo: resta solo lo sconto",
+    flatStockOn: "titolo fermo: resta solo lo sconto",
     youGain: "Ci guadagni",
-    gainLine: (roi: string, esborso: string, azioni: string, valore: string, mesi: number) =>
-      `Il ${roi} dei ${esborso} che ti costa, in ${mesi} mesi: ${azioni} azioni che ne valgono ${valore}.`,
-    costBreak: (azioni: string, tasse: string) => `${azioni} di azioni più ${tasse} di tasse sullo sconto.`,
+    gainLine: (roi: string, outlay: string, shares: string, value: string, months: number) =>
+      `Il ${roi} dei ${outlay} che ti costa, in ${months} mesi: ${shares} azioni che ne valgono ${value}.`,
+    costBreak: (shares: string, tax: string) => `${shares} di azioni più ${tax} di tasse sullo sconto.`,
     annualised: (r: string) =>
       `Su base annua fa circa ${r}: i soldi restano immobilizzati in media metà del periodo, non tutto.`,
     payslipTitle: "Sul cedolino dell’acquisto trattengono",
-    payslipLine: (sconto: string, aliquota: string) =>
-      `Lo sconto vale ${sconto} ed è imponibile: te lo tassano in busta al ${aliquota}, la tua aliquota marginale.`,
-    payslipRest: (resto: string, delta: string, verso: string) =>
-      `Tornano indietro ${resto} che non hanno comprato un’azione intera, quindi il netto di quel mese è ${delta} ${verso} del solito.`,
+    payslipLine: (discount: string, rate: string) =>
+      `Lo sconto vale ${discount} ed è imponibile: te lo tassano in busta al ${rate}, la tua aliquota marginalRate.`,
+    payslipRest: (refund: string, delta: string, direction: string) =>
+      `Tornano indietro ${refund} che non hanno comprato un’azione intera, quindi il netto di quel mese è ${delta} ${direction} del solito.`,
     lower: "più basso",
     higher: "più alto",
     stepsTitle: "Come ci si arriva",
@@ -97,7 +97,7 @@ export const it = {
       referenceHint: (lookback: boolean): string =>
         lookback ? "il minore fra inizio e acquisto" : "il prezzo del giorno dell’acquisto",
       buy: "Prezzo che paghi",
-      buyHint: (sconto: string, sul: string) => `${sconto} di sconto su ${sul}`,
+      buyHint: (discount: string, on: string) => `${discount} di sconto su ${on}`,
       savedUsd: "Accantonato, in dollari",
       bought: "Azioni comprate",
       boughtHint: "solo intere: il resto torna in busta",
@@ -107,12 +107,12 @@ export const it = {
       tax: "Tasse sullo sconto",
       out: "Quello che ci metti davvero",
     },
-    ralEquivTitle: "Vale come un aumento di RAL da",
-    ralEquivLine: (quota: number, guadagno: string, mese: string) =>
-      `È il ${quota}% della tua RAL, e arriva da ${guadagno} netti sul periodo — ${mese} al mese.`,
+    salaryEquivTitle: "Vale come un aumento di RAL da",
+    salaryEquivLine: (share: number, gain: string, perMonth: string) =>
+      `È il ${share}% della tua RAL, e arriva da ${gain} netti sul periodo — ${perMonth} al mese.`,
     fellTitle: "Il titolo è sceso, e ci guadagni comunque",
-    fell: (a: string, b: string) =>
-      `È andato da ${a} a ${b}, e paghi lo sconto sul minore dei due: lo sconto si applica al valore basso, e le azioni valgono quel valore.`,
+    fell: (to: string, b: string) =>
+      `È andato da ${to} a ${b}, e paghi lo sconto sul minore dei due: lo sconto si applica al valore basso, e le azioni valgono quel valore.`,
     planTitle: "Il piano",
     discount: "Sconto",
     lookbackOn: "Sconto sul prezzo più basso",
@@ -120,9 +120,9 @@ export const it = {
     cap: "Tetto, in % della RAL",
     capUsd: "Tetto per periodo",
     capUsdHint:
-      "Il limite fiscale americano: 25.000 $ l’anno di valore alla concessione, che con il 15% di sconto si comprano con 21.250 $ di contributi — 10.625 per finestra semestrale.",
-    capHit: (oltre: string, tetto: string) =>
-      `Il piano si ferma a ${tetto} per periodo: ${oltre} accantonati oltre il tetto non comprano azioni e tornano in busta.`,
+      "Il limite fiscale americano: 25.000 $ l’anno di valore alla concessione, che con il 15% di sconto si comprano con 21.250 $ di socialSecurity — 10.625 per finestra semestrale.",
+    capHit: (above: string, cap: string) =>
+      `Il piano si ferma a ${cap} per periodo: ${above} accantonati oltre il tetto non comprano azioni e tornano in busta.`,
     fractional: "Compra frazioni di azione",
     missing: "Manca un numero: senza accantonato, prezzi e cambio non c’è un acquisto da raccontare.",
   },
@@ -141,30 +141,30 @@ export const it = {
     grantValue: "Valore del grant",
     grantValueWhy:
       "In dollari, come te lo comunicano: le unità sono il risultato, e le fissa il prezzo del giorno dell’assegnazione. È anche il modo di vedere una cosa che in azioni non si nota — due grant dello stesso importo assegnati in anni diversi oggi valgono cifre molto diverse.",
-    grantValueHint: (unita: string, prezzo: string, data: string) =>
-      `${unita} unità, al prezzo di ${prezzo} del ${data}`,
-    grantValueHintManual: (unita: string, prezzo: string) =>
-      `${unita} unità, al prezzo di ${prezzo} che hai scritto`,
+    grantValueHint: (units: string, price: string, date: string) =>
+      `${units} unità, al prezzo di ${price} del ${date}`,
+    grantValueHintManual: (units: string, price: string) =>
+      `${units} unità, al prezzo di ${price} che hai scritto`,
     grantValueNoPrice: "manca il prezzo del giorno del grant: scrivilo qui sotto",
     grantPrice: "Prezzo al grant",
     grantPriceFuture:
       "Il grant è nel futuro: una chiusura di quel giorno non esiste ancora. Parte dall’ultima nota — riscrivila per provare un altro scenario.",
     grantSchedule: "Vestizione",
     grantYears: "Durata",
-    anni: (n: number) => (n === 1 ? "1 anno" : `${n} anni`),
+    yearCount: (n: number) => (n === 1 ? "1 anno" : `${n} anni`),
     years: "anni",
     fixedDates: "Date fisse del piano",
     fixedDatesHint: (date: string) =>
       `Le vestizioni trimestrali si allineano al calendario del piano (${date}) invece di cadere a tre mesi esatti dal grant.`,
     schedule: {
-      annuale: "Annuale",
-      annualeHint: "una all’anno, tutte uguali",
+      annual: "Annuale",
+      annualHint: "una all’anno, tutte uguali",
       "30-30-40": "30-30-40",
       "30-30-40Hint": "tre vestizioni annuali, l’ultima più grossa",
-      trimestrale: "Trimestrale",
-      trimestraleHint: "una ogni tre mesi",
-      mensile: "Mensile",
-      mensileHint: "una al mese",
+      quarterly: "Trimestrale",
+      quarterlyHint: "una ogni tre mesi",
+      monthly: "Mensile",
+      monthlyHint: "una al mese",
     },
     horizon: "Orizzonte",
     chartTitle: "Quando arrivano",
@@ -172,16 +172,16 @@ export const it = {
       "Un trimestre per barra, i colori sono le assegnazioni. I trimestri vuoti sono informazione: sono i mesi in cui non arriva niente.",
     noVesting: "Nessuna vestizione nell’orizzonte scelto.",
     horizonTitle: (n: number) => (n === 1 ? "Nel prossimo anno ti arrivano" : `Nei prossimi ${n} anni ti arrivano`),
-    totalLine: (unita: string, lordo: string) => `${unita} unità, ${lordo} lordi.`,
-    salaryCompare: (pct: number, da: string, a: string) =>
-      `Come avere una RAL più alta del ${pct}%: da ${da} a ${a} netti l’anno.`,
+    totalLine: (units: string, lordo: string) => `${units} unità, ${lordo} lordi.`,
+    salaryCompare: (pct: number, from: string, to: string) =>
+      `Come avere una RAL più alta del ${pct}%: da ${from} a ${to} netti l’anno.`,
     yearUnits: "unità",
     yearGross: "Lordo",
     yearRate: "Aliquota",
     yearShares: "Azioni che ti arrivano",
     yearSharesHint: "le altre se le prende la trattenuta",
-    yearRalEquiv: "RAL equivalente",
-    yearRalEquivHint: "stipendio + RSU dell’anno",
+    yearSalaryEquiv: "RAL equivalente",
+    yearSalaryEquivHint: "stipendio + RSU dell’anno",
     tableTitle: "Le vestizioni, una per una",
     tableDate: "Data",
     tableGrant: "Assegnazione",
@@ -194,13 +194,13 @@ export const it = {
     priceNote:
       "Il prezzo è lo stesso per tutte le vestizioni future: nessuno sa quello di fra due anni, e usarne uno inventato darebbe una precisione che non esiste.",
   },
-  salva: {
+  save: {
     title: "Salvare su questo browser",
     button: "Salva su questo browser",
     buttonDirty: "Salva le modifiche",
     upToDate: "Salvato",
     forget: "Dimentica tutto",
-    savedOn: (quando: string) => `Ultimo salvataggio: ${quando}.`,
+    savedOn: (when: string) => `Ultimo salvataggio: ${when}.`,
     where:
       "Finisce nel localStorage di questo browser, su questo dispositivo. Non è un account e non è un file: nessuno dei tuoi altri dispositivi lo vedrà, e cancellando i dati del sito sparisce. «Dimentica tutto» lo rimuove subito.",
     nothingLeaves:
@@ -212,35 +212,35 @@ export const it = {
     title: "Tasse e addizionali",
     intro:
       "Le addizionali sono l’unica parte di questo conto che nessuna costante nazionale può indovinare: cambiano per regione e per comune, e su una RAL da 50.000 valgono quasi 1.800 euro l’anno. Qui sono precompilate con quelle in uso a Torino, in Piemonte.",
-    marginalTitle: "Aliquota marginale",
-    marginalLine: (aliquota: string) =>
-      `Di ogni euro lordo in più il fisco si prende il ${aliquota}: è l’aliquota con cui vengono tassate RSU ed ESPP, non quella media.`,
+    marginalTitle: "Aliquota marginalRate",
+    marginalLine: (rate: string) =>
+      `Di ogni euro lordo in più il fisco si prende il ${rate}: è l’aliquota con cui vengono tassate RSU ed ESPP, non quella media.`,
     marginalWhy:
       "Sul margine si accavallano quattro cose: lo scaglione IRPEF, la detrazione da lavoro dipendente che si spegne fra 28.000 e 50.000, l’1% INPS sopra la prima fascia e gli scaglioni delle addizionali. Sommarle a mano è il conto che nessuno fa giusto — qui è calcolata per differenza.",
-    irpef: "Scaglioni IRPEF",
-    irpefHint:
+    incomeTax: "Scaglioni IRPEF",
+    incomeTaxHint:
       "Progressivi per scaglioni: chi supera i 28.000 non paga il 33% su tutto, lo paga sulla parte fra 28.000 e 50.000.",
     upTo: "fino a",
     over: "oltre",
     rate: "Aliquota",
-    inps: "Contributi INPS",
-    inpsRate: "Aliquota base",
-    inpsMinor: "Contributi minori",
-    inpsMinorHint: "CIGS, fondo di garanzia: cambiano per settore e dimensione aziendale",
-    inpsFirstBand: "Prima fascia pensionabile",
-    inpsFirstBandHint: "oltre questa quota si aggiunge l’aliquota dell’1%",
-    inpsCeiling: "Massimale annuo",
-    inpsCeilingHint: "oltre questo non si versano più contributi (iscritti dopo il 1995)",
+    socialSecurity: "Contributi INPS",
+    ssRate: "Aliquota base",
+    ssMinor: "Contributi minori",
+    ssMinorHint: "CIGS, fondo di garanzia: cambiano per settore e dimensione aziendale",
+    ssFirstBand: "Prima fascia pensionabile",
+    ssFirstBandHint: "oltre questa quota si aggiunge l’aliquota dell’1%",
+    ssCeiling: "Massimale annuo",
+    ssCeilingHint: "oltre questo non si versano più socialSecurity (iscritti dopo il 1995)",
     applyCeiling: "Applica il massimale",
-    regional: "Addizionale regionale",
-    municipal: "Addizionale comunale",
+    regional: "Surtax regionale",
+    municipal: "Surtax comunale",
     exemption: "Soglia di esenzione",
     exemptionHint:
-      "È una soglia, non una franchigia: se il reddito la supera, l’addizionale si paga su tutto il reddito, non sull’eccedenza.",
+      "È una soglia, non una franchigia: se il reddito la supera, l’surtax si paga su tutto il reddito, non sull’eccedenza.",
     months: "Mensilità",
     monthsHint: "quante buste paga fa un anno, tredicesima e quattordicesima comprese",
     presets: "Preimpostazioni",
-    presetTorino: "Torino — Piemonte",
+    presetTurin: "Torino — Piemonte",
     presetFlat: "Aliquota unica",
   },
 };

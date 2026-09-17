@@ -1,20 +1,20 @@
 name: Refresh reference prices
 
-# Le date del piano entrano nello storico committato il giorno dopo che sono
-# passate: sei volte l'anno, il 20 di febbraio/maggio/agosto/novembre e il 1 di
-# aprile e di ottobre.
+# The plan dates enter the committed history the day after they pass: six times
+# a year, on the 20th of February/May/August/November and the 1st of April and
+# October.
 #
-# Questo giro **committa**, non pubblica. Il deploy non lo fa scattare lui (un
-# commit di GITHUB_TOKEN non fa partire altri workflow, di proposito): lo porta
-# online il deploy schedulato del mattino dopo. Per una chiusura storica di
-# ieri, aspettare un giorno non cambia niente.
+# This job **commits**, it does not publish. It is not what triggers the deploy
+# (a GITHUB_TOKEN commit does not start other workflows, by design): the next
+# morning's scheduled deploy takes it online. For a historical close from
+# yesterday, waiting a day changes nothing.
 #
-# Aggiorna anche il quote.json committato, che serve come ripiego quando il
-# fornitore non risponde e per far girare `npm run dev` senza il secret.
+# It also refreshes the committed quote.json, which serves as a fallback when
+# the provider is down and lets `npm run dev` work without the secret.
 
 on:
   schedule:
-    # Il 21 e il 2, cosi' la chiusura della data del piano c'e' sempre.
+    # The 21st and the 2nd, so the close for the plan date always exists.
     - cron: "30 6 21 2,5,8,11 *"
     - cron: "30 6 2 4,10 *"
   workflow_dispatch:
@@ -38,19 +38,19 @@ jobs:
         with:
           node-version: 24
 
-      - name: Quotazione e storico
+      - name: Quote and history
         env:
           QUOTE_SYMBOL: ${{ secrets.QUOTE_SYMBOL }}
         run: node scripts/fetch-quote.mjs --history --soft
 
-      - name: Commit se qualcosa e' cambiato
+      - name: Commit if anything changed
         run: |
           if git diff --quiet -- public/quote.json src/data/reference-prices.json; then
-            echo "niente da fare: i numeri sono gli stessi"
+            echo "nothing to do: the numbers are the same"
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add public/quote.json src/data/reference-prices.json
-          git commit -m "chore: aggiorna le chiusure di riferimento"
+          git commit -m "chore: update reference closing prices"
           git push

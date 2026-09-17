@@ -1,11 +1,11 @@
-/* Un sistema in variabili, definito una volta e ridefinito per lo scuro.
-   Nessun framework: questa e' una pagina con due moduli e qualche scheda, e un
-   foglio scritto a mano pesa meno di quanto costerebbe configurarne uno.
+/* One system in variables, declared once and redeclared for dark mode.
+   No framework: this is a page with two forms and a handful of cards, and a
+   hand-written sheet weighs less than configuring a generated one would.
 
-   Modalita': **Operate**. Non e' una pagina che deve convincere, e' uno
-   strumento in cui si sta dentro a fare un conto — quindi scala tipografica
-   fissa (non fluida), vocabolario di controlli uniforme, accento solo sulle
-   azioni e sugli stati, e niente coreografie al caricamento. */
+   Mode: **Operate**. This is not a page that has to persuade, it is a tool you
+   sit inside to work something out — so a fixed type scale (not fluid), one
+   consistent control vocabulary, accent reserved for actions and states, and no
+   choreography at load. */
 
 :root {
   --bg: #f5f5f3;
@@ -28,10 +28,10 @@
   --chart-4: #71437f;
   --chart-5: #2a7676;
 
-  /* Scala fissa in rem: in un prodotto si guarda sempre alla stessa distanza,
-     e un titolo che si restringe dentro una colonna peggiora invece di
-     adattarsi. Passi di ~1.2, che qui e' il rapporto giusto perche' gli
-     elementi di testo sono tanti e un contrasto esagerato diventa rumore. */
+  /* Fixed rem scale: a product is always read at the same distance, and a
+     heading that shrinks inside a column gets worse rather than adapting.
+     Steps of about 1.2, which is the right ratio here because there are many
+     text elements and exaggerated contrast turns into noise. */
   --t-11: 0.6875rem;
   --t-12: 0.75rem;
   --t-13: 0.8125rem;
@@ -41,7 +41,7 @@
   --t-24: 1.5rem;
   --t-36: 2.25rem;
 
-  /* Una forma per ogni ruolo, e sempre la stessa. */
+  /* One shape per role, and always the same one. */
   --r-field: 8px;
   --r-card: 12px;
   --r-pill: 999px;
@@ -50,8 +50,8 @@
   color-scheme: light;
 }
 
-/* Lo scuro non e' l'inverso del chiaro: le superfici salgono di luminosita' con
-   la profondita', il testo secondario perde saturazione invece che contrasto. */
+/* Dark is not light inverted: surfaces get lighter as they come forward, and
+   secondary text loses saturation rather than contrast. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #0e1012;
@@ -113,15 +113,14 @@ body {
   font-size: var(--t-16);
   line-height: 1.5;
   -webkit-text-size-adjust: 100%;
-  /* Ultima rete contro un contenuto incomprimibile: `clip` non crea un
-     contenitore di scroll, quindi non rompe lo `sticky` della testata. */
+  /* Last net against incompressible content: `clip` does not create a scroll
+     container, so it does not break the header's `sticky`. */
   overflow-x: clip;
 }
 
-/* Le superfici che non abbiamo disegnato noi portano comunque il design: la
-   selezione, il cursore di testo, l'anello di focus, la barra di scorrimento.
-   Lasciarle ai valori del browser e' l'unico punto in cui si vede che una
-   pagina e' stata assemblata invece che costruita. */
+/* The surfaces we did not draw still carry the design: the selection, the
+   caret, the focus ring, the scrollbar. Leaving them at the browser's defaults
+   is the one place where you can tell a page was assembled rather than built. */
 ::selection {
   background: var(--accent-soft);
   color: var(--accent-ink);
@@ -146,12 +145,12 @@ a {
   text-decoration-thickness: from-font;
 }
 
-.cifra {
+.tnum {
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum";
 }
 
-/* I due passi per i numeri che sono una risposta, non un dato in tabella. */
+/* The two steps for numbers that are an answer, not a cell in a table. */
 .big {
   font-size: var(--t-36);
   font-weight: 640;
@@ -174,7 +173,7 @@ a {
   padding: 0 16px;
 }
 
-/* ------------------------------------------------------------------ testata */
+/* ------------------------------------------------------------------- header */
 
 header.top {
   position: sticky;
@@ -232,7 +231,7 @@ header.top {
 
 .repo-link:hover { color: var(--accent-ink); border-color: var(--border-strong); }
 
-/* ------------------------------------------------------------- controlli */
+/* ----------------------------------------------------------------- controls */
 
 .seg {
   display: inline-flex;
@@ -299,7 +298,7 @@ nav.tabs button:hover { color: var(--text-2); }
 
 nav.tabs button[aria-current="page"] { color: var(--text); border-bottom-color: var(--accent); }
 
-/* ------------------------------------------------------------------ schede */
+/* -------------------------------------------------------------------- cards */
 
 .card {
   background: var(--surface);
@@ -311,10 +310,10 @@ nav.tabs button[aria-current="page"] { color: var(--text); border-bottom-color: 
 
 .card + .card { margin-top: 14px; }
 
-/* Dentro una griglia lo spazio lo fa il `gap`. La regola qui sopra serve alle
-   schede impilate in colonna, ma `+` non sa in che contenitore si trova:
-   applicata dentro una griglia spinge in basso ogni scheda che non e' la
-   prima, e le colonne della stessa riga partono da altezze diverse. */
+/* Inside a grid the `gap` does the spacing. The rule above is for cards
+   stacked in a column, but `+` does not know which container it is in: applied
+   inside a grid it pushes down every card that is not the first, and columns in
+   the same row start at different heights. */
 .grid2 > .card + .card,
 .grid3 > .card + .card {
   margin-top: 0;
@@ -327,8 +326,8 @@ nav.tabs button[aria-current="page"] { color: var(--text); border-bottom-color: 
   letter-spacing: -0.01em;
 }
 
-/* Piu' spazio sopra un'intestazione che sotto: e' quello che la lega al blocco
-   che introduce invece che a quello che chiude. */
+/* More space above a heading than below it: that is what ties it to the block
+   it introduces rather than to the one it closes. */
 .card h3 {
   font-size: var(--t-13);
   margin: 20px 0 8px;
@@ -338,15 +337,15 @@ nav.tabs button[aria-current="page"] { color: var(--text); border-bottom-color: 
 
 .card h3:first-child { margin-top: 0; }
 
-/* Un campo che sta da solo dentro una scheda si porta il proprio spazio: nelle
-   griglie lo fa il `gap`, ma un campo singolo dopo l'aiuto di quello sopra
-   finirebbe appiccicato alla riga precedente. */
-.card > .campo { margin-top: 16px; }
+/* A field standing alone inside a card brings its own spacing: in grids the
+   `gap` handles it, but a single field following the hint of the one above
+   would end up glued to the previous line. */
+.card > .field { margin-top: 16px; }
 
-.card > .campo:first-child { margin-top: 0; }
+.card > .field:first-child { margin-top: 0; }
 
-/* Un numero che risponde a un'intestazione le sta attaccato: il margine di
-   default del paragrafo lo staccava tanto da sembrare un blocco a se'. */
+/* A number answering a heading sits close to it: the paragraph's default
+   margin pushed it far enough away to look like a block of its own. */
 .card p.big,
 .card p.mid { margin: 2px 0 0; }
 
@@ -366,24 +365,24 @@ nav.tabs button[aria-current="page"] { color: var(--text); border-bottom-color: 
   max-width: 68ch;
 }
 
-/* ------------------------------------------------------------------ layout */
+/* ------------------------------------------------------------------- layout */
 
 .tool {
   display: grid;
   gap: 14px;
   align-items: start;
   padding: 14px 0 0;
-  /* La colonna va dichiarata anche quando e' una sola: una traccia `auto` si
-     dimensiona sul min-content dei figli, e basta un campo nativo o una
-     tabella larga per portare fuori schermo il bordo di tutte le schede. */
+  /* The column must be declared even when there is only one: an `auto` track
+     sizes to its children's min-content, and one native field or a wide table
+     is enough to push every card's edge off screen. */
   grid-template-columns: minmax(0, 1fr);
 }
 
 .tool > * { min-width: 0; }
 
-/* Sul telefono l'ordine e' quello del sorgente: **prima la risposta**, poi il
-   modulo, poi il dettaglio. Il numero per cui si apre la pagina non puo' stare
-   sotto duemila pixel di campi gia' compilati. */
+/* On a phone the order is the source order: **the answer first**, then the
+   form, then the detail. The number people open the page for cannot sit below
+   two thousand pixels of already-filled fields. */
 @media (min-width: 900px) {
   .tool {
     grid-template-columns: 22rem minmax(0, 1fr);
@@ -395,33 +394,32 @@ nav.tabs button[aria-current="page"] { color: var(--text); border-bottom-color: 
     position: sticky;
     top: 72px;
   }
-  .tool > .sintesi { grid-column: 2; grid-row: 1; }
-  .tool > .dettagli { grid-column: 2; grid-row: 2; }
+  .tool > .summary { grid-column: 2; grid-row: 1; }
+  .tool > .detail { grid-column: 2; grid-row: 2; }
 }
 
 .grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 
-/* 190 e non 150: sotto quella soglia due colonne ci stanno ma le righe
-   "nome a sinistra / cifra a destra" vanno a capo tre volte, e una scheda di
-   riepilogo che si legge su quattro righe per voce non riepiloga piu' niente.
-   Meglio una colonna sola, piena. */
+/* 190 and not 150: below that two columns do fit, but the "name left / figure
+   right" rows wrap three times, and a summary card that reads over four lines
+   per entry is no longer summarising anything. One full column is better. */
 .grid3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
 
-/* Due campi affiancati devono avere gli input alla stessa altezza anche quando
-   una delle due etichette va a capo. Il subgrid e' l'unico modo di allinearli
-   davvero: senza, ogni colonna impila per conto suo. */
-.grid2.allinea {
+/* Two fields side by side must have their inputs at the same height even when
+   one of the labels wraps. Subgrid is the only way to really align them:
+   without it each column stacks on its own. */
+.grid2.aligned {
   grid-template-rows: auto auto auto;
 }
 
-.grid2.allinea > .campo {
+.grid2.aligned > .field {
   display: grid;
   grid-template-rows: subgrid;
   grid-row: span 3;
   gap: 0;
 }
 
-/* ------------------------------------------------------------------- campi */
+/* ------------------------------------------------------------------- fields */
 
 label.lab {
   display: block;
@@ -464,13 +462,13 @@ input.inp[aria-invalid="true"] { border-color: var(--bad); }
 
 input.inp::placeholder { color: var(--muted); }
 
-/* I campi data, che ogni motore disegna a modo suo.
+/* Date fields, which every engine draws its own way.
  *
- * WebKit **centra** il valore: su iPhone la data finiva in mezzo al campo
- * mentre ogni altro campo della pagina ha il testo a sinistra. Blink invece
- * mette l'icona del calendario **sopra** l'ultima cifra dell'anno quando lo
- * spazio scende sotto i ~140 px. Nessuno dei due e' un overflow, quindi
- * nessun controllo sulle geometrie li rileva. */
+ * WebKit **centres** the value: on an iPhone the date sat in the middle of the
+ * field while every other field on the page is left-aligned. Blink instead puts
+ * the calendar icon **on top of** the last digit of the year once the space
+ * drops below ~140px. Neither is an overflow, so no geometry check catches
+ * them. */
 input.inp[type="date"] {
   appearance: none;
   -webkit-appearance: none;
@@ -498,7 +496,7 @@ input.inp[type="date"]::-webkit-calendar-picker-indicator:hover { opacity: 1; }
   .grid2:has(input[type="date"]) { grid-template-columns: minmax(0, 1fr); }
 }
 
-input.inp.soglia {
+input.inp.threshold {
   width: 6.5rem;
   padding: 2px 6px;
   font-size: var(--t-11);
@@ -507,7 +505,7 @@ input.inp.soglia {
 
 .row-inline { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 
-/* ----------------------------------------------------------------- bottoni */
+/* ------------------------------------------------------------------ buttons */
 
 button.btn {
   appearance: none;
@@ -524,8 +522,8 @@ button.btn {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  /* Un bottone si muove poco e in fretta: 150 ms in entrata, 160 in pressione.
-     Serve a dire "ho sentito", non a farsi guardare. */
+  /* A button moves a little and quickly: 150ms in, faster on press. It is
+     there to say "heard you", not to be watched. */
   transition: transform 150ms ease, border-color 150ms ease, background-color 150ms ease;
 }
 
@@ -590,7 +588,7 @@ button.icon-btn {
 
 button.icon-btn:hover { color: var(--bad); border-color: var(--bad); }
 
-/* ------------------------------------------------------- slider e opzioni */
+/* --------------------------------------------------------- slider & options */
 
 input[type="range"] { width: 100%; margin: 8px 0 0; }
 
@@ -607,13 +605,12 @@ input[type="range"] { width: 100%; margin: 8px 0 0; }
 
 .check input { width: 16px; height: 16px; }
 
-/* --------------------------------------------------- l'aiuto a richiesta */
+/* -------------------------------------------------------- help on demand */
 
-/* Le spiegazioni lunghe stanno dietro a un bottone e non sotto ogni campo: in
-   uno strumento la prosa in linea si legge una volta e poi diventa rumore fra
-   un campo e l'altro. Il popover nasce nel top layer del browser, quindi non
-   viene tagliato dai contenitori che scorrono — che e' il modo in cui questi
-   pannelli si rompono di solito. */
+/* Long explanations live behind a button rather than under every field: in a
+   tool, inline prose is read once and then becomes noise between one field and
+   the next. The popover opens in the browser's top layer, so it is not clipped
+   by scrolling containers — which is how these panels usually break. */
 button.info {
   appearance: none;
   border: 1px solid var(--border-strong);
@@ -659,7 +656,7 @@ button.info:hover { color: var(--accent-ink); border-color: var(--accent); }
 
 [popover].pop::backdrop { background: transparent; }
 
-/* ------------------------------------------------------------------- liste */
+/* -------------------------------------------------------------------- lists */
 
 ul.lines { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 7px; }
 
@@ -682,9 +679,9 @@ li.sum > span:first-child { color: var(--text); }
 
 .pos { color: var(--good); }
 
-/* La tabella delle vestizioni: sei colonne, che su un telefono non ci stanno.
-   `width: 100%` da solo non le fa scorrere, le **schiaccia** fino al
-   min-content, e i valori di colonne diverse finiscono attaccati. */
+/* The vesting table: six columns, which do not fit on a phone. `width: 100%`
+   alone does not make them scroll, it **squeezes** them to min-content, and
+   values from different columns end up touching. */
 table.tbl {
   width: 100%;
   min-width: 25rem;
@@ -711,9 +708,9 @@ table.tbl td {
   white-space: nowrap;
 }
 
-/* Lo spazio delle colonne a destra va messo **a sinistra**: azzerare solo il
-   padding-right le fa toccare la colonna precedente appena il valore e' lungo
-   ("1/3" + "41,99" letto come "1/341,99"). */
+/* The spacing of right-aligned columns belongs **on the left**: zeroing only
+   the padding-right makes them touch the previous column as soon as the value
+   is long ("1/3" + "41.99" read as "1/341.99"). */
 table.tbl td.r,
 table.tbl th.r {
   text-align: right;
@@ -721,9 +718,9 @@ table.tbl th.r {
   padding-left: 14px;
 }
 
-/* Su uno schermo stretto una colonna in meno vale piu' di una in piu'. */
+/* On a narrow screen one column fewer is worth more than one column more. */
 @media (max-width: 620px) {
-  table.tbl .opz { display: none; }
+  table.tbl .optional { display: none; }
 }
 
 .scroll-y {
@@ -748,7 +745,7 @@ table.tbl th.r {
 
 .dot { width: 9px; height: 9px; border-radius: 3px; flex: 0 0 auto; }
 
-/* ------------------------------------------------------------------ grafico */
+/* -------------------------------------------------------------------- chart */
 
 .chart { width: 100%; height: auto; display: block; overflow: visible; }
 
@@ -756,11 +753,11 @@ table.tbl th.r {
 
 .chart .axis { stroke: var(--border); stroke-width: 1; }
 
-.chart .anno { fill: var(--text-2); font-weight: 660; }
+.chart .bar-year { fill: var(--text-2); font-weight: 660; }
 
-.chart .valore { fill: var(--text-2); font-size: 9.5px; font-variant-numeric: tabular-nums; }
+.chart .bar-value { fill: var(--text-2); font-size: 9.5px; font-variant-numeric: tabular-nums; }
 
-/* ------------------------------------------------------------------- piede */
+/* ------------------------------------------------------------------- footer */
 
 footer.bottom {
   margin-top: 40px;
@@ -799,15 +796,15 @@ footer.bottom .meta {
   white-space: nowrap;
 }
 
-/* Un solo momento di movimento in tutta la pagina, e conviene spenderlo dove
-   una cosa **cambia**: il numero che si rifa' quando tocchi un campo. Niente
-   entrate scaglionate al caricamento — un prodotto si apre dentro un compito,
-   e chi ci entra non vuole guardarlo apparire. */
+/* One moment of motion in the whole page, and it is worth spending where
+   something **changes**: the number redrawing when you touch a field. No
+   staggered entrances at load — a product opens into a task, and nobody who
+   enters it wants to watch it appear. */
 @media (prefers-reduced-motion: no-preference) {
-  .risposta {
-    animation: rifatto 220ms cubic-bezier(0.22, 1, 0.36, 1);
+  .answer {
+    animation: redrawn 220ms cubic-bezier(0.22, 1, 0.36, 1);
   }
-  @keyframes rifatto {
+  @keyframes redrawn {
     from { opacity: 0.4; transform: translateY(-2px); }
     to { opacity: 1; transform: none; }
   }

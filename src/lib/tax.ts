@@ -1,280 +1,287 @@
-// La fiscalita' italiana del reddito da lavoro dipendente, per il solo scopo di
-// rispondere a una domanda: **quanto resta di un euro in piu'**.
+// Italian payroll taxation, for one purpose only: **how much is left of one
+// more euro**.
 //
-// RSU ed ESPP non sono guadagni di borsa: al vesting e all'acquisto sono
-// reddito da lavoro che si somma allo stipendio. Quindi non conta l'aliquota
-// media della busta, conta lo scaglione in cui quel reddito in piu' cade — che
-// e' la ragione per cui questo file esiste e per cui lo strumento chiede la RAL.
+// RSUs and ESPP are not stock market gains. At vesting and at purchase they are
+// employment income stacked on top of your salary, so the average rate on your
+// payslip tells you nothing — what counts is the bracket that extra income
+// lands in. That is why this file exists, and why both tools ask for a salary.
 //
-// Tutti i parametri stanno qui, in un posto solo, e quelli che cambiano da
-// comune a comune sono modificabili dall'interfaccia: le addizionali sono
-// l'unica parte di questo conto che nessuna costante nazionale puo' indovinare.
+// Every parameter lives here, in one place. The ones that change from town to
+// town are editable from the UI: local surtaxes are the only part of this
+// calculation that no national constant can guess.
 
-export const ANNO_FISCALE = 2026;
+export const TAX_YEAR = 2026;
 
-// ------------------------------------------------------------------ contributi
+// --------------------------------------------------------- social security
 
 /**
- * INPS a carico del lavoratore.
+ * Employee-side social security (INPS).
  *
- * `aliquota` e' il 9,19% del Fondo Pensioni Lavoratori Dipendenti; `minori`
- * raccoglie i contributi aggiuntivi che molte buste sommano sempre (CIGS,
- * fondo di garanzia) e che cambiano per settore e dimensione aziendale, quindi
- * e' un campo e non una costante.
+ * `rate` is the 9.19% of the employee pension fund; `minorRates` collects the
+ * smaller contributions most payslips always add (short-time work funds, wage
+ * guarantee funds), which vary by sector and company size — hence a field and
+ * not a constant.
  *
- * Sopra la prima fascia di retribuzione pensionabile si aggiunge l'aliquota
- * aggiuntiva dell'1% (art. 3-ter D.L. 384/1992), e sopra il massimale annuo i
- * contributi si fermano del tutto — vale per chi e' iscritto dopo il 1995, che
- * e' chiunque stia usando questo strumento.
+ * Above the first pensionable band an extra 1% applies, and above the annual
+ * ceiling contributions stop altogether. The ceiling applies to anyone enrolled
+ * after 1995, which is everybody likely to be using this.
  */
-export interface ParametriInps {
-  aliquota: number; // % base a carico del lavoratore
-  minori: number; // % di contributi minori
-  primaFascia: number; // oltre questa quota scatta l'1% aggiuntivo
-  massimale: number; // oltre questo non si versa piu' nulla
-  applicaMassimale: boolean;
+export interface SocialSecurityParams {
+  /** base employee rate, in percent */
+  rate: number;
+  /** additional minor contributions, in percent */
+  minorRates: number;
+  /** above this amount the extra 1% kicks in */
+  firstBandCap: number;
+  /** above this amount nothing more is due */
+  ceiling: number;
+  applyCeiling: boolean;
 }
 
-export const INPS_2026: ParametriInps = {
-  aliquota: 9.19,
-  minori: 0.5666,
-  primaFascia: 56224,
-  massimale: 122295,
-  applicaMassimale: true,
+export const SOCIAL_SECURITY_2026: SocialSecurityParams = {
+  rate: 9.19,
+  minorRates: 0.5666,
+  firstBandCap: 56224,
+  ceiling: 122295,
+  applyCeiling: true,
 };
 
-export function contributi(imponibile: number, p: ParametriInps): number {
-  const base = p.applicaMassimale ? Math.min(Math.max(0, imponibile), p.massimale) : Math.max(0, imponibile);
-  const ordinari = ((p.aliquota + p.minori) / 100) * base;
-  const extra = base > p.primaFascia ? 0.01 * (base - p.primaFascia) : 0;
-  return ordinari + extra;
+export function socialSecurity(gross: number, p: SocialSecurityParams): number {
+  const base = p.applyCeiling ? Math.min(Math.max(0, gross), p.ceiling) : Math.max(0, gross);
+  const ordinary = ((p.rate + p.minorRates) / 100) * base;
+  const extra = base > p.firstBandCap ? 0.01 * (base - p.firstBandCap) : 0;
+  return ordinary + extra;
 }
 
-// ---------------------------------------------------------------------- IRPEF
+// ----------------------------------------------------------------- income tax
 
-export interface Scaglione {
-  /** Limite superiore dello scaglione; `null` significa "oltre". */
-  fino: number | null;
-  aliquota: number; // %
+export interface Bracket {
+  /** upper bound of the bracket; `null` means "and above". */
+  upTo: number | null;
+  /** rate in percent */
+  rate: number;
 }
 
 /**
- * Gli scaglioni 2026: la Legge di Bilancio ha portato il secondo dal 35% al
- * 33%. Sono progressivi per scaglioni, non per fascia: chi supera i 28.000 non
- * paga il 33% su tutto, lo paga sulla parte che sta fra 28.000 e 50.000.
+ * The 2026 brackets: the budget law cut the second one from 35% to 33%.
+ *
+ * They are progressive **by bracket**, not by band: someone over 28,000 does
+ * not pay 33% on everything, they pay it on the slice between 28,000 and
+ * 50,000.
  */
-export const IRPEF_2026: Scaglione[] = [
-  { fino: 28000, aliquota: 23 },
-  { fino: 50000, aliquota: 33 },
-  { fino: null, aliquota: 43 },
+export const INCOME_TAX_2026: Bracket[] = [
+  { upTo: 28000, rate: 23 },
+  { upTo: 50000, rate: 33 },
+  { upTo: null, rate: 43 },
 ];
 
-/** Imposta su uno scaglionario qualsiasi, applicato davvero per scaglioni. */
-export function perScaglioni(imponibile: number, scaglioni: Scaglione[]): number {
-  let resto = Math.max(0, imponibile);
-  let prima = 0;
-  let imposta = 0;
-  for (const s of scaglioni) {
-    const tetto = s.fino ?? Infinity;
-    const quota = Math.min(resto, tetto - prima);
-    if (quota <= 0) break;
-    imposta += (quota * s.aliquota) / 100;
-    resto -= quota;
-    prima = tetto;
+/** Tax on any set of brackets, genuinely applied bracket by bracket. */
+export function applyBrackets(amount: number, brackets: Bracket[]): number {
+  let left = Math.max(0, amount);
+  let previous = 0;
+  let tax = 0;
+  for (const b of brackets) {
+    const cap = b.upTo ?? Infinity;
+    const slice = Math.min(left, cap - previous);
+    if (slice <= 0) break;
+    tax += (slice * b.rate) / 100;
+    left -= slice;
+    previous = cap;
   }
-  return imposta;
+  return tax;
 }
 
-export const irpefLorda = (imponibile: number, scaglioni = IRPEF_2026) =>
-  perScaglioni(imponibile, scaglioni);
+export const grossIncomeTax = (amount: number, brackets = INCOME_TAX_2026) =>
+  applyBrackets(amount, brackets);
 
-// ------------------------------------------------------------------ detrazioni
+// ------------------------------------------------------------------- credits
 
 /**
- * Detrazione per redditi da lavoro dipendente, art. 13 co. 1 TUIR.
+ * Employment income tax credit (art. 13 §1 of the Italian income tax code).
  *
- * Non e' un dettaglio: e' il motivo per cui a 30.000 di RAL non si paga il 23%
- * medio, e soprattutto e' il motivo per cui **l'aliquota marginale reale non
- * coincide con lo scaglione**. Fra 28.000 e 50.000 la detrazione si azzera in
- * modo lineare, e ogni euro in piu' se ne porta via 1.910/22.000 = 8,7 centesimi
- * in aggiunta al 33%: fra i 28k e i 50k il margine vero sfiora il 50%, e
- * nessuna tabella di scaglioni lo dice.
+ * This is not a detail. It is why someone on 30,000 does not pay the average
+ * 23%, and above all it is why **the real marginal rate does not match the
+ * bracket**. Between 28,000 and 50,000 the credit phases out linearly, and
+ * every extra euro takes 1,910/22,000 = 8.7 cents of it away on top of the 33%.
+ * In that stretch the true margin approaches 50%, and no bracket table says so.
  */
-export function detrazioneLavoro(redditoComplessivo: number): number {
-  const r = Math.max(0, redditoComplessivo);
-  if (r <= 15000) return 1955;
-  if (r <= 28000) return 1910 + (1190 * (28000 - r)) / 13000;
-  if (r <= 50000) return (1910 * (50000 - r)) / 22000;
+export function employmentCredit(totalIncome: number): number {
+  const i = Math.max(0, totalIncome);
+  if (i <= 15000) return 1955;
+  if (i <= 28000) return 1910 + (1190 * (28000 - i)) / 13000;
+  if (i <= 50000) return (1910 * (50000 - i)) / 22000;
   return 0;
 }
 
 /**
- * Il taglio del cuneo fiscale diventato strutturale: sotto i 20.000 una somma
- * che si aggiunge al netto (non una detrazione, non abbatte imposta), fra
- * 20.000 e 40.000 una detrazione in piu' che si spegne dopo i 32.000.
+ * The now-permanent payroll tax cut: below 20,000 a sum added to net pay (not a
+ * credit, it does not reduce tax), and between 20,000 and 40,000 an extra
+ * credit that fades out after 32,000.
  */
-export function ulterioreDetrazione(redditoComplessivo: number): number {
-  const r = Math.max(0, redditoComplessivo);
-  if (r <= 20000) return 0;
-  if (r <= 32000) return 1000;
-  if (r <= 40000) return (1000 * (40000 - r)) / 8000;
+export function extraCredit(totalIncome: number): number {
+  const i = Math.max(0, totalIncome);
+  if (i <= 20000) return 0;
+  if (i <= 32000) return 1000;
+  if (i <= 40000) return (1000 * (40000 - i)) / 8000;
   return 0;
 }
 
-export function sommaIntegrativa(redditoLavoro: number): number {
-  const r = Math.max(0, redditoLavoro);
-  if (r <= 0 || r > 20000) return 0;
-  const pct = r <= 8500 ? 7.1 : r <= 15000 ? 5.3 : 4.8;
-  return (r * pct) / 100;
+export function lowIncomeSupplement(employmentIncome: number): number {
+  const i = Math.max(0, employmentIncome);
+  if (i <= 0 || i > 20000) return 0;
+  const pct = i <= 8500 ? 7.1 : i <= 15000 ? 5.3 : 4.8;
+  return (i * pct) / 100;
 }
 
 /**
- * Oltre 200.000 di reddito complessivo il vantaggio del 33% viene neutralizzato
- * abbattendo le detrazioni di 440 euro. Riguarda pochissimi, ma chi ci sta
- * dentro se ne accorge e ha ragione a chiederselo.
+ * Above 200,000 of total income the benefit of the 33% rate is neutralised by
+ * cutting credits by 440 euro. It affects very few people, but those it does
+ * affect notice, and they are right to wonder.
  */
-const RECUPERO_OLTRE_200K = 440;
-const SOGLIA_RECUPERO = 200000;
+const CLAWBACK_ABOVE_200K = 440;
+const CLAWBACK_THRESHOLD = 200000;
 
-// ---------------------------------------------------------------- addizionali
+// ------------------------------------------------------------ local surtaxes
 
 /**
- * Addizionali regionale e comunale: l'unica parte di questo conto che non ha
- * una risposta nazionale. Sono ~1.800 euro l'anno su una RAL da 60.000 e
- * cambiano di quasi il doppio fra una regione e l'altra, quindi sono
- * modificabili scaglione per scaglione invece di essere una costante.
+ * Regional and municipal surtaxes: the only part of this calculation with no
+ * national answer. They are about 1,800 euro a year on a 50,000 salary and
+ * nearly double from one region to the next, so they are editable bracket by
+ * bracket rather than hard-coded.
  *
- * `esenzione` e' una soglia, non una franchigia: se il reddito la supera,
- * l'addizionale si paga su **tutto** il reddito, non sull'eccedenza. E' il modo
- * in cui la scrivono i comuni, e sbagliarlo cambia il conto di centinaia di
- * euro proprio a chi guadagna meno.
+ * `exemption` is a **threshold, not an allowance**: if income exceeds it, the
+ * surtax is due on the **whole** income, not on the excess. That is how
+ * municipalities write it, and getting it wrong changes the result by hundreds
+ * of euro for exactly the people who earn least.
  */
-export interface Addizionale {
-  scaglioni: Scaglione[];
-  esenzione: number;
+export interface Surtax {
+  brackets: Bracket[];
+  exemption: number;
 }
 
-/** Piemonte, anni d'imposta 2026-2027 (aliquota base 1,23% + maggiorazioni). */
-export const REGIONALE_PIEMONTE: Addizionale = {
-  scaglioni: [
-    { fino: 15000, aliquota: 1.62 },
-    { fino: 28000, aliquota: 2.68 },
-    { fino: 50000, aliquota: 3.31 },
-    { fino: null, aliquota: 3.33 },
+/** Piedmont, tax years 2026-2027 (1.23% base rate plus surcharges). */
+export const REGIONAL_PIEDMONT: Surtax = {
+  brackets: [
+    { upTo: 15000, rate: 1.62 },
+    { upTo: 28000, rate: 2.68 },
+    { upTo: 50000, rate: 3.31 },
+    { upTo: null, rate: 3.33 },
   ],
-  esenzione: 0,
+  exemption: 0,
 };
 
-/** Torino: delibera C.C. 195/2022, confermata per il 2026. */
-export const COMUNALE_TORINO: Addizionale = {
-  scaglioni: [
-    { fino: 28000, aliquota: 0.8 },
-    { fino: 50000, aliquota: 1.1 },
-    { fino: null, aliquota: 1.2 },
+/** Turin: city council resolution 195/2022, confirmed for 2026. */
+export const MUNICIPAL_TURIN: Surtax = {
+  brackets: [
+    { upTo: 28000, rate: 0.8 },
+    { upTo: 50000, rate: 1.1 },
+    { upTo: null, rate: 1.2 },
   ],
-  esenzione: 11790,
+  exemption: 11790,
 };
 
-export function addizionale(imponibile: number, a: Addizionale): number {
-  if (imponibile <= a.esenzione) return 0;
-  return perScaglioni(imponibile, a.scaglioni);
+export function surtax(amount: number, s: Surtax): number {
+  if (amount <= s.exemption) return 0;
+  return applyBrackets(amount, s.brackets);
 }
 
-// ------------------------------------------------------------- dalla RAL al netto
+// ------------------------------------------------------------ gross to net
 
-export interface Regime {
-  scaglioni: Scaglione[];
-  inps: ParametriInps;
-  regionale: Addizionale;
-  comunale: Addizionale;
-  mensilita: number;
+export interface TaxRegime {
+  brackets: Bracket[];
+  socialSecurity: SocialSecurityParams;
+  regional: Surtax;
+  municipal: Surtax;
+  /** how many payslips make a year, extra months included */
+  payPeriods: number;
 }
 
-export const REGIME_DEFAULT: Regime = {
-  scaglioni: IRPEF_2026,
-  inps: INPS_2026,
-  regionale: REGIONALE_PIEMONTE,
-  comunale: COMUNALE_TORINO,
-  mensilita: 14,
+export const DEFAULT_REGIME: TaxRegime = {
+  brackets: INCOME_TAX_2026,
+  socialSecurity: SOCIAL_SECURITY_2026,
+  regional: REGIONAL_PIEDMONT,
+  municipal: MUNICIPAL_TURIN,
+  payPeriods: 14,
 };
 
-export interface VoceLorda {
-  ral: number;
+export interface GrossPay {
+  salary: number;
   bonus?: number;
-  /** RSU al vesting ed ESPP: reddito da lavoro come tutto il resto. */
+  /** RSUs at vesting and ESPP: employment income like everything else. */
   equity?: number;
-  altro?: number;
+  other?: number;
 }
 
-export interface Netto {
-  lordo: number;
-  inps: number;
-  imponibileIrpef: number;
-  irpefLorda: number;
-  detrazioni: number;
-  irpef: number;
-  regionale: number;
-  comunale: number;
-  integrativa: number;
-  netto: number;
-  /** quanto resta di ogni euro lordo, in media */
-  tasso: number;
-  perMensilita: number;
-  mensilita: number;
+export interface NetPay {
+  gross: number;
+  socialSecurity: number;
+  taxableIncome: number;
+  grossTax: number;
+  credits: number;
+  incomeTax: number;
+  regionalSurtax: number;
+  municipalSurtax: number;
+  supplement: number;
+  net: number;
+  /** how much of every gross euro is left, on average */
+  keptShare: number;
+  perPayPeriod: number;
+  payPeriods: number;
 }
 
-export function dalLordoAlNetto(v: VoceLorda, r: Regime = REGIME_DEFAULT): Netto {
-  const lordo = Math.max(0, v.ral + (v.bonus ?? 0) + (v.equity ?? 0) + (v.altro ?? 0));
-  const inps = contributi(lordo, r.inps);
-  const imponibile = lordo - inps;
+export function grossToNet(pay: GrossPay, r: TaxRegime = DEFAULT_REGIME): NetPay {
+  const gross = Math.max(0, pay.salary + (pay.bonus ?? 0) + (pay.equity ?? 0) + (pay.other ?? 0));
+  const contributions = socialSecurity(gross, r.socialSecurity);
+  const taxable = gross - contributions;
 
-  const lorda = irpefLorda(imponibile, r.scaglioni);
-  let detrazioni = detrazioneLavoro(imponibile) + ulterioreDetrazione(imponibile);
-  if (imponibile > SOGLIA_RECUPERO) detrazioni = Math.max(0, detrazioni - RECUPERO_OLTRE_200K);
-  // Le detrazioni abbattono l'imposta, non la rendono negativa: quello che
-  // avanza e' capienza persa, non un credito.
-  const irpef = Math.max(0, lorda - detrazioni);
+  const grossTax = grossIncomeTax(taxable, r.brackets);
+  let credits = employmentCredit(taxable) + extraCredit(taxable);
+  if (taxable > CLAWBACK_THRESHOLD) credits = Math.max(0, credits - CLAWBACK_ABOVE_200K);
+  // Credits reduce tax, they do not turn it negative: what is left over is lost
+  // headroom, not a refund.
+  const incomeTax = Math.max(0, grossTax - credits);
 
-  const reg = addizionale(imponibile, r.regionale);
-  const com = addizionale(imponibile, r.comunale);
-  // La somma integrativa non abbatte imposta: si aggiunge al netto.
-  const integrativa = sommaIntegrativa(imponibile);
+  const regional = surtax(taxable, r.regional);
+  const municipal = surtax(taxable, r.municipal);
+  // The low-income supplement does not reduce tax: it is added to net pay.
+  const supplement = lowIncomeSupplement(taxable);
 
-  const netto = imponibile - irpef - reg - com + integrativa;
+  const net = taxable - incomeTax - regional - municipal + supplement;
   return {
-    lordo,
-    inps,
-    imponibileIrpef: imponibile,
-    irpefLorda: lorda,
-    detrazioni: Math.min(detrazioni, lorda),
-    irpef,
-    regionale: reg,
-    comunale: com,
-    integrativa,
-    netto,
-    tasso: lordo > 0 ? netto / lordo : 0,
-    perMensilita: netto / r.mensilita,
-    mensilita: r.mensilita,
+    gross,
+    socialSecurity: contributions,
+    taxableIncome: taxable,
+    grossTax,
+    credits: Math.min(credits, grossTax),
+    incomeTax,
+    regionalSurtax: regional,
+    municipalSurtax: municipal,
+    supplement,
+    net,
+    keptShare: gross > 0 ? net / gross : 0,
+    perPayPeriod: net / r.payPeriods,
+    payPeriods: r.payPeriods,
   };
 }
 
 /**
- * Quanto resta davvero di un lordo in piu'.
+ * How much of one more gross euro actually survives.
  *
- * Si calcola per differenza e non con una formula, perche' sul margine si
- * accavallano quattro cose insieme: lo scaglione IRPEF, la detrazione che si
- * spegne, l'1% INPS sopra la prima fascia e gli scaglioni delle addizionali.
- * Sommarle a mano e' esattamente il conto che nessuno fa giusto.
+ * Computed by difference rather than with a formula, because four things pile
+ * up at the margin: the income tax bracket, the employment credit phasing out,
+ * the extra 1% of social security above the first band, and the surtax
+ * brackets. Adding those up by hand is precisely the calculation nobody gets
+ * right.
  */
-export function marginale(
-  base: VoceLorda,
+export function marginalRate(
+  base: GrossPay,
   extra: number,
-  r: Regime = REGIME_DEFAULT
-): { netto: number; quota: number; aliquota: number } {
-  if (extra === 0) return { netto: 0, quota: 0, aliquota: 0 };
-  const prima = dalLordoAlNetto(base, r).netto;
-  const dopo = dalLordoAlNetto({ ...base, equity: (base.equity ?? 0) + extra }, r).netto;
-  const netto = dopo - prima;
-  const quota = netto / extra;
-  return { netto, quota, aliquota: 1 - quota };
+  r: TaxRegime = DEFAULT_REGIME
+): { net: number; kept: number; rate: number } {
+  if (extra === 0) return { net: 0, kept: 0, rate: 0 };
+  const before = grossToNet(base, r).net;
+  const after = grossToNet({ ...base, equity: (base.equity ?? 0) + extra }, r).net;
+  const net = after - before;
+  const kept = net / extra;
+  return { net, kept, rate: 1 - kept };
 }

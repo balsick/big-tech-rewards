@@ -1,33 +1,21 @@
 import { useId, useState, type ReactNode } from "react";
 import { parseNum, toField, type Lang } from "../lib/format.ts";
-import { Chevron } from "./Icone.tsx";
+import { Chevron } from "./Icons.tsx";
 
-// I mattoncini. Poche cose, e una regola: un campo che accetta un numero
-// accetta anche un conto ("1200+300"), perche' e' cosi' che la gente arriva al
-// numero che vuole provare.
+// The building blocks. Few of them, and one rule: any field that takes a number
+// also takes a sum ("1200+300"), because that is how people arrive at the
+// number they want to try.
 
-export function Card({
-  children,
-  className = "",
-  delay = 0,
-}: {
-  children: ReactNode;
-  className?: string;
-  delay?: number;
-}) {
-  return (
-    <section className={`card ${className}`} style={delay ? { animationDelay: `${delay}ms` } : undefined}>
-      {children}
-    </section>
-  );
+export function Card({ children, className = "" }: { children: ReactNode; className?: string }) {
+  return <section className={`card ${className}`}>{children}</section>;
 }
 
 /**
- * Un campo numerico con memoria di cosa ci hai scritto.
+ * A numeric field that remembers what you typed into it.
  *
- * Tiene il testo, non il numero: cosi' si puo' scrivere "1.2" senza che il
- * campo si riscriva sotto le dita a ogni tasto, e un conto a meta' ("1200+")
- * non e' un errore, e' solo un conto non finito.
+ * It holds the text, not the number: that way "1.2" can be typed without the
+ * field rewriting itself under your fingers on every keystroke, and a half
+ * finished sum ("1200+") is not an error, just a sum that is not finished.
  */
 export function NumField({
   label,
@@ -37,7 +25,7 @@ export function NumField({
   suffix,
   lang,
   dec = 2,
-  id: forced,
+  id: forcedId,
   disabled,
   info,
 }: {
@@ -50,17 +38,17 @@ export function NumField({
   dec?: number;
   id?: string;
   disabled?: boolean;
-  /** la spiegazione lunga, dietro al bottoncino accanto all'etichetta */
+  /** the long explanation, behind the little button next to the label */
   info?: ReactNode;
 }) {
-  const auto = useId();
-  const id = forced ?? auto;
-  const [testo, setTesto] = useState<string | null>(null);
-  const mostrato = testo ?? toField(value, lang, dec);
-  const valido = testo === null || parseNum(testo) !== null;
+  const autoId = useId();
+  const id = forcedId ?? autoId;
+  const [text, setText] = useState<string | null>(null);
+  const shown = text ?? toField(value, lang, dec);
+  const valid = text === null || parseNum(text) !== null;
 
   return (
-    <div className="campo">
+    <div className="field">
       <label className="lab" htmlFor={id}>
         {label}
         {suffix ? <span style={{ color: "var(--muted)", fontWeight: 500 }}> {suffix}</span> : null}
@@ -68,18 +56,18 @@ export function NumField({
       </label>
       <input
         id={id}
-        className="inp cifra"
+        className="inp tnum"
         inputMode="decimal"
         autoComplete="off"
         disabled={disabled}
-        aria-invalid={valido ? undefined : true}
-        value={mostrato}
+        aria-invalid={valid ? undefined : true}
+        value={shown}
         onChange={(e) => {
-          setTesto(e.target.value);
+          setText(e.target.value);
           const n = parseNum(e.target.value);
           if (n !== null) onChange(n);
         }}
-        onBlur={() => setTesto(null)}
+        onBlur={() => setText(null)}
       />
       {hint ? <p className="hint">{hint}</p> : <span />}
     </div>
@@ -99,11 +87,11 @@ export function DateField({
 }) {
   const id = useId();
   return (
-    <div className="campo">
+    <div className="field">
       <label className="lab" htmlFor={id}>
         {label}
       </label>
-      <input id={id} className="inp cifra" type="date" value={value} onChange={(e) => onChange(e.target.value)} />
+      <input id={id} className="inp tnum" type="date" value={value} onChange={(e) => onChange(e.target.value)} />
       {hint ? <p className="hint">{hint}</p> : <span />}
     </div>
   );
@@ -123,13 +111,7 @@ export function Segmented<T extends string>({
   return (
     <div className="seg" role="group" aria-label={label}>
       {options.map((o) => (
-        <button
-          key={o.id}
-          type="button"
-          title={o.title}
-          aria-pressed={value === o.id}
-          onClick={() => onChange(o.id)}
-        >
+        <button key={o.id} type="button" title={o.title} aria-pressed={value === o.id} onClick={() => onChange(o.id)}>
           {o.label}
         </button>
       ))}
@@ -152,7 +134,7 @@ export function Select<T extends string>({
 }) {
   const id = useId();
   return (
-    <div className="campo">
+    <div className="field">
       <label className="lab" htmlFor={id}>
         {label}
       </label>
@@ -191,27 +173,29 @@ export function Check({
   );
 }
 
-/** Una riga di una lista di voci: nome a sinistra, cifra a destra. */
+/** A row in a list of entries: name on the left, figure on the right. */
 export function Line({
   name,
   hint,
   value,
   tone,
-  strong,
   sum,
 }: {
   name: string;
   hint?: string;
   value: string;
   tone?: "neg" | "pos";
-  strong?: boolean;
   sum?: boolean;
 }) {
   return (
     <li className={sum ? "sum" : undefined}>
       <span>
-        <span style={strong ? { fontWeight: 650 } : undefined}>{name}</span>
-        {hint ? <span className="hint" style={{ display: "block" }}>{hint}</span> : null}
+        {name}
+        {hint ? (
+          <span className="hint" style={{ display: "block" }}>
+            {hint}
+          </span>
+        ) : null}
       </span>
       <span className={tone}>{value}</span>
     </li>
@@ -221,17 +205,17 @@ export function Line({
 export function Disclosure({
   label,
   children,
-  open: forced,
+  open: forcedOpen,
 }: {
   label: string;
   children: ReactNode;
   open?: boolean;
 }) {
-  const [open, setOpen] = useState(forced ?? false);
+  const [open, setOpen] = useState(forcedOpen ?? false);
   return (
     <div>
       <button className="btn link" type="button" onClick={() => setOpen(!open)} aria-expanded={open}>
-        <Chevron aperto={open} />
+        <Chevron open={open} />
         {label}
       </button>
       {open ? <div style={{ marginTop: 10 }}>{children}</div> : null}

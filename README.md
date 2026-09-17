@@ -1,248 +1,254 @@
 # Big Tech Rewards
 
-Due simulatori per i compensi in azioni — **RSU** ed **ESPP** — con la fiscalità
-italiana del reddito da lavoro dipendente. Sito statico, tutto il conto nel
-browser, nessuna raccolta di dati.
+Two simulators for equity compensation — **RSU** and **ESPP** — under Italian
+payroll taxation. A static site, every calculation in the browser, no data
+collection.
 
 👉 **[balsick.github.io/big-tech-rewards](https://balsick.github.io/big-tech-rewards/)**
 
-> *English:* two calculators for equity compensation (RSU and ESPP) under
-> Italian payroll taxation. Static site, everything computed client-side, no
-> data collection. The UI is bilingual (IT/EN); the code and this README are in
-> Italian, because the tax rules they model are.
+The interface is bilingual (Italian / English). The code, the comments and this
+README are in English; the tax rules they model are Italian, and so are the
+Italian-language strings in `src/i18n/it.ts`.
 
 ---
 
-## ⚠️ Non è uno strumento ufficiale
+## ⚠️ This is not an official tool
 
-**Non è associato, approvato o sponsorizzato da nessuna azienda, nessun piano
-azionario, nessun broker e nessuna amministrazione fiscale.** Aliquote, formule
-e quotazioni possono essere sbagliate, incomplete o superate. Gli autori
-**declinano ogni responsabilità** sulla correttezza delle informazioni fornite e
-su qualsiasi decisione presa in base a esse. Non è consulenza finanziaria,
-fiscale o di investimento: verifica sempre i numeri con la tua busta paga, i
-documenti del tuo piano e un professionista.
+**It is not affiliated with, endorsed by or sponsored by any company, stock
+plan, broker or tax authority.** Rates, formulas and quotes may be wrong,
+incomplete or out of date. The authors **disclaim all responsibility** for the
+correctness of the information provided and for any decision taken on the basis
+of it. This is not financial, tax or investment advice: always check the numbers
+against your payslip, your plan documents and a professional.
 
-## 🔒 Nessuna raccolta di dati
+## 🔒 No data collection
 
-Nessun analytics, nessun cookie, nessun tracker, nessun server — non c'è un
-backend a cui questa pagina *potrebbe* mandare qualcosa. I numeri che scrivi
-restano nella memoria della pagina e se ne vanno quando la chiudi.
+No analytics, no cookies, no trackers, no server — there is no backend this page
+*could* send anything to. The numbers you type stay in the page's memory and go
+away when you close it.
 
-Se ti scoccia ricompilare i moduli ogni volta, c'è un **tasto esplicito** in
-fondo alla colonna di sinistra di ogni strumento: salva i campi nel
-`localStorage` di quel browser, su quel dispositivo, e «Dimentica tutto» accanto
-li rimuove. Niente salvataggio automatico e niente casella preselezionata: una
-promessa di non conservare nulla vale se è l'utente a decidere quando fare
-eccezione. Senza premerlo, in `localStorage` finiscono solo tre preferenze —
-lingua, tema e le aliquote delle addizionali — mai un importo.
+If retyping the forms every visit is a nuisance, there is an **explicit button**
+at the foot of each tool's left column: it saves the fields in that browser's
+`localStorage`, on that device, and "Forget everything" next to it removes them.
+No autosave and no pre-ticked box: a promise to keep nothing holds if the user
+decides when to make the exception. Without pressing it, `localStorage` holds
+only three preferences — language, theme and your local surtax rates — never an
+amount.
 
-L'unica richiesta di rete è a `quote.json`, servito da questa stessa origine.
-C'è un secondo fetch **opzionale**, solo se premi «aggiorna il cambio»: va a
-[Frankfurter](https://frankfurter.dev) per il riferimento BCE EUR/USD del
-giorno, e non manda niente oltre la richiesta.
+The only network request is to `quote.json`, served from this same origin. There
+is a second, **optional** fetch, only if you press "refresh the rate": it goes to
+[Frankfurter](https://frankfurter.dev) for the day's ECB EUR/USD reference, and
+sends nothing beyond the request itself.
 
 ---
 
-## Cosa c'è dentro
+## What is in it
 
 ### ESPP
 
-Il piano di acquisto azioni a sconto, e le due cose che nessun conto a mente
-indovina:
+The discounted share purchase plan, and the two things no mental arithmetic gets
+right:
 
-- **il lookback** — il prezzo che paghi è lo sconto sul **minore** fra il valore
-  a inizio periodo e quello del giorno dell'acquisto, per cui il piano conviene
-  anche quando il titolo scende. Il minimo garantito non è lo sconto ma
-  `sconto/(1−sconto)`: col 15% è **+17,65%**, non +15%;
-- **lo sconto è reddito da lavoro**, non un guadagno di borsa: finisce in busta
-  come imponibile e le tasse vengono trattenute lì, nel cedolino del mese
-  dell'acquisto, senza che un euro di quel beneficio ti sia mai passato per il
-  conto.
+- **the lookback** — the price you pay is the discount on the **lower** of the
+  value at the start of the period and the value on purchase day, which is why
+  the plan pays off even when the stock falls. The guaranteed minimum is not the
+  discount but `discount/(1−discount)`: at 15% that is **+17.65%**, not +15%;
+- **the discount is employment income**, not a stock market gain: it lands on
+  your payslip as taxable pay and the tax is withheld right there, in the month
+  of the purchase, without a single euro of that benefit ever passing through
+  your account.
 
-La percentuale si sceglie con uno slider discreto 1–15% (i punti percentuali,
-come sul portale del piano) oppure si scrive libera, decimali compresi. Il
-pulsante **«Al minimo»** mette il prezzo dell'acquisto uguale a quello d'inizio
-— titolo fermo — così resta solo lo sconto: è il pavimento del piano.
+The percentage is picked with a discrete 1–15% slider, whole points as on the
+plan's own portal; the free field next to it is in **euro**, not in percent,
+because a hand-typed percentage is not another case — it is the slider's case
+typed worse. What the percentage cannot give you is the real amount: a window you
+joined halfway through, a month of unpaid leave, a cap in another currency.
+
+There is also the **$10,625 per period cap**, which is not a round number picked
+at random but the US tax limit: $25,000 a year of market value at grant, bought
+with $21,250 of contributions at a 15% discount. It starts to bite above roughly
+€123,000 of gross salary, and the tool says so when it does — otherwise the
+"refund" suddenly becomes enormous with nothing to explain it.
+
+The **"try the floor"** button sets the purchase price equal to the starting one
+— a flat stock — so only the discount is left: the plan's floor.
 
 ### RSU
 
-Le unità sono il fatto, il valore è una lente. Il pezzo che questo strumento
-aggiunge è la **prospettiva a tre anni** su una **lista** di assegnazioni, con
-vestizione annuale, 30-30-40, trimestrale o mensile, e con le trimestrali
-allineabili al calendario fisso del piano.
+The units are the fact, the value is a lens. What this tool adds is the
+**three-year projection** over a **list** of grants, with annual, 30-30-40,
+quarterly or monthly vesting, and quarterly vests optionally snapped to the
+plan's fixed calendar.
 
-Il grant si scrive **in dollari**, non in azioni, perché è così che viene
-comunicato: le unità sono il risultato, e le fissa il prezzo del **giorno
-dell'assegnazione** — che lo strumento pesca dallo storico. È anche il modo di
-vedere una cosa che in azioni non si nota: due grant dello stesso importo
-assegnati in due anni diversi valgono oggi cifre molto diverse.
+It is needed because with a new grant every year and quarterly vesting, in any
+given year slices of three or four different grants vest — and **the taxman adds
+up everything that vests in the same year**. It is the year's total that sets the
+rate, not the individual tranche, so looking at one grant at a time gives the
+wrong number.
 
-Per un grant con la data **nel futuro** una chiusura non esiste, quindi il
-prezzo diventa un campo, precompilato con l'ultima quotazione nota e
-riscrivibile: è lì che si prova «e se al prossimo grant il titolo fosse a».
+The grant is typed **in dollars**, not in shares, because that is how it is
+communicated: the units are the result, and the price on the **grant date** sets
+them — which the tool looks up in its stored history. It also shows something you
+cannot see in share counts: two grants of the same amount made in different years
+are worth very different sums today. For a grant dated **in the future** no close
+exists, so the price becomes a field, prefilled with the latest known quote and
+overwritable: that is where you try "and what if the stock were at…".
 
-Serve perché con un grant nuovo ogni anno e vestizioni trimestrali, in un anno
-qualsiasi vestono pezzi di tre o quattro grant diversi — e **il fisco somma
-tutto quello che vesta nello stesso anno**. È il totale dell'anno a decidere
-l'aliquota, non la singola tranche, quindi guardare un grant per volta dà il
-numero sbagliato.
+### Tax and local surtaxes
 
-### Tasse e addizionali
+Not a third screen: it is the **calibration** of the other two, at the foot of
+the left column in both. RSUs and ESPP answer "how much reaches me", and this
+panel is the part of that answer that depends on where you live.
 
-Non è una terza schermata: è la **taratura** delle altre due, in fondo alla
-colonna di sinistra di entrambe. Le RSU e l'ESPP rispondono a «quanto mi
-arriva», e questo pannello è il pezzo di quella risposta che dipende da dove
-abiti — non una domanda a parte.
-
-Il motore fiscale, con tutto quello che serve per un'aliquota marginale vera:
-
-| Voce | Valore 2026 | Note |
+| Item | 2026 value | Notes |
 | --- | --- | --- |
-| Scaglioni IRPEF | 23% ≤ 28.000 · 33% 28–50.000 · 43% > 50.000 | la seconda è scesa dal 35% col bilancio 2026 |
-| INPS | 9,19% + minori, +1% oltre 56.224 €, stop a 122.295 € | prima fascia e massimale 2026 |
-| Detrazione lavoro dipendente | art. 13 co. 1 TUIR | 1.955 / 1.910 + 1.190·… / 1.910·… |
-| Cuneo fiscale | 1.000 € fra 20–32.000, in calo fino a 40.000 | più la somma integrativa sotto i 20.000 |
-| Recupero oltre 200.000 | −440 € di detrazioni | neutralizza il taglio al 33% |
-| Addizionale regionale | Piemonte 2026-27: 1,62 / 2,68 / 3,31 / 3,33% | **modificabile** |
-| Addizionale comunale | Torino: 0,8 / 1,1 / 1,2%, esenzione 11.790 € | **modificabile** |
+| Income tax brackets | 23% ≤ 28,000 · 33% 28–50,000 · 43% > 50,000 | the second fell from 35% in the 2026 budget |
+| Social security | 9.19% + minor rates, +1% above €56,224, stops at €122,295 | 2026 first band and ceiling |
+| Employment credit | art. 13 §1 | 1,955 / 1,910 + 1,190·… / 1,910·… |
+| Payroll tax cut | €1,000 between 20–32,000, fading to 40,000 | plus the low-income supplement below 20,000 |
+| Clawback above 200,000 | −€440 of credits | neutralises the cut to 33% |
+| Regional surtax | Piedmont 2026-27: 1.62 / 2.68 / 3.31 / 3.33% | **editable** |
+| Municipal surtax | Turin: 0.8 / 1.1 / 1.2%, exemption €11,790 | **editable** |
 
-Le addizionali sono l'unica parte del conto che nessuna costante nazionale può
-indovinare — cambiano per regione e per comune e su una RAL da 50.000 valgono
-quasi 1.800 euro l'anno — quindi sono **tutte modificabili**, aliquote e
-scaglioni, e restano salvate fra una visita e l'altra.
+Local surtaxes are the only part of the calculation no national constant can
+guess — they change by region and municipality and come to nearly €1,800 a year
+on a €50,000 salary — so **all of them are editable**, rates and brackets, and
+they persist between visits.
 
-L'aliquota marginale si calcola **per differenza** e non con una formula, perché
-sul margine si accavallano quattro cose: lo scaglione IRPEF, le detrazioni che
-si spengono, l'1% INPS sopra la prima fascia e gli scaglioni delle addizionali.
-Il risultato è una curva che non si indovina: il punto peggiore è **intorno ai
-36.000 di RAL, dove il margine reale sfiora il 63%** — venti punti sopra
-l'aliquota nominale, e più di quanto paga chi sta a 70.000.
+The marginal rate is computed **by difference** rather than with a formula,
+because four things pile up at the margin: the income tax bracket, the credits
+phasing out, the extra 1% of social security above the first band, and the surtax
+brackets. The result is a curve you would not guess: the worst point is **around
+€36,000 of gross salary, where the real margin approaches 63%** — twenty points
+above the nominal rate, and more than someone on €70,000 pays.
 
 ---
 
-## Le quotazioni, e il problema del CORS
+## Quotes, and the CORS problem
 
-Il fornitore che ha le chiusure storiche (Yahoo Finance) **non manda gli header
-CORS**: una `fetch` dalla pagina viene bloccata dal browser, e non c'è niente
-che il codice del client possa fare al riguardo. Verificato:
+The provider that has the historical closes (Yahoo Finance) **does not send CORS
+headers**: a `fetch` from the page is blocked by the browser, and there is
+nothing client code can do about it. Verified:
 
 ```
 $ curl -sS -D - -H 'Origin: https://balsick.github.io' \
     'https://query1.finance.yahoo.com/v8/finance/chart/SYMBOL?interval=1d&range=5d' \
     | grep -i access-control
-# (niente)
+# (nothing)
 ```
 
-Lo stesso vale per Stooq. Le alternative CORS-aperte per le **azioni** vogliono
-una chiave, e una chiave dentro un bundle statico è una chiave pubblica.
-L'unica fonte che il browser può chiamare da solo è Frankfurter, che però
-conosce solo le **valute**.
+The same goes for Stooq. The CORS-open alternatives for **equities** want an API
+key, and a key inside a static bundle is a public key. The only source the browser
+can call by itself is Frankfurter, which knows only **currencies**.
 
-### La soluzione adottata
+### What this repo does
 
-La quotazione la prende la **CI**, non il browser:
+CI fetches the quote, not the browser:
 
-1. `.github/workflows/deploy.yml` gira a ogni push e ogni mattina alle 06:00
-   UTC, da martedì a sabato — cioè dopo ogni chiusura;
-2. `scripts/fetch-quote.mjs` legge il simbolo dal secret `QUOTE_SYMBOL`,
-   scarica la quotazione **nel runner** e scrive `public/quote.json`;
-3. il build finisce dentro l'artefatto di Pages, e la pagina legge
-   `quote.json` **dalla propria origine**.
+1. `.github/workflows/deploy.yml` runs on every push and every morning at 06:00
+   UTC, Tuesday to Saturday — that is, after every close;
+2. `scripts/fetch-quote.mjs` reads the symbol from the `QUOTE_SYMBOL` secret,
+   downloads the quote **inside the runner** and writes `public/quote.json`;
+3. the build ends up in the Pages artifact, and the page reads `quote.json`
+   **from its own origin**.
 
-Risultato: nessun CORS, nessuna chiave nel bundle, nessuna richiesta a terzi
-mentre uno naviga, e un prezzo fermo al massimo all'ultima chiusura. Il campo
-resta sempre riscrivibile a mano, che è l'unica cosa che funziona comunque.
+Result: no CORS, no key in the bundle, no third-party request while you browse,
+and a price at most one close old. The field always stays overwritable by hand,
+which is the only thing that works regardless.
 
-`quote.json` si rigenera a ogni deploy, quindi la schedule sta sul deploy e non
-su un workflow a parte: **un commit fatto con `GITHUB_TOKEN` non fa scattare
-altri workflow**, e un giro che aggiornasse il file aspettandosi che il deploy
-parta da solo non pubblicherebbe mai niente. Il secondo workflow,
-`refresh-quote.yml`, serve solo ad aggiungere allo storico committato le date
-del piano appena passate — sei volte l'anno — e ci pensa il deploy del mattino
-dopo a portarle online.
+`quote.json` is regenerated on every deploy, which is why the schedule sits on
+the deploy rather than on a separate workflow: **a commit made with
+`GITHUB_TOKEN` does not trigger other workflows**, so a job that refreshed the
+file expecting the deploy to start on its own would never publish anything. The
+second workflow, `refresh-quote.yml`, exists only to append newly passed plan
+dates to the committed history — six times a year — and the next morning's
+deploy takes them online.
 
-### Le alternative, e perché no
+### The alternatives, and why not
 
-| Strategia | Verdetto |
+| Strategy | Verdict |
 | --- | --- |
-| `fetch` diretta a Yahoo/Stooq dal browser | **impossibile**: nessun header CORS |
-| API con chiave (Finnhub, Twelve Data, Alpha Vantage) | la chiave finirebbe nel bundle, cioè pubblica |
-| Proxy CORS pubblico (`corsproxy.io`, `r.jina.ai`) | inaffidabile, e manderebbe il simbolo a un terzo |
-| Proxy proprio (Cloudflare Worker, funzione Vercel) | funziona e dà il tempo reale, ma non è più un sito solo statico: un servizio in più da gestire |
-| **Quote generata in CI** ✅ | quello che c'è: same-origin, zero chiavi, un giorno di ritardo |
-| Solo inserimento manuale | resta sempre disponibile come ripiego, e la pagina lo dice |
+| Direct `fetch` to Yahoo/Stooq from the browser | **impossible**: no CORS headers |
+| Keyed API (Finnhub, Twelve Data, Alpha Vantage) | the key would ship in the bundle, i.e. public |
+| Public CORS proxy (`corsproxy.io`, `r.jina.ai`) | unreliable, and would hand the symbol to a third party |
+| Your own proxy (Cloudflare Worker, Vercel function) | works and gives real time, but it is no longer a purely static site: one more service to run |
+| **Quote generated in CI** ✅ | what is here: same-origin, no keys, one day behind |
+| Manual entry only | always available as a fallback, and the page says so |
 
-Se un giorno servisse il tempo reale, il posto dove metterlo è il proxy
-proprio: `caricaQuote()` in [`src/lib/prices.ts`](src/lib/prices.ts) cambierebbe
-di una riga.
+If real time were ever needed, the place for it is your own proxy: `loadQuote()`
+in [`src/lib/prices.ts`](src/lib/prices.ts) would change by one line.
 
-## Niente ticker nei sorgenti
+## No ticker in the sources
 
-Da nessuna parte in questo repository sono scritti il nome dell'azienda o il
-simbolo del titolo. Il simbolo vive in un **GitHub secret**, entra dall'ambiente
-nel runner e non esce: i file che ne derivano contengono solo numeri e date.
+Nowhere in this repository are the company name or the ticker written down. The
+symbol lives in a **GitHub secret**, enters the runner from the environment and
+does not leave it: the files derived from it contain only numbers and dates.
 
-- `src/data/reference-prices.json` — le chiusure di riferimento nei soli giorni
-  che il piano usa: il **20 di febbraio, maggio, agosto e novembre** (le
-  vestizioni) e il **1° di aprile e di ottobre** (gli acquisti ESPP). Quando quel
-  giorno il mercato era chiuso vale l'ultima chiusura precedente, e `closeOn`
-  dice di quando è.
-- `public/quote.json` — l'ultima chiusura disponibile, generata in CI.
+- `src/data/reference-prices.json` — the reference closes on the only days the
+  plan uses: the **20th of February, May, August and November** (the vestings)
+  and the **1st of April and October** (the ESPP purchases). When the market was
+  shut on that day, the previous close applies and `closeOn` says which day it is
+  from.
+- `public/quote.json` — the latest close available, generated in CI.
 
-Anche i log delle Action sono puliti: `fetch-quote.mjs` non stampa mai il
-simbolo, perché su un repo pubblico quei log li legge chiunque.
+The Action logs are clean too: `fetch-quote.mjs` never prints the symbol, because
+on a public repository anyone can read those logs.
 
 ---
 
-## Far girare tutto in locale
+## Running it locally
 
 ```bash
 npm install
 npm run dev          # http://localhost:5173/big-tech-rewards/
-npm test             # 24 test sul motore fiscale, ESPP e RSU (zero dipendenze)
+npm test             # 25 tests on the tax engine, ESPP and RSU (no dependencies)
 npm run typecheck
 npm run build
 ```
 
-Per aggiornare la quotazione in locale serve il simbolo nell'ambiente — non
-committare il valore da nessuna parte:
+To refresh the quote locally you need the symbol in the environment — do not
+commit the value anywhere:
 
 ```bash
 QUOTE_SYMBOL=... npm run quote -- --history
 ```
 
-### Metterlo online sul proprio account
+### Putting it online on your own account
 
-1. `Settings → Secrets and variables → Actions` → nuovo secret
-   **`QUOTE_SYMBOL`** con il simbolo del titolo;
+1. `Settings → Secrets and variables → Actions` → new secret **`QUOTE_SYMBOL`**
+   with the ticker;
 2. `Settings → Pages` → *Source: **GitHub Actions***;
-3. cambia `base` in [`vite.config.ts`](vite.config.ts) e `REPO` in
-   [`src/lib/meta.ts`](src/lib/meta.ts) se il repo ha un altro nome;
-4. adatta le addizionali nel pannello **Tasse e addizionali** (in fondo alla
-   colonna di sinistra dei due strumenti) al tuo comune, o cambia i default in
-   [`src/lib/tax.ts`](src/lib/tax.ts).
+3. change `base` in [`vite.config.ts`](vite.config.ts) and `REPO` in
+   [`src/lib/meta.ts`](src/lib/meta.ts) if the repository has another name;
+4. adjust the surtaxes in the **Tax & local surtaxes** panel to your own town, or
+   change the defaults in [`src/lib/tax.ts`](src/lib/tax.ts).
 
-Senza il secret il deploy va avanti comunque (`--soft`): il sito resta con il
-`quote.json` già in repo, e i prezzi si scrivono a mano.
+Without the secret the deploy still goes through (`--soft`): the site keeps the
+`quote.json` already in the repo, and prices are typed by hand.
 
-## Com'è fatto
+## How it is built
 
-Vite, React, TypeScript e un foglio di stile scritto a mano — nessun framework
-CSS, nessuna libreria di grafici (il grafico delle vestizioni sono trentasei
-rettangoli di SVG che leggono le variabili del tema), nessuna dipendenza di
-test. Il bundle sta in 90 kB compressi.
+Vite, React, TypeScript and a hand-written stylesheet — no CSS framework, no
+charting library (the vesting chart is twenty SVG rectangles reading the theme
+variables), no test dependencies. The bundle is about 92 kB gzipped.
 
 ```
-src/lib/tax.ts       IRPEF, INPS, detrazioni, addizionali, aliquota marginale
-src/lib/espp.ts      lookback, sconto, minimo garantito
-src/lib/rsu.ts       tranche, calendario del piano, prospetto per anno
-src/lib/prices.ts    quote.json, storico, cambio live
-src/i18n/            i dizionari italiano e inglese
-test/tax.test.ts     i test, eseguibili con il solo `node --test`
+src/lib/tax.ts       income tax, social security, credits, surtaxes, marginal rate
+src/lib/espp.ts      lookback, discount, guaranteed floor, plan cap
+src/lib/rsu.ts       tranches, plan calendar, per-year projection
+src/lib/prices.ts    quote.json, stored history, live FX
+src/lib/storage.ts   the explicit save, and nothing automatic
+src/i18n/            the Italian and English dictionaries
+test/tax.test.ts     the tests, runnable with plain `node --test`
 ```
 
-## Licenza
+The interface follows the [Impeccable](https://impeccable.style) craft floor in
+**Operate** mode: a fixed rem type scale rather than fluid, one consistent
+control vocabulary, accent colour reserved for actions and states, drawn icons
+instead of unicode glyphs, no eyebrow labels above headings, no nested cards, and
+a single moment of motion — the number redrawing when a field changes — rather
+than a staggered entrance at load.
 
-[MIT](LICENSE). Nessuna garanzia, espressa o implicita — vedi il disclaimer
-sopra.
+## Licence
+
+[MIT](LICENSE). No warranty, express or implied — see the disclaimer above.

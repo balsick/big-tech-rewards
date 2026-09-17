@@ -1,69 +1,68 @@
 import { eur0, num } from "../lib/format.ts";
 import type { Lang } from "../i18n/index.ts";
-import type { Prospetto } from "../lib/rsu.ts";
+import type { ChartPeriod, Projection } from "../lib/rsu.ts";
 
-// Il grafico delle vestizioni: un trimestre per barra, i colori sono i grant.
+// The vesting chart: one quarter per bar, the colours are the grants.
 //
-// A mesi era illeggibile: trentasei colonne larghe cinque pixel su un telefono,
-// e nove su dieci vuote, perche' un piano trimestrale produce al massimo dodici
-// vestizioni in tre anni. La granularita' giusta e' quella del piano, non
-// quella del calendario — e a tredici colonne le barre tornano larghe
-// abbastanza da portarsi sopra il proprio valore, che e' quello che si va a
-// cercare guardando un grafico del genere.
+// By month it was unreadable: thirty-six columns five pixels wide on a phone,
+// nine out of ten empty, because a quarterly plan produces at most twelve vests
+// in three years. The right granularity is the plan's, not the calendar's — and
+// at thirteen columns the bars are wide enough to carry their own value above
+// them, which is what you go looking for in a chart like this.
 //
-// SVG scritto a mano: sono venti rettangoli e due assi, e una libreria di
-// grafici peserebbe piu' di tutto il resto della pagina. I colori vengono dalle
-// variabili del tema, quindi segue lo scuro senza sapere che esiste.
+// Hand-written SVG: twenty rectangles and two axes, and a charting library
+// would weigh more than the rest of the page put together. The colours come
+// from the theme variables, so it follows dark mode without knowing it exists.
 
-const COLORI = ["var(--chart-1)", "var(--chart-2)", "var(--chart-3)", "var(--chart-4)", "var(--chart-5)"];
+const COLOURS = ["var(--chart-1)", "var(--chart-2)", "var(--chart-3)", "var(--chart-4)", "var(--chart-5)"];
 
-export const coloreGrant = (i: number) => COLORI[i % COLORI.length];
+export const grantColour = (i: number) => COLOURS[i % COLOURS.length];
 
 const W = 720;
 const H = 230;
 const PAD = { t: 22, r: 6, b: 38, l: 52 };
 
 export default function VestingChart({
-  p,
+  projection,
   grants,
   lang,
-  mostraEuro,
+  showEuro,
 }: {
-  p: Prospetto;
-  grants: { id: string; etichetta: string }[];
+  projection: Projection;
+  grants: { id: string; label: string }[];
   lang: Lang;
-  mostraEuro: boolean;
+  showEuro: boolean;
 }) {
-  const q = p.trimestri;
-  if (!q.length) return null;
+  const quarters = projection.quarters;
+  if (!quarters.length) return null;
 
-  const valore = (x: Prospetto["trimestri"][number]) => (mostraEuro ? x.lordoEur : x.unita);
-  const max = Math.max(...q.map(valore), 1);
-  // La scala si arrotonda in alto a una cifra leggibile: un asse che finisce a
-  // 11.383 non dice niente, uno che finisce a 12.000 si legge di sfuggita.
-  const passo = Math.pow(10, Math.floor(Math.log10(max)));
-  const tetto = Math.ceil(max / (passo / 2)) * (passo / 2);
+  const valueOf = (q: ChartPeriod) => (showEuro ? q.grossEur : q.units);
+  const max = Math.max(...quarters.map(valueOf), 1);
+  // The scale rounds up to a readable figure: an axis ending at 11,383 says
+  // nothing, one ending at 12,000 reads at a glance.
+  const step = Math.pow(10, Math.floor(Math.log10(max)));
+  const ceiling = Math.ceil(max / (step / 2)) * (step / 2);
 
-  const bw = (W - PAD.l - PAD.r) / q.length;
+  const bw = (W - PAD.l - PAD.r) / quarters.length;
   const x = (i: number) => PAD.l + i * bw;
-  const y = (v: number) => PAD.t + (1 - v / tetto) * (H - PAD.t - PAD.b);
-  const indice = new Map(grants.map((g, i) => [g.id, i]));
-  const fmt = (v: number) => (mostraEuro ? eur0(v, lang) : num(v, lang, 0));
+  const y = (v: number) => PAD.t + (1 - v / ceiling) * (H - PAD.t - PAD.b);
+  const index = new Map(grants.map((g, i) => [g.id, i]));
+  const fmt = (v: number) => (showEuro ? eur0(v, lang) : num(v, lang, 0));
 
-  // Un'etichetta d'anno sotto il primo trimestre di ogni anno: sostituisce
-  // dodici etichette di mese che non ci starebbero comunque.
-  const primoDellAnno = new Set<number>();
-  const visti = new Set<number>();
-  q.forEach((t, i) => {
-    if (!visti.has(t.anno)) {
-      visti.add(t.anno);
-      primoDellAnno.add(i);
+  // A year label under the first quarter of each year, replacing twelve month
+  // labels that would not have fitted anyway.
+  const firstOfYear = new Set<number>();
+  const seen = new Set<number>();
+  quarters.forEach((q, i) => {
+    if (!seen.has(q.year)) {
+      seen.add(q.year);
+      firstOfYear.add(i);
     }
   });
 
   return (
     <svg className="chart" viewBox={`0 0 ${W} ${H}`} role="img" preserveAspectRatio="xMidYMid meet">
-      {[0, tetto / 2, tetto].map((v) => (
+      {[0, ceiling / 2, ceiling].map((v) => (
         <g key={v}>
           <line className="axis" x1={PAD.l} x2={W - PAD.r} y1={y(v)} y2={y(v)} opacity={v === 0 ? 1 : 0.4} />
           <text x={PAD.l - 8} y={y(v) + 3.5} textAnchor="end">
@@ -72,17 +71,17 @@ export default function VestingChart({
         </g>
       ))}
 
-      {q.map((t, i) => {
-        let cursore = 0;
-        const perAzione = t.unita > 0 ? t.lordoEur / t.unita : 0;
-        const tot = valore(t);
+      {quarters.map((q, i) => {
+        let cursor = 0;
+        const perUnit = q.units > 0 ? q.grossEur / q.units : 0;
+        const total = valueOf(q);
         return (
-          <g key={t.da}>
-            {t.per.map((seg) => {
-              const v = mostraEuro ? seg.unita * perAzione : seg.unita;
-              const y0 = y(cursore + v);
-              const h = Math.max(1.5, y(cursore) - y0);
-              cursore += v;
+          <g key={q.from}>
+            {q.byGrant.map((seg) => {
+              const v = showEuro ? seg.units * perUnit : seg.units;
+              const y0 = y(cursor + v);
+              const h = Math.max(1.5, y(cursor) - y0);
+              cursor += v;
               return (
                 <rect
                   key={seg.grant}
@@ -91,29 +90,29 @@ export default function VestingChart({
                   width={bw * 0.68}
                   height={h}
                   rx={2}
-                  fill={coloreGrant(indice.get(seg.grant) ?? 0)}
+                  fill={grantColour(index.get(seg.grant) ?? 0)}
                 />
               );
             })}
 
-            {/* Il valore sopra la barra: e' il numero che si va a cercare, e a
-                tredici colonne c'e' finalmente lo spazio per scriverlo. */}
-            {tot > 0 ? (
-              <text className="valore" x={x(i) + bw / 2} y={y(tot) - 6} textAnchor="middle">
-                {fmt(tot)}
+            {/* The value above the bar: it is the number people look for, and at
+                thirteen columns there is finally room to write it. */}
+            {total > 0 ? (
+              <text className="bar-value" x={x(i) + bw / 2} y={y(total) - 6} textAnchor="middle">
+                {fmt(total)}
               </text>
             ) : null}
 
-            {t.unita > 0 ? (
-              <title>{`${t.anno} Q${t.trimestre} — ${num(t.unita, lang, 2)} — ${eur0(t.lordoEur, lang)}`}</title>
+            {q.units > 0 ? (
+              <title>{`${q.year} Q${q.quarter} — ${num(q.units, lang, 2)} — ${eur0(q.grossEur, lang)}`}</title>
             ) : null}
 
             <text x={x(i) + bw / 2} y={H - PAD.b + 14} textAnchor="middle">
-              {`Q${t.trimestre}`}
+              {`Q${q.quarter}`}
             </text>
-            {primoDellAnno.has(i) ? (
-              <text className="anno" x={x(i) + bw / 2} y={H - PAD.b + 28} textAnchor="middle">
-                {t.anno}
+            {firstOfYear.has(i) ? (
+              <text className="bar-year" x={x(i) + bw / 2} y={H - PAD.b + 28} textAnchor="middle">
+                {q.year}
               </text>
             ) : null}
           </g>

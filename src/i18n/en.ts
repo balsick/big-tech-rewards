@@ -30,10 +30,10 @@ export const en: Dict = {
     taxYear: "Tax parameters",
   },
   common: {
-    ral: "Gross annual salary",
-    ralWhy:
+    salary: "Gross annual salary",
+    salaryWhy:
       "RSUs and ESPP are not stock market gains: they are employment income stacked on top of your salary. So an average tax rate tells you nothing — what matters is the bracket that extra income lands in, and to know that you need to know where you start from.",
-    ralWhy2:
+    salaryWhy2:
       "That is all it is used for, and it never leaves your device: it is not sent anywhere, and it is only stored if you ask for it with the button at the foot of this column.",
     whatIsThis: "What is this",
     price: "Share price",
@@ -73,24 +73,24 @@ export const en: Dict = {
     contribution: "How much you set aside",
     contributionHint: "share of your pay withheld from each payslip",
     saved: "Set aside over the period",
-    savedHint: (pct: string, mesi: number) =>
-      `${pct} of gross salary for ${mesi} months, extra months included`,
+    savedHint: (pct: string, months: number) =>
+      `${pct} of gross salary for ${months} months, extra months included`,
     savedManual: "typed in by hand: the percentage no longer drives it",
-    atMinimum: "Try the floor",
-    atMinimumHint:
+    flatStock: "Try the floor",
+    flatStockHint:
       "Sets the purchase-day price equal to the starting price: the stock does not move and only the discount is left. It is the plan’s floor — what you get if the market does nothing.",
-    atMinimumOn: "flat stock: only the discount is left",
+    flatStockOn: "flat stock: only the discount is left",
     youGain: "You gain",
-    gainLine: (roi: string, esborso: string, azioni: string, valore: string, mesi: number) =>
-      `${roi} of the ${esborso} it costs you, over ${mesi} months: ${azioni} shares worth ${valore}.`,
-    costBreak: (azioni: string, tasse: string) => `${azioni} of shares plus ${tasse} of tax on the discount.`,
+    gainLine: (roi: string, outlay: string, shares: string, value: string, months: number) =>
+      `${roi} of the ${outlay} it costs you, over ${months} months: ${shares} shares worth ${value}.`,
+    costBreak: (shares: string, tax: string) => `${shares} of shares plus ${tax} of tax on the discount.`,
     annualised: (r: string) =>
       `Annualised that is roughly ${r}: your money is tied up for about half the period, not all of it.`,
     payslipTitle: "Withheld on the purchase-month payslip",
-    payslipLine: (sconto: string, aliquota: string) =>
-      `The discount is worth ${sconto} and it is taxable pay: it is taxed on your payslip at ${aliquota}, your marginal rate.`,
-    payslipRest: (resto: string, delta: string, verso: string) =>
-      `${resto} that did not buy a whole share comes back to you, so your take-home that month is ${delta} ${verso} than usual.`,
+    payslipLine: (discount: string, rate: string) =>
+      `The discount is worth ${discount} and it is taxable pay: it is taxed on your payslip at ${rate}, your marginal rate.`,
+    payslipRest: (refund: string, delta: string, direction: string) =>
+      `${refund} that did not buy a whole share comes back to you, so your take-home that month is ${delta} ${direction} than usual.`,
     lower: "lower",
     higher: "higher",
     stepsTitle: "How you get there",
@@ -99,7 +99,7 @@ export const en: Dict = {
       referenceHint: (lookback: boolean): string =>
         lookback ? "the lower of start and purchase" : "the price on purchase day",
       buy: "Price you pay",
-      buyHint: (sconto: string, sul: string) => `${sconto} off ${sul}`,
+      buyHint: (discount: string, on: string) => `${discount} off ${on}`,
       savedUsd: "Set aside, in dollars",
       bought: "Shares bought",
       boughtHint: "whole shares only: the rest goes back on your payslip",
@@ -109,12 +109,12 @@ export const en: Dict = {
       tax: "Tax on the discount",
       out: "What you actually put in",
     },
-    ralEquivTitle: "Worth the same as a pay rise of",
-    ralEquivLine: (quota: number, guadagno: string, mese: string) =>
-      `That is ${quota}% of your salary, and it comes from ${guadagno} net over the period — ${mese} a month.`,
+    salaryEquivTitle: "Worth the same as a pay rise of",
+    salaryEquivLine: (share: number, gain: string, perMonth: string) =>
+      `That is ${share}% of your salary, and it comes from ${gain} net over the period — ${perMonth} a month.`,
     fellTitle: "The stock fell, and you still gain",
-    fell: (a: string, b: string) =>
-      `It went from ${a} to ${b}, and you pay the discount on the lower of the two: the discount applies to the low value, and the shares are worth that value.`,
+    fell: (to: string, b: string) =>
+      `It went from ${to} to ${b}, and you pay the discount on the lower of the two: the discount applies to the low value, and the shares are worth that value.`,
     planTitle: "The plan",
     discount: "Discount",
     lookbackOn: "Discount on the lower price",
@@ -123,8 +123,8 @@ export const en: Dict = {
     capUsd: "Cap per period",
     capUsdHint:
       "The US tax limit: $25,000 a year of value at grant, which with the 15% discount is bought with $21,250 of contributions — $10,625 per six-month window.",
-    capHit: (oltre: string, tetto: string) =>
-      `The plan stops at ${tetto} per period: ${oltre} set aside above the cap buys no shares and comes back on your payslip.`,
+    capHit: (above: string, cap: string) =>
+      `The plan stops at ${cap} per period: ${above} set aside above the cap buys no shares and comes back on your payslip.`,
     fractional: "Buys fractional shares",
     missing: "A number is missing: without the amount set aside, the prices and the rate there is no purchase to describe.",
   },
@@ -143,30 +143,30 @@ export const en: Dict = {
     grantValue: "Grant value",
     grantValueWhy:
       "In dollars, the way they tell you: the units are the result, and they are set by the share price on the grant date. It also shows something you cannot see in share counts — two grants of the same amount made in different years are worth very different sums today.",
-    grantValueHint: (unita: string, prezzo: string, data: string) =>
-      `${unita} units, at the ${prezzo} price of ${data}`,
-    grantValueHintManual: (unita: string, prezzo: string) =>
-      `${unita} units, at the ${prezzo} you typed`,
+    grantValueHint: (units: string, price: string, date: string) =>
+      `${units} units, at the ${price} price of ${date}`,
+    grantValueHintManual: (units: string, price: string) =>
+      `${units} units, at the ${price} you typed`,
     grantValueNoPrice: "the grant-date price is missing: type it below",
     grantPrice: "Price at grant",
     grantPriceFuture:
       "The grant is in the future: there is no closing price for that day yet. It starts from the last one on file — overwrite it to try another scenario.",
     grantSchedule: "Vesting",
     grantYears: "Length",
-    anni: (n: number) => (n === 1 ? "1 year" : `${n} years`),
+    yearCount: (n: number) => (n === 1 ? "1 year" : `${n} years`),
     years: "years",
     fixedDates: "Plan’s fixed dates",
     fixedDatesHint: (date: string) =>
       `Quarterly vesting snaps to the plan’s calendar (${date}) instead of falling exactly three months from the grant.`,
     schedule: {
-      annuale: "Annual",
-      annualeHint: "one a year, all equal",
+      annual: "Annual",
+      annualHint: "one a year, all equal",
       "30-30-40": "30-30-40",
       "30-30-40Hint": "three annual vests, the last one bigger",
-      trimestrale: "Quarterly",
-      trimestraleHint: "one every three months",
-      mensile: "Monthly",
-      mensileHint: "one a month",
+      quarterly: "Quarterly",
+      quarterlyHint: "one every three months",
+      monthly: "Monthly",
+      monthlyHint: "one a month",
     },
     horizon: "Horizon",
     chartTitle: "When they arrive",
@@ -174,16 +174,16 @@ export const en: Dict = {
       "One quarter per bar, the colours are the grants. Empty quarters are information: they are the months when nothing arrives.",
     noVesting: "Nothing vests within the chosen horizon.",
     horizonTitle: (n: number) => (n === 1 ? "Over the next year you get" : `Over the next ${n} years you get`),
-    totalLine: (unita: string, lordo: string) => `${unita} units, ${lordo} gross.`,
-    salaryCompare: (pct: number, da: string, a: string) =>
-      `Like a salary ${pct}% higher: from ${da} to ${a} net a year.`,
+    totalLine: (units: string, lordo: string) => `${units} units, ${lordo} gross.`,
+    salaryCompare: (pct: number, from: string, to: string) =>
+      `Like a salary ${pct}% higher: from ${from} to ${to} net a year.`,
     yearUnits: "units",
     yearGross: "Gross",
     yearRate: "Rate",
     yearShares: "Shares that reach you",
     yearSharesHint: "the rest go to withholding",
-    yearRalEquiv: "Equivalent salary",
-    yearRalEquivHint: "salary + that year’s RSUs",
+    yearSalaryEquiv: "Equivalent salary",
+    yearSalaryEquivHint: "salary + that year’s RSUs",
     tableTitle: "Every vest, one by one",
     tableDate: "Date",
     tableGrant: "Grant",
@@ -196,13 +196,13 @@ export const en: Dict = {
     priceNote:
       "The same price is used for every future vest: nobody knows the price two years out, and inventing one would give a precision that does not exist.",
   },
-  salva: {
+  save: {
     title: "Saving in this browser",
     button: "Save in this browser",
     buttonDirty: "Save changes",
     upToDate: "Saved",
     forget: "Forget everything",
-    savedOn: (quando: string) => `Last saved: ${quando}.`,
+    savedOn: (when: string) => `Last saved: ${when}.`,
     where:
       "It goes into this browser’s localStorage, on this device. It is not an account and not a file: none of your other devices will see it, and clearing the site data removes it. “Forget everything” removes it right away.",
     nothingLeaves:
@@ -215,24 +215,24 @@ export const en: Dict = {
     intro:
       "Local surtaxes are the one part of this calculation no national constant can guess: they vary by region and by municipality, and on a 50,000 salary they come to nearly 1,800 euro a year. They are prefilled with the rates in force in Turin, Piedmont.",
     marginalTitle: "Marginal rate",
-    marginalLine: (aliquota: string) =>
-      `The taxman takes ${aliquota} of every extra gross euro: that is the rate RSUs and ESPP are taxed at, not the average one.`,
+    marginalLine: (rate: string) =>
+      `The taxman takes ${rate} of every extra gross euro: that is the rate RSUs and ESPP are taxed at, not the average one.`,
     marginalWhy:
       "Four things pile up at the margin: the income tax bracket, the employment tax credit phasing out between 28,000 and 50,000, the extra 1% of social security above the first band, and the surtax brackets. Adding them up by hand is the calculation nobody gets right — here it is computed by difference.",
-    irpef: "Income tax brackets",
-    irpefHint:
+    incomeTax: "Income tax brackets",
+    incomeTaxHint:
       "Progressive by bracket: someone above 28,000 does not pay 33% on everything, they pay it on the slice between 28,000 and 50,000.",
     upTo: "up to",
     over: "above",
     rate: "Rate",
-    inps: "Social security contributions",
-    inpsRate: "Base rate",
-    inpsMinor: "Minor contributions",
-    inpsMinorHint: "short-time work and guarantee funds: they vary by sector and company size",
-    inpsFirstBand: "First pensionable band",
-    inpsFirstBandHint: "above this amount an extra 1% applies",
-    inpsCeiling: "Annual ceiling",
-    inpsCeilingHint: "above this no further contributions are due (enrolled after 1995)",
+    socialSecurity: "Social security contributions",
+    ssRate: "Base rate",
+    ssMinor: "Minor contributions",
+    ssMinorHint: "short-time work and guarantee funds: they vary by sector and company size",
+    ssFirstBand: "First pensionable band",
+    ssFirstBandHint: "above this amount an extra 1% applies",
+    ssCeiling: "Annual ceiling",
+    ssCeilingHint: "above this no further contributions are due (enrolled after 1995)",
     applyCeiling: "Apply the ceiling",
     regional: "Regional surtax",
     municipal: "Municipal surtax",
@@ -242,7 +242,7 @@ export const en: Dict = {
     months: "Pay periods",
     monthsHint: "how many payslips make a year, extra months included",
     presets: "Presets",
-    presetTorino: "Turin — Piedmont",
+    presetTurin: "Turin — Piedmont",
     presetFlat: "Single rate",
   },
 };

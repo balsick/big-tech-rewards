@@ -1,270 +1,270 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  COMUNALE_TORINO,
-  IRPEF_2026,
-  REGIME_DEFAULT,
-  REGIONALE_PIEMONTE,
-  addizionale,
-  contributi,
-  dalLordoAlNetto,
-  detrazioneLavoro,
-  irpefLorda,
-  marginale,
-  ulterioreDetrazione,
-  INPS_2026,
+  MUNICIPAL_TURIN,
+  INCOME_TAX_2026,
+  DEFAULT_REGIME,
+  REGIONAL_PIEDMONT,
+  surtax,
+  socialSecurity,
+  grossToNet,
+  employmentCredit,
+  grossIncomeTax,
+  marginalRate,
+  extraCredit,
+  SOCIAL_SECURITY_2026,
 } from "../src/lib/tax.ts";
-import { minimoGarantito, simulaEspp, PIANO_ESPP, accantonamentoAtteso } from "../src/lib/espp.ts";
-import { prospetto, tranche, piuMesi, unitaDelGrant, type Grant } from "../src/lib/rsu.ts";
+import { guaranteedFloor, simulateEspp, ESPP_PLAN, expectedContribution } from "../src/lib/espp.ts";
+import { project, tranches, addMonths, grantUnits, type Grant } from "../src/lib/rsu.ts";
 import { toField, parseNum } from "../src/lib/format.ts";
 
-const vicino = (a: number, b: number, eps = 0.01) =>
-  assert.ok(Math.abs(a - b) < eps, `${a} != ${b} (tolleranza ${eps})`);
+const near = (a: number, b: number, eps = 0.01) =>
+  assert.ok(Math.abs(a - b) < eps, `${a} != ${b} (tolerance ${eps})`);
 
-test("IRPEF si applica per scaglioni, non per fascia", () => {
-  vicino(irpefLorda(28000), 6440);
-  vicino(irpefLorda(50000), 6440 + 22000 * 0.33); // 13.700
-  vicino(irpefLorda(60000), 13700 + 10000 * 0.43); // 18.000
-  // il bug che il foglio aveva: su 30.000 l'imposta non puo' superare il reddito
-  assert.ok(irpefLorda(30000) < 30000);
-  vicino(irpefLorda(30000), 6440 + 2000 * 0.33);
+test("income tax applies bracket by bracket, not band by band", () => {
+  near(grossIncomeTax(28000), 6440);
+  near(grossIncomeTax(50000), 6440 + 22000 * 0.33); // 13.700
+  near(grossIncomeTax(60000), 13700 + 10000 * 0.43); // 18.000
+  // the bug the spreadsheet had: on 30,000 the tax cannot exceed the income
+  assert.ok(grossIncomeTax(30000) < 30000);
+  near(grossIncomeTax(30000), 6440 + 2000 * 0.33);
 });
 
-test("addizionale comunale di Torino: 466 euro su 50.000, come in busta", () => {
-  vicino(addizionale(50000, COMUNALE_TORINO), 466);
-  vicino(addizionale(28000, COMUNALE_TORINO), 224);
-  // marginale 1,2% oltre i 50.000
-  vicino(addizionale(51000, COMUNALE_TORINO) - addizionale(50000, COMUNALE_TORINO), 12);
+test("surtax comunale di Torino: 466 euro su 50.000, come in busta", () => {
+  near(surtax(50000, MUNICIPAL_TURIN), 466);
+  near(surtax(28000, MUNICIPAL_TURIN), 224);
+  // 1.2% at the margin above 50,000
+  near(surtax(51000, MUNICIPAL_TURIN) - surtax(50000, MUNICIPAL_TURIN), 12);
 });
 
-test("la soglia di esenzione comunale non e' una franchigia", () => {
-  assert.equal(addizionale(11790, COMUNALE_TORINO), 0);
-  // un euro sopra la soglia si paga su TUTTO il reddito, non sull'eccedenza
-  vicino(addizionale(11791, COMUNALE_TORINO), 11791 * 0.008);
+test("the municipal exemption is a threshold, not an allowance", () => {
+  assert.equal(surtax(11790, MUNICIPAL_TURIN), 0);
+  // one euro over the threshold is charged on the WHOLE income, not the excess
+  near(surtax(11791, MUNICIPAL_TURIN), 11791 * 0.008);
 });
 
-test("addizionale regionale Piemonte 2026-2027", () => {
-  vicino(addizionale(15000, REGIONALE_PIEMONTE), 243);
-  vicino(addizionale(50000, REGIONALE_PIEMONTE), 243 + 13000 * 0.0268 + 22000 * 0.0331); // 1.319,60
-  vicino(addizionale(60000, REGIONALE_PIEMONTE) - addizionale(50000, REGIONALE_PIEMONTE), 333);
+test("surtax regionale Piemonte 2026-2027", () => {
+  near(surtax(15000, REGIONAL_PIEDMONT), 243);
+  near(surtax(50000, REGIONAL_PIEDMONT), 243 + 13000 * 0.0268 + 22000 * 0.0331); // 1.319,60
+  near(surtax(60000, REGIONAL_PIEDMONT) - surtax(50000, REGIONAL_PIEDMONT), 333);
 });
 
-test("detrazione da lavoro dipendente, art. 13 TUIR", () => {
-  vicino(detrazioneLavoro(15000), 1955);
-  vicino(detrazioneLavoro(28000), 1910);
-  vicino(detrazioneLavoro(39000), 955);
-  vicino(detrazioneLavoro(50000), 0);
-  vicino(detrazioneLavoro(80000), 0);
-  vicino(ulterioreDetrazione(30000), 1000);
-  vicino(ulterioreDetrazione(36000), 500);
-  vicino(ulterioreDetrazione(45000), 0);
+test("employment income tax credit, art. 13", () => {
+  near(employmentCredit(15000), 1955);
+  near(employmentCredit(28000), 1910);
+  near(employmentCredit(39000), 955);
+  near(employmentCredit(50000), 0);
+  near(employmentCredit(80000), 0);
+  near(extraCredit(30000), 1000);
+  near(extraCredit(36000), 500);
+  near(extraCredit(45000), 0);
 });
 
-test("contributi INPS: 1% sopra la prima fascia, stop al massimale", () => {
-  const p = INPS_2026;
-  vicino(contributi(50000, p), 50000 * 0.097566);
-  vicino(contributi(60000, p), 60000 * 0.097566 + (60000 - 56224) * 0.01);
-  // oltre il massimale non si versa piu' nulla: il contributo si ferma
-  assert.equal(contributi(200000, p), contributi(122295, p));
+test("socialSecurity INPS: 1% sopra la prima fascia, stop al massimale", () => {
+  const p = SOCIAL_SECURITY_2026;
+  near(socialSecurity(50000, p), 50000 * 0.097566);
+  near(socialSecurity(60000, p), 60000 * 0.097566 + (60000 - 56224) * 0.01);
+  // above the ceiling nothing more is due: contributions stop
+  assert.equal(socialSecurity(200000, p), socialSecurity(122295, p));
 });
 
-test("dalla RAL al netto: 60.000 a Torino", () => {
-  const n = dalLordoAlNetto({ ral: 60000 });
-  vicino(n.inps, 5891.72, 0.5);
-  vicino(n.imponibileIrpef, 54108.28, 0.5);
-  vicino(n.detrazioni, 0);
-  vicino(n.netto, 36670, 5);
-  assert.ok(n.tasso > 0.6 && n.tasso < 0.62);
+test("gross to net: 60,000 in Turin", () => {
+  const n = grossToNet({ salary: 60000 });
+  near(n.socialSecurity, 5891.72, 0.5);
+  near(n.taxableIncome, 54108.28, 0.5);
+  near(n.credits, 0);
+  near(n.net, 36670, 5);
+  assert.ok(n.keptShare > 0.6 && n.keptShare < 0.62);
 });
 
-test("l'aliquota marginale non e' lo scaglione", () => {
-  // a 60.000 il margine e' 43% IRPEF + addizionali + 1% INPS, sopra il 50%
-  const m = marginale({ ral: 60000 }, 1000);
-  assert.ok(m.aliquota > 0.5 && m.aliquota < 0.56, `marginale 60k = ${m.aliquota}`);
-  // fra 28k e 50k la detrazione che si spegne aggiunge ~8,7 punti al 33%
-  const basso = marginale({ ral: 35000 }, 1000);
-  assert.ok(basso.aliquota > 0.45, `marginale 35k = ${basso.aliquota}`);
-  // e sotto i 28k il margine e' sensibilmente piu' basso
-  const minimo = marginale({ ral: 22000 }, 1000);
-  assert.ok(minimo.aliquota < basso.aliquota);
+test("l'aliquota marginalRate non e' lo scaglione", () => {
+  // at 60,000 the margin is 43% tax + surtaxes + 1% social security, above 50%
+  const m = marginalRate({ salary: 60000 }, 1000);
+  assert.ok(m.rate > 0.5 && m.rate < 0.56, `marginal at 60k = ${m.rate}`);
+  // between 28k and 50k the fading credit adds ~8.7 points to the 33%
+  const low = marginalRate({ salary: 35000 }, 1000);
+  assert.ok(low.rate > 0.45, `marginal at 35k = ${low.rate}`);
+  // and below 28k the margin is appreciably lower
+  const lowest = marginalRate({ salary: 22000 }, 1000);
+  assert.ok(lowest.rate < low.rate);
 });
 
-test("il regime di default e' quello documentato", () => {
-  assert.deepEqual(REGIME_DEFAULT.scaglioni, IRPEF_2026);
-  assert.equal(REGIME_DEFAULT.mensilita, 14);
+test("the default regime is the documented one", () => {
+  assert.deepEqual(DEFAULT_REGIME.brackets, INCOME_TAX_2026);
+  assert.equal(DEFAULT_REGIME.payPeriods, 14);
 });
 
-test("ESPP: il minimo garantito e' sconto/(1-sconto), non lo sconto", () => {
-  vicino(minimoGarantito(15), 0.17647, 1e-4);
-  vicino(minimoGarantito(10), 0.11111, 1e-4);
+test("ESPP: the floor is discount/(1-discount), not the discount", () => {
+  near(guaranteedFloor(15), 0.17647, 1e-4);
+  near(guaranteedFloor(10), 0.11111, 1e-4);
 });
 
-test("ESPP a titolo fermo: lo sconto resta, e vale 17,65% lordo", () => {
-  const e = simulaEspp({
-    ral: 60000,
-    accantonato: 4500,
-    prezzoInizio: 170,
-    prezzoFine: 170,
-    cambio: 1.16,
-    piano: { ...PIANO_ESPP, frazioni: true },
+test("ESPP with a flat stock: the discount remains, and is worth 17.65% gross", () => {
+  const e = simulateEspp({
+    salary: 60000,
+    contributed: 4500,
+    priceAtStart: 170,
+    priceAtPurchase: 170,
+    fxRate: 1.16,
+    plan: { ...ESPP_PLAN, fractionalShares: true },
   });
-  vicino(e.prezzoAcquisto, 170 * 0.85);
-  vicino(e.beneficio / e.speso, 0.17647, 1e-3);
-  assert.ok(e.guadagno > 0);
+  near(e.purchasePrice, 170 * 0.85);
+  near(e.discountValue / e.spent, 0.17647, 1e-3);
+  assert.ok(e.gain > 0);
 });
 
-test("ESPP col lookback: il titolo scende e ci si guadagna comunque", () => {
-  const giu = simulaEspp({
-    ral: 60000, accantonato: 4500, prezzoInizio: 200, prezzoFine: 150, cambio: 1.16,
-    piano: { ...PIANO_ESPP, frazioni: true },
+test("ESPP with the lookback: the stock falls and you still gain", () => {
+  const down = simulateEspp({
+    salary: 60000, contributed: 4500, priceAtStart: 200, priceAtPurchase: 150, fxRate: 1.16,
+    plan: { ...ESPP_PLAN, fractionalShares: true },
   });
-  // paga l'85% del MINORE dei due
-  vicino(giu.prezzoAcquisto, 150 * 0.85);
-  assert.ok(giu.guadagno > 0, "con il lookback il guadagno resta positivo");
-  // senza lookback, sullo stesso scenario, il prezzo sarebbe lo stesso perche'
-  // il minore e' la fine: la differenza si vede quando il titolo sale
-  const su = simulaEspp({
-    ral: 60000, accantonato: 4500, prezzoInizio: 150, prezzoFine: 200, cambio: 1.16,
-    piano: { ...PIANO_ESPP, frazioni: true },
+  // pays 85% of the LOWER of the two
+  near(down.purchasePrice, 150 * 0.85);
+  assert.ok(down.gain > 0, "with the lookback the gain stays positive");
+  // without the lookback the price would be the same here, because the lower one
+  // is the end price: the difference shows when the stock rises
+  const up = simulateEspp({
+    salary: 60000, contributed: 4500, priceAtStart: 150, priceAtPurchase: 200, fxRate: 1.16,
+    plan: { ...ESPP_PLAN, fractionalShares: true },
   });
-  const suSenza = simulaEspp({
-    ral: 60000, accantonato: 4500, prezzoInizio: 150, prezzoFine: 200, cambio: 1.16,
-    piano: { ...PIANO_ESPP, frazioni: true, lookback: false },
+  const upNoLookback = simulateEspp({
+    salary: 60000, contributed: 4500, priceAtStart: 150, priceAtPurchase: 200, fxRate: 1.16,
+    plan: { ...ESPP_PLAN, fractionalShares: true, lookback: false },
   });
-  assert.ok(su.guadagno > suSenza.guadagno, "il lookback vale qualcosa quando il titolo sale");
+  assert.ok(up.gain > upNoLookback.gain, "the lookback is worth something when the stock rises");
 });
 
-test("ESPP: gli euro si moltiplicano per diventare dollari", () => {
-  const e = simulaEspp({
-    ral: 60000, accantonato: 1000, prezzoInizio: 100, prezzoFine: 100, cambio: 1.2,
-    piano: { ...PIANO_ESPP, frazioni: false },
+test("ESPP: euro are multiplied to become dollars", () => {
+  const e = simulateEspp({
+    salary: 60000, contributed: 1000, priceAtStart: 100, priceAtPurchase: 100, fxRate: 1.2,
+    plan: { ...ESPP_PLAN, fractionalShares: false },
   });
-  vicino(e.accantonatoUsd, 1200);
-  // 1200 $ / 85 $ = 14 azioni intere
-  assert.equal(e.azioni, 14);
-  vicino(e.speso, (14 * 85) / 1.2);
-  vicino(e.restoInBusta, 1000 - (14 * 85) / 1.2);
+  near(e.contributedUsd, 1200);
+  // $1,200 / $85 = 14 whole shares
+  assert.equal(e.shares, 14);
+  near(e.spent, (14 * 85) / 1.2);
+  near(e.refunded, 1000 - (14 * 85) / 1.2);
 });
 
-test("ESPP: l'accantonamento atteso segue la percentuale", () => {
-  vicino(accantonamentoAtteso(60000, 15, 6), 4500);
-  vicino(accantonamentoAtteso(60000, 1, 6), 300);
+test("ESPP: the expected contribution follows the percentage", () => {
+  near(expectedContribution(60000, 15, 6), 4500);
+  near(expectedContribution(60000, 1, 6), 300);
 });
 
-test("RSU: le tranche trimestrali cadono sul calendario del piano", () => {
+test("RSU: quarterly tranches land on the plan calendar", () => {
   const g: Grant = {
-    id: "a", etichetta: "G", data: "2026-02-20", valoreUsd: 40000, prezzoGrant: 100,
-    cadenza: "trimestrale", anni: 3, dateFisse: true,
+    id: "a", label: "G", date: "2026-02-20", valueUsd: 40000, priceAtGrant: 100,
+    schedule: "quarterly", years: 3, usePlanDates: true,
   };
-  const ts = tranche(g);
+  const ts = tranches(g);
   assert.equal(ts.length, 12);
-  vicino(ts.reduce((s, t) => s + t.unita, 0), 400);
-  // ogni data e' uno dei giorni del piano
-  for (const t of ts) assert.ok(["02-20", "05-20", "08-20", "11-20"].includes(t.data.slice(5)), t.data);
-  assert.equal(ts[0].data, "2026-05-20");
-  assert.equal(ts[11].data, "2029-02-20");
+  near(ts.reduce((s, t) => s + t.units, 0), 400);
+  // every date is one of the plan's days
+  for (const t of ts) assert.ok(["02-20", "05-20", "08-20", "11-20"].includes(t.date.slice(5)), t.date);
+  assert.equal(ts[0].date, "2026-05-20");
+  assert.equal(ts[11].date, "2029-02-20");
 });
 
-test("RSU: senza date fisse le tranche cadono a tre mesi dal grant", () => {
-  const ts = tranche({
-    id: "a", etichetta: "G", data: "2026-01-31", valoreUsd: 10000, prezzoGrant: 100,
-    cadenza: "trimestrale", anni: 1, dateFisse: false,
+test("RSU: without fixed dates tranches fall three months from the grant", () => {
+  const ts = tranches({
+    id: "a", label: "G", date: "2026-01-31", valueUsd: 10000, priceAtGrant: 100,
+    schedule: "quarterly", years: 1, usePlanDates: false,
   });
-  assert.equal(ts[0].data, "2026-04-30"); // il giorno si schiaccia sul mese corto
+  assert.equal(ts[0].date, "2026-04-30"); // il giorno si schiaccia sul mese corto
   assert.equal(ts.length, 4);
 });
 
-test("RSU: 30-30-40 e' un elenco, non una percentuale arrotondata", () => {
-  const ts = tranche({
-    id: "a", etichetta: "G", data: "2026-02-20", valoreUsd: 47900, prezzoGrant: 100,
-    cadenza: "30-30-40", anni: 3, dateFisse: false,
+test("RSU: 30-30-40 is a list, not a rounded percentage", () => {
+  const ts = tranches({
+    id: "a", label: "G", date: "2026-02-20", valueUsd: 47900, priceAtGrant: 100,
+    schedule: "30-30-40", years: 3, usePlanDates: false,
   });
   assert.equal(ts.length, 3);
-  vicino(ts[0].unita, 143.7);
-  vicino(ts.reduce((s, t) => s + t.unita, 0), 479);
+  near(ts[0].units, 143.7);
+  near(ts.reduce((s, t) => s + t.units, 0), 479);
 });
 
-test("RSU: l'aliquota si calcola sul totale dell'anno, non sulla tranche", () => {
-  const uno: Grant = {
-    id: "a", etichetta: "A", data: "2026-02-20", valoreUsd: 40000, prezzoGrant: 100,
-    cadenza: "trimestrale", anni: 3, dateFisse: true,
+test("RSU: the rate is computed on the year's total, not on the tranche", () => {
+  const one: Grant = {
+    id: "a", label: "A", date: "2026-02-20", valueUsd: 40000, priceAtGrant: 100,
+    schedule: "quarterly", years: 3, usePlanDates: true,
   };
-  const due: Grant = { ...uno, id: "b", etichetta: "B" };
-  const base = { prezzo: 100, cambio: 1.16, oggi: "2026-09-17", orizzonte: 3 };
+  const two: Grant = { ...one, id: "b", label: "B" };
+  const base = { price: 100, fxRate: 1.16, today: "2026-09-17", horizonYears: 3 };
 
-  // Due grant identici valgono il doppio di lordo, e questo e' aritmetica.
-  const solo = prospetto({ ...base, ral: 20000, grants: [uno] });
-  const doppio = prospetto({ ...base, ral: 20000, grants: [uno, due] });
-  vicino(doppio.lordoTotale, solo.lordoTotale * 2, 1);
+  // Two identical grants are worth twice the gross, and that is arithmetic.
+  const once = project({ ...base, salary: 20000, grants: [one] });
+  const twice = project({ ...base, salary: 20000, grants: [one, two] });
+  near(twice.totalGross, once.totalGross * 2, 1);
 
-  // Il netto no: il secondo grant sconfina nello scaglione dopo, e l'aliquota
-  // dell'anno sale. E' la ragione per cui il conto si fa sul totale dell'anno e
-  // non tranche per tranche.
-  assert.ok(doppio.nettoTotale < solo.nettoTotale * 2, "il netto non raddoppia");
-  const a27 = (p: typeof solo) => p.anni.find((a) => a.anno === 2027)!;
-  assert.ok(a27(doppio).aliquota > a27(solo).aliquota);
+  // The net is not: the second grant spills into the next bracket and the
+  // year's rate goes up. That is why the calculation is done on the year's
+  // total and not tranche by tranche.
+  assert.ok(twice.totalNet < once.totalNet * 2, "the net must not double");
+  const a27 = (p: typeof once) => p.years.find((a) => a.year === 2027)!;
+  assert.ok(a27(twice).taxRate > a27(once).taxRate);
 
-  // Sopra i 50.000 gli scaglioni sono finiti e il margine e' piatto: lo stesso
-  // conto torna lineare, e va bene cosi' — non e' un bug, e' la curva vera.
-  const altoSolo = prospetto({ ...base, ral: 60000, grants: [uno] });
-  const altoDoppio = prospetto({ ...base, ral: 60000, grants: [uno, due] });
-  vicino(altoDoppio.nettoTotale, altoSolo.nettoTotale * 2, 1);
+  // Above 50,000 the brackets are exhausted and the margin is flat: the same
+  // calculation becomes linear again, and that is right — not a bug, the real
+  // curve.
+  const highOnce = project({ ...base, salary: 60000, grants: [one] });
+  const highTwice = project({ ...base, salary: 60000, grants: [one, two] });
+  near(highTwice.totalNet, highOnce.totalNet * 2, 1);
 
-  // L'orizzonte e' diviso in trimestri **solari**, buchi compresi: tre anni a
-  // partire da meta' settembre ne attraversano tredici, non dodici, perche' il
-  // primo e l'ultimo sono tagliati a meta'. Allineare le colonne ai trimestri
-  // veri vale la colonna in piu': una finestra mobile darebbe barre che non
-  // corrispondono a nessun trimestre di nessun piano.
-  assert.equal(solo.trimestri.length, 13);
-  // ogni tranche cade in uno e un solo trimestre: la somma deve tornare
-  vicino(
-    solo.trimestri.reduce((s, q) => s + q.unita, 0),
-    solo.unitaTotali,
+  // The horizon is split into **calendar** quarters, gaps included: three
+  // years from mid-September span thirteen of them, not twelve, because the
+  // first and the last are cut in half. Aligning the columns to real quarters
+  // is worth the extra column: a rolling window would give bars matching no
+  // quarter of any plan.
+  assert.equal(once.quarters.length, 13);
+  // every tranche falls in exactly one quarter: the sum has to add up
+  near(
+    once.quarters.reduce((s, q) => s + q.units, 0),
+    once.totalUnits,
     1e-6
   );
-  // i trimestri sono consecutivi e partono dal trimestre solare di oggi
-  assert.equal(solo.trimestri[0].da, "2026-07-01");
-  assert.equal(solo.trimestri[1].da, "2026-10-01");
+  // the quarters are consecutive and start from today's calendar quarter
+  assert.equal(once.quarters[0].from, "2026-07-01");
+  assert.equal(once.quarters[1].from, "2026-10-01");
   assert.deepEqual(
-    solo.trimestri.slice(0, 4).map((q) => q.trimestre),
+    once.quarters.slice(0, 4).map((q) => q.quarter),
     [3, 4, 1, 2]
   );
 });
 
-test("la curva marginale ha una gobba, e il picco non e' dove sembra", () => {
-  // Il pezzo controintuitivo di tutto il sistema, e il motivo per cui questo
-  // strumento calcola il marginale per differenza invece di leggere una
-  // tabella: le detrazioni si spengono linearmente, e mentre si spengono ogni
-  // euro in piu' ne porta via un pezzo. Il risultato e' che il margine reale
-  // di chi sta a 36.000 SUPERA quello di chi sta a 70.000, dove l'aliquota
-  // nominale e' il 43% invece del 33%.
-  const gobba = marginale({ ral: 36000 }, 1000).aliquota;
-  const oltre = marginale({ ral: 70000 }, 1000).aliquota;
-  const sotto = marginale({ ral: 25000 }, 1000).aliquota;
-  assert.ok(gobba > oltre, `gobba ${gobba} deve superare ${oltre}`);
-  assert.ok(gobba > sotto, `gobba ${gobba} deve superare ${sotto}`);
-  // Il punto peggiore e' intorno ai 36.000, dove si spengono INSIEME la
-  // detrazione dell'art. 13 (8,7 punti) e i 1.000 euro del cuneo (12,5 punti):
-  // il margine reale arriva al 62%, venti punti sopra l'aliquota nominale.
-  assert.ok(gobba > 0.6, `il margine reale a 36.000 supera il 60%: ${gobba}`);
+test("la curva marginalRate ha una hump, e il picco non e' dove sembra", () => {
+  // The counter-intuitive part of the whole system, and the reason this tool
+  // computes the marginal rate by difference rather than reading a table: the
+  // credits phase out linearly, and while they do, every extra euro takes a
+  // piece of them away. The result is that the real margin of someone on 36,000
+  // EXCEEDS that of someone on 70,000, where the nominal rate is 43% not 33%.
+  const hump = marginalRate({ salary: 36000 }, 1000).rate;
+  const above = marginalRate({ salary: 70000 }, 1000).rate;
+  const below = marginalRate({ salary: 25000 }, 1000).rate;
+  assert.ok(hump > above, `hump ${hump} must exceed ${above}`);
+  assert.ok(hump > below, `hump ${hump} must exceed ${below}`);
+  // The worst point is around 36,000, where the art. 13 credit (8.7 points) and
+  // the 1,000 euro payroll cut (12.5 points) phase out TOGETHER: the real margin
+  // reaches 62%, twenty points above the nominal rate.
+  assert.ok(hump > 0.6, `the real margin at 36,000 exceeds 60%: ${hump}`);
 });
 
-test("oltre il massimale INPS l'aliquota marginale SCENDE", () => {
-  // Contro ogni intuizione: sopra i 122.295 i contributi si fermano, quindi
-  // l'euro dopo costa meno di quello prima. Se un giorno il conto non lo
-  // rispettasse piu', il massimale sarebbe stato dimenticato da qualche parte.
-  const sotto = marginale({ ral: 100000 }, 1000);
-  const sopra = marginale({ ral: 200000 }, 1000);
-  assert.ok(sopra.aliquota < sotto.aliquota, `${sopra.aliquota} !< ${sotto.aliquota}`);
+test("oltre il massimale INPS l'aliquota marginalRate SCENDE", () => {
+  // Against all intuition: above 122,295 contributions stop, so the next euro
+  // costs less than the one before. If one day the calculation stopped
+  // respecting this, the ceiling would have been forgotten somewhere.
+  const under = marginalRate({ salary: 100000 }, 1000);
+  const over = marginalRate({ salary: 200000 }, 1000);
+  assert.ok(over.rate < under.rate, `${over.rate} !< ${under.rate}`);
 });
 
-test("piuMesi schiaccia il giorno sul mese corto", () => {
-  assert.equal(piuMesi("2026-01-31", 1), "2026-02-28");
-  assert.equal(piuMesi("2026-01-31", 12), "2027-01-31");
-  assert.equal(piuMesi("2026-11-20", 3), "2027-02-20");
+test("addMonths schiaccia il giorno sul mese corto", () => {
+  assert.equal(addMonths("2026-01-31", 1), "2026-02-28");
+  assert.equal(addMonths("2026-01-31", 12), "2027-01-31");
+  assert.equal(addMonths("2026-11-20", 3), "2027-02-20");
 });
 
-test("toField non mangia gli zeri degli interi", () => {
+test("toField does not eat the zeros of whole numbers", () => {
   assert.equal(toField(60000, "it", 0), "60000");
   assert.equal(toField(60000, "it", 2), "60000");
   assert.equal(toField(4500, "it", 2), "4500");
@@ -275,86 +275,86 @@ test("toField non mangia gli zeri degli interi", () => {
   assert.equal(toField(100.25, "en", 2), "100.25");
 });
 
-test("parseNum accetta conti, virgole e punti", () => {
+test("parseNum accepts sums, commas and dots", () => {
   assert.equal(parseNum("1200+300"), 1500);
   assert.equal(parseNum("1,5"), 1.5);
   assert.equal(parseNum("1.5"), 1.5);
   assert.equal(parseNum("24/3"), 8);
   assert.equal(parseNum("2*3+1"), 7); // per e diviso prima di piu' e meno
-  assert.equal(parseNum("1200+"), null); // conto non finito, non un errore
+  assert.equal(parseNum("1200+"), null); // an unfinished sum, not an error
   assert.equal(parseNum(""), null);
   assert.equal(parseNum("ciao"), null);
   assert.equal(parseNum("1/0"), null);
 });
 
-test("RSU: i dollari diventano unita' col prezzo del giorno del grant", () => {
+test("RSU: dollars become units at the grant-day price", () => {
   const base = {
-    id: "a", etichetta: "G", data: "2026-02-20", valoreUsd: 20000,
-    cadenza: "30-30-40" as const, anni: 3, dateFisse: false,
+    id: "a", label: "G", date: "2026-02-20", valueUsd: 20000,
+    schedule: "30-30-40" as const, years: 3, usePlanDates: false,
   };
-  // 20.000 $ assegnati quando l'azione stava a 142,88 fanno ~140 unita'
-  vicino(unitaDelGrant({ ...base, prezzoGrant: 142.88 }), 139.9776, 1e-3);
-  // lo stesso importo assegnato a un prezzo doppio fa meta' delle unita': e' la
-  // ragione per cui un grant vecchio oggi vale piu' di uno nuovo dello stesso
-  // valore, e per cui il prezzo del grant sta nel grant e non nei parametri
-  vicino(unitaDelGrant({ ...base, prezzoGrant: 285.76 }), 69.9888, 1e-3);
-  // senza prezzo non si divide per zero: zero unita', e il campo lo dice
-  assert.equal(unitaDelGrant({ ...base, prezzoGrant: 0 }), 0);
+  // $20,000 granted when the share was at 142.88 makes ~140 units
+  near(grantUnits({ ...base, priceAtGrant: 142.88 }), 139.9776, 1e-3);
+  // the same amount granted at twice the price makes half the units: this is why
+  // an old grant is worth more today than a new one of the same value, and why
+  // the grant price belongs to the grant and not to the global parameters
+  near(grantUnits({ ...base, priceAtGrant: 285.76 }), 69.9888, 1e-3);
+  // with no price we do not divide by zero: zero units, and the field says so
+  assert.equal(grantUnits({ ...base, priceAtGrant: 0 }), 0);
 
-  // le tranche sommano sempre le unita' del grant, qualunque sia il prezzo
-  const ts = tranche({ ...base, prezzoGrant: 142.88 });
-  vicino(ts.reduce((s, t) => s + t.unita, 0), 139.9776, 1e-3);
+  // tranches always add up to the grant's units, whatever the price
+  const ts = tranches({ ...base, priceAtGrant: 142.88 });
+  near(ts.reduce((s, t) => s + t.units, 0), 139.9776, 1e-3);
 });
 
-test("ESPP: il tetto del piano taglia prima di comprare", () => {
-  // 10.625 $ per finestra non e' un numero tondo a caso: e' il limite fiscale
-  // di 25.000 $ l'anno di valore di mercato, che con il 15% di sconto si
-  // comprano con 21.250 $ di contributi, cioe' 10.625 a semestre.
-  const dentro = simulaEspp({
-    ral: 60000, accantonato: 4000, prezzoInizio: 100, prezzoFine: 100, cambio: 1.15,
-    piano: { ...PIANO_ESPP, frazioni: true },
+test("ESPP: the plan cap cuts before buying", () => {
+  // $10,625 per window is not a round number picked at random: it is the tax
+  // limit of $25,000 a year of market value, which at a 15% discount is bought
+  // with $21,250 of contributions, i.e. $10,625 per half-year.
+  const within = simulateEspp({
+    salary: 60000, contributed: 4000, priceAtStart: 100, priceAtPurchase: 100, fxRate: 1.15,
+    plan: { ...ESPP_PLAN, fractionalShares: true },
   });
-  // 4.000 € fanno 4.600 $: il tetto non morde e non toglie niente
-  vicino(dentro.accantonatoUsd, 4600);
-  vicino(dentro.oltreIlTetto, 0);
+  // 4,000 EUR make 4,600 USD: the cap does not bite and takes nothing
+  near(within.contributedUsd, 4600);
+  near(within.aboveCap, 0);
 
-  const oltre = simulaEspp({
-    ral: 200000, accantonato: 15000, prezzoInizio: 100, prezzoFine: 100, cambio: 1.15,
-    piano: { ...PIANO_ESPP, frazioni: true },
+  const over2 = simulateEspp({
+    salary: 200000, contributed: 15000, priceAtStart: 100, priceAtPurchase: 100, fxRate: 1.15,
+    plan: { ...ESPP_PLAN, fractionalShares: true },
   });
-  // 15.000 € fanno 17.250 $, ma nell'acquisto ne entrano solo 10.625
-  vicino(oltre.accantonatoLordoUsd, 17250);
-  vicino(oltre.accantonatoUsd, 10625);
-  // il resto torna in euro, e torna tutto: non sparisce e non compra azioni
-  vicino(oltre.oltreIlTetto, (17250 - 10625) / 1.15);
-  vicino(oltre.speso, 10625 / 0.85 / 1.15 * 0.85, 0.01);
-  // Ad azioni frazionarie il resto in busta E' esattamente il taglio del tetto:
-  // non c'e' nient'altro che avanzi. (Confrontarli con `>=` fallisce per un
-  // errore di virgola mobile, che qui non e' una tolleranza di comodo: sono lo
-  // stesso conto fatto in due ordini diversi.)
-  vicino(oltre.restoInBusta, oltre.oltreIlTetto, 1e-9);
-  vicino(oltre.restoInBusta, 15000 - oltre.speso);
+  // 15,000 EUR make 17,250 USD, but only 10,625 enter the purchase
+  near(over2.contributedBeforeCapUsd, 17250);
+  near(over2.contributedUsd, 10625);
+  // the rest comes back in euro, all of it: it neither vanishes nor buys shares
+  near(over2.aboveCap, (17250 - 10625) / 1.15);
+  near(over2.spent, 10625 / 0.85 / 1.15 * 0.85, 0.01);
+  // With fractional shares the refund IS exactly the cap's cut: there is
+  // nothing else left over. (Comparing them with `>=` fails on a floating point
+  // error, which here is not a tolerance of convenience: they are the same
+  // calculation done in two different orders.)
+  near(over2.refunded, over2.aboveCap, 1e-9);
+  near(over2.refunded, 15000 - over2.spent);
 
-  // Ad azioni intere ci si aggiungono gli spiccioli che non fanno un'azione,
-  // quindi il resto e' strettamente maggiore del solo taglio del tetto. Serve
-  // un prezzo che lasci davvero un resto: a 100 $ lo sconto fa 85, e 10.625
-  // diviso 85 fa 125 azioni esatte — zero spiccioli, e il caso non proverebbe
-  // niente.
-  const intere = simulaEspp({
-    ral: 200000, accantonato: 15000, prezzoInizio: 106, prezzoFine: 106, cambio: 1.15,
-    piano: { ...PIANO_ESPP, frazioni: false },
+  // With whole shares the change that does not make a share is added on top,
+  // so the refund is strictly larger than the cap's cut alone. That needs a
+  // price that actually leaves change: at $100 the discount gives 85, and
+  // 10,625 divided by 85 is exactly 125 shares — no change at all, and the case
+  // would prove nothing.
+  const whole = simulateEspp({
+    salary: 200000, contributed: 15000, priceAtStart: 106, priceAtPurchase: 106, fxRate: 1.15,
+    plan: { ...ESPP_PLAN, fractionalShares: false },
   });
-  assert.equal(intere.azioni, Math.floor(10625 / (106 * 0.85)));
+  assert.equal(whole.shares, Math.floor(10625 / (106 * 0.85)));
   assert.ok(
-    intere.restoInBusta > intere.oltreIlTetto,
-    `${intere.restoInBusta} deve superare ${intere.oltreIlTetto}`
+    whole.refunded > whole.aboveCap,
+    `${whole.refunded} must exceed ${whole.aboveCap}`
   );
 
-  // tetto a zero = nessun tetto, per i piani che non ce l'hanno
-  const senza = simulaEspp({
-    ral: 200000, accantonato: 15000, prezzoInizio: 100, prezzoFine: 100, cambio: 1.15,
-    piano: { ...PIANO_ESPP, frazioni: true, maxUsd: 0 },
+  // a zero cap means no cap, for plans that do not have one
+  const uncapped = simulateEspp({
+    salary: 200000, contributed: 15000, priceAtStart: 100, priceAtPurchase: 100, fxRate: 1.15,
+    plan: { ...ESPP_PLAN, fractionalShares: true, maxUsd: 0 },
   });
-  vicino(senza.accantonatoUsd, 17250);
-  vicino(senza.oltreIlTetto, 0);
+  near(uncapped.contributedUsd, 17250);
+  near(uncapped.aboveCap, 0);
 });

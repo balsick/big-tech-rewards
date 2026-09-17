@@ -1,21 +1,21 @@
 name: Deploy
 
-# Il sito e' statico e vive su GitHub Pages. Il build fa tre cose in ordine:
-# prende la quotazione (il simbolo arriva dal secret e non esce dal runner),
-# controlla tipi e test, e pubblica dist/.
+# The site is static and lives on GitHub Pages. The build does three things in
+# order: fetch the quote (the symbol comes from the secret and never leaves the
+# runner), check types and tests, and publish dist/.
 #
-# La schedule sta qui e non in un workflow a parte per un motivo preciso: un
-# commit fatto con GITHUB_TOKEN **non fa scattare altri workflow**, quindi un
-# giro che aggiorna il prezzo e si aspetta che il deploy parta da solo non
-# pubblicherebbe mai niente. `quote.json` si rigenera a ogni deploy dentro il
-# runner, percio' basta che il deploy riparta: e' il deploy stesso a essere
-# schedulato.
+# The schedule lives here rather than in a separate workflow for a specific
+# reason: a commit made with GITHUB_TOKEN **does not trigger other workflows**,
+# so a job that refreshes the price and expects the deploy to start on its own
+# would never publish anything. `quote.json` is regenerated inside the runner on
+# every deploy, so all that is needed is for the deploy to run again: the deploy
+# itself is what is scheduled.
 
 on:
   push:
     branches: [main]
   schedule:
-    # 06:00 UTC da martedi' a sabato: copre le chiusure da lunedi' a venerdi'.
+    # 06:00 UTC Tuesday to Saturday: covers the Monday to Friday closes.
     - cron: "0 6 * * 2-6"
   workflow_dispatch:
 
@@ -24,9 +24,8 @@ permissions:
   pages: write
   id-token: write
 
-# Un deploy per volta: due push ravvicinati non devono pubblicare in ordine
-# casuale. La corsa in corso si lascia finire, cosi' non resta mai una versione
-# a meta' online.
+# One deploy at a time: two pushes close together must not publish out of order.
+# The run in flight is left to finish, so a half-built version is never online.
 concurrency:
   group: pages
   cancel-in-progress: false
@@ -35,9 +34,9 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      # Sulla schedule l'evento punta al commit di quando il cron e' stato
-      # registrato: senza `ref` il giro notturno ripubblicherebbe una versione
-      # vecchia del sito ogni volta.
+      # On the schedule the event points at the commit from when the cron was
+      # registered: without `ref` the nightly run would republish an old version
+      # of the site every time.
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.ref_name }}
@@ -49,10 +48,10 @@ jobs:
 
       - run: npm ci
 
-      # --soft: se il fornitore non risponde il deploy va avanti con il
-      # quote.json gia' in repo. Un prezzo di ieri e' meglio di un sito rotto,
-      # e la pagina dice sempre di quando e' il numero che mostra.
-      - name: Quotazione
+      # --soft: if the provider does not answer, the deploy carries on with the
+      # quote.json already in the repo. Yesterday's price beats a broken site,
+      # and the page always says which day the number it shows is from.
+      - name: Quote
         env:
           QUOTE_SYMBOL: ${{ secrets.QUOTE_SYMBOL }}
         run: node scripts/fetch-quote.mjs --soft
