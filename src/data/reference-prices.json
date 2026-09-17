@@ -1,0 +1,474 @@
+{
+  "$comment": [
+    "Chiusure di riferimento dello strumento del piano, nei soli giorni che il piano usa:",
+    "il 20 di febbraio/maggio/agosto/novembre (le vestizioni) e il 1 di aprile e di ottobre",
+    "(gli acquisti ESPP). Quando quel giorno il mercato era chiuso vale l'ultima chiusura",
+    "precedente, e closeOn dice di quando e'.",
+    "close e' in USD per azione; eurusd sono dollari per un euro, quindi gli euro si",
+    "MOLTIPLICANO per diventare dollari.",
+    "Il file si aggiorna da solo: .github/workflows/refresh-quote.yml aggiunge la riga il",
+    "giorno dopo ogni data del piano. Lo strumento non e' scritto da nessuna parte nei",
+    "sorgenti: il suo simbolo vive in un GitHub secret e resta nel runner.",
+    "Fonte: Yahoo Finance, chiusure giornaliere non aggiustate per i dividendi."
+  ],
+  "currency": "USD",
+  "keyDates": [
+    "02-20",
+    "04-01",
+    "05-20",
+    "08-20",
+    "10-01",
+    "11-20"
+  ],
+  "updated": "2026-09-17",
+  "prices": [
+    {
+      "date": "2016-02-20",
+      "close": 49.42,
+      "closeOn": "2016-02-19",
+      "eurusd": 1.111099,
+      "eurusdOn": "2016-02-19"
+    },
+    {
+      "date": "2016-04-01",
+      "close": 50.88,
+      "closeOn": "2016-04-01",
+      "eurusd": 1.137967,
+      "eurusdOn": "2016-03-31"
+    },
+    {
+      "date": "2016-05-20",
+      "close": 54.52,
+      "closeOn": "2016-05-20",
+      "eurusd": 1.120599,
+      "eurusdOn": "2016-05-19"
+    },
+    {
+      "date": "2016-08-20",
+      "close": 62.76,
+      "closeOn": "2016-08-19",
+      "eurusd": 1.134945,
+      "eurusdOn": "2016-08-18"
+    },
+    {
+      "date": "2016-10-01",
+      "close": 68.5,
+      "closeOn": "2016-09-30",
+      "eurusd": 1.121957,
+      "eurusdOn": "2016-09-29"
+    },
+    {
+      "date": "2016-11-20",
+      "close": 67.31,
+      "closeOn": "2016-11-18",
+      "eurusd": 1.062304,
+      "eurusdOn": "2016-11-18"
+    },
+    {
+      "date": "2017-02-20",
+      "close": 56.46,
+      "closeOn": "2017-02-17",
+      "eurusd": 1.062665,
+      "eurusdOn": "2017-02-20"
+    },
+    {
+      "date": "2017-04-01",
+      "close": 57.34,
+      "closeOn": "2017-03-31",
+      "eurusd": 1.068707,
+      "eurusdOn": "2017-03-30"
+    },
+    {
+      "date": "2017-05-20",
+      "close": 57.67,
+      "closeOn": "2017-05-19",
+      "eurusd": 1.111358,
+      "eurusdOn": "2017-05-18"
+    },
+    {
+      "date": "2017-08-20",
+      "close": 51.92,
+      "closeOn": "2017-08-18",
+      "eurusd": 1.175627,
+      "eurusdOn": "2017-08-20"
+    },
+    {
+      "date": "2017-10-01",
+      "close": 51.84,
+      "closeOn": "2017-09-29",
+      "eurusd": 1.180735,
+      "eurusdOn": "2017-10-01"
+    },
+    {
+      "date": "2017-11-20",
+      "close": 66.47,
+      "closeOn": "2017-11-20",
+      "eurusd": 1.173186,
+      "eurusdOn": "2017-11-20"
+    },
+    {
+      "date": "2018-02-20",
+      "close": 63.99,
+      "closeOn": "2018-02-20",
+      "eurusd": 1.239864,
+      "eurusdOn": "2018-02-20"
+    },
+    {
+      "date": "2018-04-01",
+      "close": 55.41,
+      "closeOn": "2018-03-29",
+      "eurusd": 1.231421,
+      "eurusdOn": "2018-04-01"
+    },
+    {
+      "date": "2018-05-20",
+      "close": 57.51,
+      "closeOn": "2018-05-18",
+      "eurusd": 1.176664,
+      "eurusdOn": "2018-05-20"
+    },
+    {
+      "date": "2018-08-20",
+      "close": 66.16,
+      "closeOn": "2018-08-20",
+      "eurusd": 1.149135,
+      "eurusdOn": "2018-08-20"
+    },
+    {
+      "date": "2018-10-01",
+      "close": 72.6,
+      "closeOn": "2018-10-01",
+      "eurusd": 1.157756,
+      "eurusdOn": "2018-10-01"
+    },
+    {
+      "date": "2018-11-20",
+      "close": 54.92,
+      "closeOn": "2018-11-20",
+      "eurusd": 1.145502,
+      "eurusdOn": "2018-11-20"
+    },
+    {
+      "date": "2019-02-20",
+      "close": 52.45,
+      "closeOn": "2019-02-20",
+      "eurusd": 1.134301,
+      "eurusdOn": "2019-02-20"
+    },
+    {
+      "date": "2019-04-01",
+      "close": 57.81,
+      "closeOn": "2019-04-01",
+      "eurusd": 1.120574,
+      "eurusdOn": "2019-04-01"
+    },
+    {
+      "date": "2019-05-20",
+      "close": 76.62,
+      "closeOn": "2019-05-20",
+      "eurusd": 1.116857,
+      "eurusdOn": "2019-05-20"
+    },
+    {
+      "date": "2019-08-20",
+      "close": 76.07,
+      "closeOn": "2019-08-20",
+      "eurusd": 1.109779,
+      "eurusdOn": "2019-08-20"
+    },
+    {
+      "date": "2019-10-01",
+      "close": 75.47,
+      "closeOn": "2019-10-01",
+      "eurusd": 1.093494,
+      "eurusdOn": "2019-10-01"
+    },
+    {
+      "date": "2019-11-20",
+      "close": 85.62,
+      "closeOn": "2019-11-20",
+      "eurusd": 1.108,
+      "eurusdOn": "2019-11-20"
+    },
+    {
+      "date": "2020-02-20",
+      "close": 89.47,
+      "closeOn": "2020-02-20",
+      "eurusd": 1.08101,
+      "eurusdOn": "2020-02-20"
+    },
+    {
+      "date": "2020-04-01",
+      "close": 65.9,
+      "closeOn": "2020-04-01",
+      "eurusd": 1.095362,
+      "eurusdOn": "2020-04-01"
+    },
+    {
+      "date": "2020-05-20",
+      "close": 80.63,
+      "closeOn": "2020-05-20",
+      "eurusd": 1.098298,
+      "eurusdOn": "2020-05-20"
+    },
+    {
+      "date": "2020-08-20",
+      "close": 110.66,
+      "closeOn": "2020-08-20",
+      "eurusd": 1.187366,
+      "eurusdOn": "2020-08-20"
+    },
+    {
+      "date": "2020-10-01",
+      "close": 119.52,
+      "closeOn": "2020-10-01",
+      "eurusd": 1.174495,
+      "eurusdOn": "2020-10-01"
+    },
+    {
+      "date": "2020-11-20",
+      "close": 146.03,
+      "closeOn": "2020-11-20",
+      "eurusd": 1.186648,
+      "eurusdOn": "2020-11-20"
+    },
+    {
+      "date": "2021-02-20",
+      "close": 144.94,
+      "closeOn": "2021-02-19",
+      "eurusd": 1.20919,
+      "eurusdOn": "2021-02-19"
+    },
+    {
+      "date": "2021-04-01",
+      "close": 137.79,
+      "closeOn": "2021-04-01",
+      "eurusd": 1.177995,
+      "eurusdOn": "2021-04-01"
+    },
+    {
+      "date": "2021-05-20",
+      "close": 132.64,
+      "closeOn": "2021-05-20",
+      "eurusd": 1.222539,
+      "eurusdOn": "2021-05-20"
+    },
+    {
+      "date": "2021-08-20",
+      "close": 142.09,
+      "closeOn": "2021-08-20",
+      "eurusd": 1.16766,
+      "eurusdOn": "2021-08-19"
+    },
+    {
+      "date": "2021-10-01",
+      "close": 128.71,
+      "closeOn": "2021-10-01",
+      "eurusd": 1.157448,
+      "eurusdOn": "2021-09-30"
+    },
+    {
+      "date": "2021-11-20",
+      "close": 185,
+      "closeOn": "2021-11-19",
+      "eurusd": 1.136842,
+      "eurusdOn": "2021-11-19"
+    },
+    {
+      "date": "2022-02-20",
+      "close": 167.64,
+      "closeOn": "2022-02-18",
+      "eurusd": 1.136648,
+      "eurusdOn": "2022-02-18"
+    },
+    {
+      "date": "2022-04-01",
+      "close": 146.99,
+      "closeOn": "2022-04-01",
+      "eurusd": 1.107236,
+      "eurusdOn": "2022-03-31"
+    },
+    {
+      "date": "2022-05-20",
+      "close": 131.6,
+      "closeOn": "2022-05-20",
+      "eurusd": 1.057899,
+      "eurusdOn": "2022-05-19"
+    },
+    {
+      "date": "2022-08-20",
+      "close": 147.6,
+      "closeOn": "2022-08-19",
+      "eurusd": 1.00899,
+      "eurusdOn": "2022-08-18"
+    },
+    {
+      "date": "2022-10-01",
+      "close": 112.98,
+      "closeOn": "2022-09-30",
+      "eurusd": 0.982956,
+      "eurusdOn": "2022-09-29"
+    },
+    {
+      "date": "2022-11-20",
+      "close": 123.85,
+      "closeOn": "2022-11-18",
+      "eurusd": 1.036173,
+      "eurusdOn": "2022-11-18"
+    },
+    {
+      "date": "2023-02-20",
+      "close": 127.72,
+      "closeOn": "2023-02-17",
+      "eurusd": 1.068444,
+      "eurusdOn": "2023-02-20"
+    },
+    {
+      "date": "2023-04-01",
+      "close": 127.58,
+      "closeOn": "2023-03-31",
+      "eurusd": 1.090465,
+      "eurusdOn": "2023-03-30"
+    },
+    {
+      "date": "2023-05-20",
+      "close": 105.86,
+      "closeOn": "2023-05-19",
+      "eurusd": 1.07754,
+      "eurusdOn": "2023-05-18"
+    },
+    {
+      "date": "2023-08-20",
+      "close": 110.1,
+      "closeOn": "2023-08-18",
+      "eurusd": 1.087559,
+      "eurusdOn": "2023-08-20"
+    },
+    {
+      "date": "2023-10-01",
+      "close": 111.06,
+      "closeOn": "2023-09-29",
+      "eurusd": 1.056524,
+      "eurusdOn": "2023-10-01"
+    },
+    {
+      "date": "2023-11-20",
+      "close": 129.51,
+      "closeOn": "2023-11-20",
+      "eurusd": 1.090703,
+      "eurusdOn": "2023-11-20"
+    },
+    {
+      "date": "2024-02-20",
+      "close": 151.96,
+      "closeOn": "2024-02-20",
+      "eurusd": 1.07754,
+      "eurusdOn": "2024-02-20"
+    },
+    {
+      "date": "2024-04-01",
+      "close": 171.72,
+      "closeOn": "2024-04-01",
+      "eurusd": 1.073722,
+      "eurusdOn": "2024-04-01"
+    },
+    {
+      "date": "2024-05-20",
+      "close": 197.76,
+      "closeOn": "2024-05-20",
+      "eurusd": 1.086083,
+      "eurusdOn": "2024-05-20"
+    },
+    {
+      "date": "2024-08-20",
+      "close": 172.11,
+      "closeOn": "2024-08-20",
+      "eurusd": 1.112793,
+      "eurusdOn": "2024-08-20"
+    },
+    {
+      "date": "2024-10-01",
+      "close": 165.78,
+      "closeOn": "2024-10-01",
+      "eurusd": 1.10639,
+      "eurusdOn": "2024-10-01"
+    },
+    {
+      "date": "2024-11-20",
+      "close": 154.27,
+      "closeOn": "2024-11-20",
+      "eurusd": 1.06076,
+      "eurusdOn": "2024-11-20"
+    },
+    {
+      "date": "2025-02-20",
+      "close": 173.7,
+      "closeOn": "2025-02-20",
+      "eurusd": 1.042101,
+      "eurusdOn": "2025-02-20"
+    },
+    {
+      "date": "2025-04-01",
+      "close": 153.05,
+      "closeOn": "2025-04-01",
+      "eurusd": 1.079599,
+      "eurusdOn": "2025-04-01"
+    },
+    {
+      "date": "2025-05-20",
+      "close": 153.82,
+      "closeOn": "2025-05-20",
+      "eurusd": 1.128796,
+      "eurusdOn": "2025-05-20"
+    },
+    {
+      "date": "2025-08-20",
+      "close": 155.44,
+      "closeOn": "2025-08-20",
+      "eurusd": 1.165175,
+      "eurusdOn": "2025-08-20"
+    },
+    {
+      "date": "2025-10-01",
+      "close": 166.49,
+      "closeOn": "2025-10-01",
+      "eurusd": 1.173406,
+      "eurusdOn": "2025-10-01"
+    },
+    {
+      "date": "2025-11-20",
+      "close": 159.59,
+      "closeOn": "2025-11-20",
+      "eurusd": 1.154068,
+      "eurusdOn": "2025-11-20"
+    },
+    {
+      "date": "2026-02-20",
+      "close": 142.88,
+      "closeOn": "2026-02-20",
+      "eurusd": 1.176914,
+      "eurusdOn": "2026-02-20"
+    },
+    {
+      "date": "2026-04-01",
+      "close": 127.28,
+      "closeOn": "2026-04-01",
+      "eurusd": 1.159057,
+      "eurusdOn": "2026-04-01"
+    },
+    {
+      "date": "2026-05-20",
+      "close": 202.51,
+      "closeOn": "2026-05-20",
+      "eurusd": 1.162534,
+      "eurusdOn": "2026-05-20"
+    },
+    {
+      "date": "2026-08-20",
+      "close": 160.74,
+      "closeOn": "2026-08-20",
+      "eurusd": 1.168784,
+      "eurusdOn": "2026-08-20"
+    }
+  ]
+}

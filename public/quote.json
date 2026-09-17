@@ -1,0 +1,10 @@
+{
+  "$comment": "Generato da scripts/fetch-quote.mjs in CI. Il simbolo arriva da un GitHub secret e non compare qui.",
+  "date": "2026-09-17",
+  "close": 189.68,
+  "eurusd": 1.147974,
+  "eurusdOn": "2026-09-17",
+  "currency": "USD",
+  "generatedAt": "2026-09-17T18:16:55.670Z",
+  "stale": false
+}

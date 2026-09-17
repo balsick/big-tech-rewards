@@ -1,0 +1,47 @@
+name: Refresh quote
+
+# Il prezzo si aggiorna da solo dopo ogni chiusura, e le date del piano
+# entrano nello storico il giorno dopo che sono passate.
+#
+# Il commit su main fa ripartire il deploy, quindi non serve incatenare i
+# workflow: il sito si ripubblica perche' il dato e' cambiato.
+
+on:
+  schedule:
+    # 06:00 UTC da martedi' a sabato: copre le chiusure da lunedi' a venerdi'.
+    - cron: "0 6 * * 2-6"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: refresh-quote
+  cancel-in-progress: true
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Quotazione e storico
+        env:
+          QUOTE_SYMBOL: ${{ secrets.QUOTE_SYMBOL }}
+        run: node scripts/fetch-quote.mjs --history --soft
+
+      - name: Commit se qualcosa e' cambiato
+        run: |
+          if git diff --quiet -- public/quote.json src/data/reference-prices.json; then
+            echo "niente da fare: i numeri sono gli stessi"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/quote.json src/data/reference-prices.json
+          git commit -m "chore: aggiorna quotazione di riferimento"
+          git push

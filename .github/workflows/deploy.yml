@@ -1,0 +1,65 @@
+name: Deploy
+
+# Il sito e' statico e vive su GitHub Pages. Il build fa tre cose in ordine:
+# prende la quotazione (il simbolo arriva dal secret e non esce dal runner),
+# controlla tipi e test, e pubblica dist/.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Un deploy per volta: due push ravvicinati non devono pubblicare in ordine
+# casuale. La corsa in corso si lascia finire, cosi' non resta mai una versione
+# a metà online.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # --soft: se il fornitore non risponde il deploy va avanti con il
+      # quote.json gia' in repo. Un prezzo di ieri e' meglio di un sito rotto,
+      # e la pagina dice sempre di quando e' il numero che mostra.
+      - name: Quotazione
+        env:
+          QUOTE_SYMBOL: ${{ secrets.QUOTE_SYMBOL }}
+        run: node scripts/fetch-quote.mjs --soft
+
+      - run: npm run typecheck
+
+      - run: npm test
+
+      - run: npm run build
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4
