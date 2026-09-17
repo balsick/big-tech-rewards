@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { eur0, num } from "../lib/format.ts";
+import { eur0, num, shortEur, shortNum } from "../lib/format.ts";
 import type { Lang } from "../i18n/index.ts";
 import type { ChartPeriod, Projection } from "../lib/rsu.ts";
 
@@ -40,7 +40,10 @@ export default function VestingChart({
   // Hovering tells you what a bar is made of. The value written above it is the
   // total; the split between grants is the reason the bar has colours at all,
   // and until now the only way to read it was to count pixels.
-  const [hovered, setHovered] = useState<number | null>(null);
+  //
+  // The pointer's position travels with the index because the read-out follows
+  // the cursor, and a tooltip that follows has to know where to.
+  const [hovered, setHovered] = useState<{ i: number; x: number; y: number; w: number } | null>(null);
 
   if (!quarters.length) return null;
 
@@ -56,6 +59,27 @@ export default function VestingChart({
   const y = (v: number) => PAD.t + (1 - v / ceiling) * (H - PAD.t - PAD.b);
   const index = new Map(grants.map((g, i) => [g.id, i]));
   const fmt = (v: number) => (showEuro ? eur0(v, lang) : num(v, lang, 0));
+  const fmtShort = (v: number) => (showEuro ? shortEur(v, lang) : shortNum(v, lang));
+
+  /**
+   * The label above a bar, or nothing.
+   *
+   * At a five-year horizon there are twenty-one columns and the euro labels ran
+   * into each other — "8710 €8710 €8710 €" across the top of the chart, which
+   * is worse than no label at all. So: the full figure while it fits, the short
+   * one ("8,7k €") while *that* fits, and otherwise nothing, because the hover
+   * has the exact number anyway. Width is estimated from the character count —
+   * measuring text in SVG costs a reflow per bar, and at this size the estimate
+   * is never wrong by more than a character.
+   */
+  const barLabel = (v: number): string | null => {
+    const room = bw * 0.95;
+    const wide = (t: string) => t.length * 5.4;
+    const full = fmt(v);
+    if (wide(full) <= room) return full;
+    const short = fmtShort(v);
+    return wide(short) <= room ? short : null;
+  };
 
   // A year label under the first quarter of each year, replacing twelve month
   // labels that would not have fitted anyway.
@@ -68,12 +92,12 @@ export default function VestingChart({
     }
   });
 
-  const active = hovered !== null ? quarters[hovered] : null;
-  // The read-out goes to the corner **opposite** the column being pointed at,
-  // rather than following it. Following looked obvious and covered the very bar
-  // it was describing; two fixed corners never do, and the eye finds a panel
-  // that stays put faster than one that slides under the cursor.
-  const tipOnRight = hovered !== null && hovered < quarters.length / 2;
+  const active = hovered ? quarters[hovered.i] : null;
+  // The read-out follows the cursor, set **beside** it rather than under it: a
+  // vertical bar is what the pointer is on, so a panel offset sideways never
+  // covers the column being read. Past the middle it flips to the other side,
+  // which is what keeps it from running off the edge of the card.
+  const flip = hovered ? hovered.x > hovered.w * 0.55 : false;
 
   return (
     <div className="chart-wrap">
@@ -93,7 +117,11 @@ export default function VestingChart({
           // linearly onto the rendered box, so one multiplication is enough.
           const vbX = ((ev.clientX - r.left) / r.width) * W;
           const i = Math.floor((vbX - PAD.l) / bw);
-          setHovered(i >= 0 && i < quarters.length ? i : null);
+          setHovered(
+            i >= 0 && i < quarters.length
+              ? { i, x: ev.clientX - r.left, y: ev.clientY - r.top, w: r.width }
+              : null
+          );
         }}
         onMouseLeave={() => setHovered(null)}
       >
@@ -110,12 +138,12 @@ export default function VestingChart({
           let cursor = 0;
           const perUnit = q.units > 0 ? q.grossEur / q.units : 0;
           const total = valueOf(q);
-          const dimmed = hovered !== null && hovered !== i;
+          const dimmed = hovered !== null && hovered.i !== i;
           return (
             <g key={q.from} opacity={dimmed ? 0.4 : 1} style={{ transition: "opacity 150ms ease" }}>
               {/* The band marks the whole column, so an empty quarter reacts
                   too: "nothing arrives here" is an answer worth hovering for. */}
-              {hovered === i ? (
+              {hovered?.i === i ? (
                 <rect
                   x={x(i)}
                   y={PAD.t - 14}
@@ -146,9 +174,9 @@ export default function VestingChart({
 
               {/* The value above the bar: it is the number people look for, and at
                   thirteen columns there is finally room to write it. */}
-              {total > 0 ? (
+              {total > 0 && barLabel(total) ? (
                 <text className="bar-value" x={x(i) + bw / 2} y={y(total) - 6} textAnchor="middle">
-                  {fmt(total)}
+                  {barLabel(total)}
                 </text>
               ) : null}
 
@@ -186,7 +214,15 @@ export default function VestingChart({
       </svg>
 
       {active ? (
-        <div className={`chart-tip ${tipOnRight ? "at-right" : "at-left"}`} aria-hidden>
+        <div
+          className="chart-tip"
+          aria-hidden
+          style={{
+            left: hovered!.x,
+            top: hovered!.y,
+            transform: flip ? "translate(calc(-100% - 16px), -50%)" : "translate(16px, -50%)",
+          }}
+        >
           <strong>{`${active.year} Q${active.quarter}`}</strong>
           {active.units > 0 ? (
             <>

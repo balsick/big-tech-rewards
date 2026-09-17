@@ -13,6 +13,17 @@ export const usd = (v: number, l: Lang, dec = 2) =>
 export const num = (v: number, l: Lang, dec = 2) =>
   new Intl.NumberFormat(loc(l), { minimumFractionDigits: 0, maximumFractionDigits: dec }).format(v);
 
+/**
+ * The short form for places where the full one does not fit — a bar label on a
+ * narrow column, for instance.
+ *
+ * Hand-rolled rather than `Intl` compact notation, which in Italian spells out
+ * "8,7 Mila": longer than the "8710 €" it was meant to shorten. */
+export const shortNum = (v: number, l: Lang) =>
+  Math.abs(v) >= 1000 ? `${num(v / 1000, l, 1)}k` : num(v, l, 0);
+
+export const shortEur = (v: number, l: Lang) => `${shortNum(v, l)} €`;
+
 export const pct = (v: number, l: Lang, dec = 1) =>
   `${new Intl.NumberFormat(loc(l), { minimumFractionDigits: dec, maximumFractionDigits: dec }).format(v * 100)}%`;
 

@@ -464,6 +464,9 @@ export default function RsuTool() {
                 <Card key={y.year}>
                   <h3 style={{ margin: 0, fontSize: "var(--t-15)", color: "var(--text)" }}>{y.year}</h3>
                   <p className="mid">{eur0(y.netEur, lang)}</p>
+                  {/* Without this the last card looks like the plan tailing
+                      off, when it is only the window ending mid-year. */}
+                  {y.partial ? <p className="hint">{t.rsu.yearPartial}</p> : null}
                   <ul className="lines">
                     <Line name={t.rsu.yearUnits} value={num(y.units, lang, 2)} />
                     <Line name={t.rsu.yearGross} value={eur0(y.grossEur, lang)} />

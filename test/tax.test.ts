@@ -426,3 +426,31 @@ test("RSU: grant ids never collide, so editing one grant edits only that one", (
   assert.notEqual(restored[3].id, "g2");
   assert.equal(restored[4].id, "g3");
 });
+
+test("RSU: the years the horizon cuts in half are flagged as partial", () => {
+  // Otherwise the last card reads as the plan tailing off when it is only the
+  // window ending mid-year: at a five-year horizon starting in September, the
+  // final year holds three quarters instead of four and looks like a drop.
+  const p = project({
+    grants: [
+      {
+        id: "a", label: "A", date: "2026-02-20", valueUsd: 40000, priceAtGrant: 100,
+        schedule: "quarterly", years: 3, usePlanDates: true,
+      },
+    ],
+    price: 100, fxRate: 1.16, salary: 60000, today: "2026-09-17", horizonYears: 3,
+  });
+
+  const flags = Object.fromEntries(p.years.map((y) => [y.year, y.partial]));
+  // 2026 starts at "today", not in January; 2029 ends at the horizon, not in
+  // December. The two in the middle are whole.
+  assert.equal(flags[2026], true);
+  assert.equal(flags[2027], false);
+  assert.equal(flags[2028], false);
+  assert.equal(flags[2029], true);
+
+  // And a partial year really does hold less: it is the fact the flag explains.
+  const full = p.years.find((y) => y.year === 2027)!;
+  const cut = p.years.find((y) => y.year === 2029)!;
+  assert.ok(cut.units < full.units, "the cut year holds fewer vests");
+});

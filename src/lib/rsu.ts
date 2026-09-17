@@ -181,6 +181,16 @@ export interface RsuYear {
   netShares: number;
   /** shares sold on the day to cover the withholding, plus the odd fraction */
   sharesSold: number;
+  /**
+   * Whether the horizon cuts this year in half.
+   *
+   * The first year starts today and the last one ends on the horizon, so both
+   * usually hold fewer vests than a whole year would — which makes the last
+   * card look like a drop in the plan when it is only a drop in the window.
+   * Reported so the card can say so, instead of leaving people to work out why
+   * 2031 is smaller than 2030.
+   */
+  partial: boolean;
   tranches: Tranche[];
 }
 
@@ -253,6 +263,7 @@ export function project(i: RsuInput, regime?: TaxRegime): Projection {
         netEur: grossEur * m.kept,
         netShares: Math.floor(units * m.kept),
         sharesSold: units - Math.floor(units * m.kept),
+        partial: i.today > `${year}-01-01` || end < `${year + 1}-01-01`,
         tranches: ofYear,
       };
     });

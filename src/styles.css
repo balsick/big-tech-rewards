@@ -806,9 +806,14 @@ table.tbl th.r {
 
 /* The hover read-out. It sits over the chart rather than in the browser's own
    tooltip, which arrives a second late, cannot be styled, and would show the
-   same string to everyone regardless of whether the toggle is on euro or
-   units. The <title> stays in the SVG all the same: that is what a screen
-   reader reads, and it costs nothing. */
+   same string whether the toggle is on euro or on units. The <title> stays in
+   the SVG all the same: that is what a screen reader reads, and it costs
+   nothing.
+
+   It follows the cursor, offset sideways by the inline transform: the pointer
+   is on a vertical bar, so a panel beside it never covers the column being
+   read, and past the middle of the chart it flips to the other side rather
+   than running off the card. */
 .chart-wrap {
   position: relative;
 }
@@ -827,10 +832,6 @@ table.tbl th.r {
   color: var(--text-2);
   z-index: 2;
 }
-
-.chart-tip.at-right { right: 4px; }
-
-.chart-tip.at-left { left: 4px; }
 
 .chart-tip strong {
   display: block;
