@@ -308,15 +308,24 @@ nav.tabs button[aria-current="page"] { color: var(--text); border-bottom-color: 
   box-shadow: var(--shadow);
 }
 
-.card + .card { margin-top: 14px; }
-
-/* Inside a grid the `gap` does the spacing. The rule above is for cards
-   stacked in a column, but `+` does not know which container it is in: applied
-   inside a grid it pushes down every card that is not the first, and columns in
-   the same row start at different heights. */
-.grid2 > .card + .card,
-.grid3 > .card + .card {
-  margin-top: 0;
+/* A stack of cards takes its spacing from the container, never from an
+   adjacency rule.
+ *
+ * `.card + .card { margin-top }` is the obvious way to write it and it is wrong
+ * twice over. It only matches when the *previous sibling is itself a card*, so
+ * anything else in the middle of the stack — the row of year cards, which is a
+ * grid — swallows the space after it and the next card sits flush against it.
+ * And `+` does not know which container it is in, so inside a grid it pushed
+ * down every card that was not the first and left columns in the same row
+ * starting at different heights.
+ *
+ * A flex column with a `gap` has neither problem: the spacing belongs to the
+ * stack, not to what happens to be next to what. */
+.detail {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
 }
 
 .card h2 {
@@ -794,6 +803,68 @@ table.tbl th.r {
 .chart .axis { stroke: var(--border); stroke-width: 1; }
 
 .chart .bar-year { fill: var(--text-2); font-weight: 660; }
+
+/* The hover read-out. It sits over the chart rather than in the browser's own
+   tooltip, which arrives a second late, cannot be styled, and would show the
+   same string to everyone regardless of whether the toggle is on euro or
+   units. The <title> stays in the SVG all the same: that is what a screen
+   reader reads, and it costs nothing. */
+.chart-wrap {
+  position: relative;
+}
+
+.chart-tip {
+  position: absolute;
+  top: 0;
+  pointer-events: none;
+  min-width: 9rem;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-field);
+  background: var(--surface);
+  box-shadow: 0 2px 4px rgb(20 23 26 / 0.08), 0 14px 28px -18px rgb(20 23 26 / 0.5);
+  font-size: var(--t-12);
+  color: var(--text-2);
+  z-index: 2;
+}
+
+.chart-tip.at-right { right: 4px; }
+
+.chart-tip.at-left { left: 4px; }
+
+.chart-tip strong {
+  display: block;
+  color: var(--text);
+  font-size: var(--t-12);
+  margin-bottom: 5px;
+}
+
+.chart-tip .tip-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 3px;
+  white-space: nowrap;
+}
+
+.chart-tip .tip-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chart-tip .tip-total {
+  border-top: 1px solid var(--border);
+  margin-top: 5px;
+  padding-top: 5px;
+  font-weight: 660;
+  color: var(--text);
+}
+
+.chart-tip .tip-empty {
+  color: var(--muted);
+}
 
 .chart .bar-value { fill: var(--text-2); font-size: 9.5px; font-variant-numeric: tabular-nums; }
 

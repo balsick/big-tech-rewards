@@ -184,6 +184,7 @@ export const it = {
     sellToCover:
       "La trattenuta sul vesting non la paghi in contanti: il broker vende una parte delle azioni nel momento stesso in cui vestono e versa le tasse. È il «sell to cover». Nessuno ti chiede soldi — ti arrivano meno azioni, ed è la cosa che sorprende di più al primo vesting.",
     chartGross: "Le cifre e le unità sono lorde, prima del sell to cover.",
+    quarterEmpty: "Non arriva niente",
     yearSalaryEquiv: "RAL equivalente",
     yearSalaryEquivHint: "stipendio + RSU dell’anno",
     tableTitle: "Le vestizioni, una per una",

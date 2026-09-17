@@ -15,7 +15,15 @@ import {
   SOCIAL_SECURITY_2026,
 } from "../src/lib/tax.ts";
 import { guaranteedFloor, simulateEspp, ESPP_PLAN, expectedContribution } from "../src/lib/espp.ts";
-import { project, tranches, addMonths, grantUnits, type Grant } from "../src/lib/rsu.ts";
+import {
+  project,
+  tranches,
+  addMonths,
+  grantUnits,
+  newGrantId,
+  withUniqueIds,
+  type Grant,
+} from "../src/lib/rsu.ts";
 import { toField, parseNum } from "../src/lib/format.ts";
 
 const near = (a: number, b: number, eps = 0.01) =>
@@ -387,4 +395,34 @@ test("RSU: sell to cover splits the vest in two, and the halves add up", () => {
     today: "2026-09-17", horizonYears: 3,
   });
   assert.ok(free.years[0].sharesSold < p.years[0].sharesSold);
+});
+
+test("RSU: grant ids never collide, so editing one grant edits only that one", () => {
+  // The bug this guards against: a counter starting at zero on every page load.
+  // Restore two saved grants with ids g1 and g2, add a third, and the third is
+  // handed g1 again — after which patch-by-id updates two rows at once and
+  // changing one grant's date silently changes another's. Nothing throws.
+  const ids = new Set(Array.from({ length: 500 }, () => newGrantId()));
+  assert.equal(ids.size, 500, "500 fresh ids must be 500 distinct ids");
+
+  // A save written by the broken version heals on load instead of staying
+  // quietly corrupt.
+  const restored = withUniqueIds([
+    { id: "g1", label: "A" },
+    { id: "g2", label: "B" },
+    { id: "g1", label: "C" },
+    { id: "g2", label: "D" },
+    { id: "g3", label: "E" },
+  ]);
+  assert.equal(new Set(restored.map((g) => g.id)).size, 5);
+  // The ones that were already unique keep their id: only the clashes move.
+  assert.deepEqual(
+    restored.map((g) => g.label),
+    ["A", "B", "C", "D", "E"]
+  );
+  assert.equal(restored[0].id, "g1");
+  assert.equal(restored[1].id, "g2");
+  assert.notEqual(restored[2].id, "g1");
+  assert.notEqual(restored[3].id, "g2");
+  assert.equal(restored[4].id, "g3");
 });

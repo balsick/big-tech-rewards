@@ -46,6 +46,42 @@ export interface Grant {
   usePlanDates: boolean;
 }
 
+/**
+ * A fresh id for a grant.
+ *
+ * It has to be collision-proof, not merely unique-so-far. A counter starting at
+ * zero on every page load is neither: restore five saved grants with ids g1..g5
+ * and the very next "add" hands out g1 again. Two rows then share an id, the
+ * patch-by-id updates both, and editing one grant silently edits another — with
+ * React reusing one of them for two keys on top. Nothing throws; the numbers
+ * just stop meaning what the form says.
+ */
+export const newGrantId = (): string =>
+  typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+    ? crypto.randomUUID()
+    : `g${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+
+/**
+ * Hand every entry an id of its own.
+ *
+ * Applied to whatever comes back from storage, so a save written by the broken
+ * version heals itself on the next load instead of staying quietly corrupt.
+ * Ids are internal and nothing outside the list refers to them — the colours
+ * come from the position — so replacing them costs nothing.
+ */
+export function withUniqueIds<T extends { id: string }>(items: T[]): T[] {
+  const seen = new Set<string>();
+  return items.map((item) => {
+    if (item.id && !seen.has(item.id)) {
+      seen.add(item.id);
+      return item;
+    }
+    const id = newGrantId();
+    seen.add(id);
+    return { ...item, id };
+  });
+}
+
 /** The units that grant produced: dollars awarded / price on the day. */
 export const grantUnits = (g: Grant): number =>
   g.priceAtGrant > 0 ? g.valueUsd / g.priceAtGrant : 0;

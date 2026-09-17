@@ -10,8 +10,10 @@ import { dateShort, eur, eur0, num, pct, todayISO, usd } from "../lib/format.ts"
 import {
   VESTING_CALENDAR,
   grantUnits,
+  newGrantId,
   project,
   salaryOnly,
+  withUniqueIds,
   type Grant,
   type VestingSchedule,
 } from "../lib/rsu.ts";
@@ -25,9 +27,6 @@ import { DEFAULT_SALARY } from "../lib/meta.ts";
 // quarterly vesting, in any given year slices of three or four different grants
 // vest, and the taxman adds up everything landing in the same year. Hence a
 // list of grants here, and a rate computed per year.
-
-let seq = 0;
-const newId = () => `g${++seq}`;
 
 /**
  * What gets typed in.
@@ -59,7 +58,7 @@ function initialGrants(today: string): GrantInput[] {
   const year = Number(today.slice(0, 4));
   return [
     {
-      id: newId(),
+      id: newGrantId(),
       label: "Welcome grant",
       date: `${year}-02-20`,
       valueUsd: 20000,
@@ -69,7 +68,7 @@ function initialGrants(today: string): GrantInput[] {
       typedPrice: null,
     },
     {
-      id: newId(),
+      id: newGrantId(),
       label: `Bonus ${year}`,
       date: `${year}-11-20`,
       valueUsd: 10000,
@@ -89,7 +88,12 @@ export default function RsuTool() {
   const s0 = saved?.data;
   const canSave = useMemo(() => available(), []);
 
-  const [grants, setGrants] = useState<GrantInput[]>(() => s0?.grants ?? initialGrants(today));
+  // Whatever comes out of storage goes through `withUniqueIds`: a save written
+  // by an earlier version can carry duplicate ids, and those make two rows share
+  // one entry in the list.
+  const [grants, setGrants] = useState<GrantInput[]>(() =>
+    s0?.grants ? withUniqueIds(s0.grants) : initialGrants(today)
+  );
   const [salary, setSalary] = useState(s0?.salary ?? DEFAULT_SALARY);
   const [horizonYears, setHorizonYears] = useState(s0?.horizonYears ?? 3);
   const [scale, setScale] = useState<"eur" | "units">("eur");
@@ -317,7 +321,7 @@ export default function RsuTool() {
               setGrants((gs) => [
                 ...gs,
                 {
-                  id: newId(),
+                  id: newGrantId(),
                   label: `Bonus ${year + gs.length - 1}`,
                   date: `${year}-11-20`,
                   valueUsd: 10000,
@@ -432,7 +436,13 @@ export default function RsuTool() {
                   ]}
                 />
               </div>
-              <VestingChart projection={projection} grants={grants} lang={lang} showEuro={scale === "eur"} />
+              <VestingChart
+                projection={projection}
+                grants={grants}
+                lang={lang}
+                showEuro={scale === "eur"}
+                emptyLabel={t.rsu.quarterEmpty}
+              />
               <div className="chips">
                 {grants.map((g, i) => (
                   <span className="chip" key={g.id}>
@@ -449,7 +459,7 @@ export default function RsuTool() {
               </p>
             </Card>
 
-            <div className="grid3" style={{ marginTop: 14 }}>
+            <div className="grid3">
               {projection.years.map((y) => (
                 <Card key={y.year}>
                   <h3 style={{ margin: 0, fontSize: "var(--t-15)", color: "var(--text)" }}>{y.year}</h3>

@@ -186,6 +186,7 @@ export const en: Dict = {
     sellToCover:
       "The withholding on a vest is not paid in cash: the broker sells part of the shares the moment they vest and hands over the tax. That is the \u201csell to cover\u201d. Nobody asks you for money \u2014 fewer shares arrive, and it is the single most surprising thing about a first vest.",
     chartGross: "Figures and units are gross, before the sell to cover.",
+    quarterEmpty: "Nothing arrives",
     yearSalaryEquiv: "Equivalent salary",
     yearSalaryEquivHint: "salary + that year’s RSUs",
     tableTitle: "Every vest, one by one",
