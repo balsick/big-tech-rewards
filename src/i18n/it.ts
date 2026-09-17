@@ -171,7 +171,7 @@ export const it = {
     chartHint:
       "Un trimestre per barra, i colori sono le assegnazioni. I trimestri vuoti sono informazione: sono i mesi in cui non arriva niente.",
     noVesting: "Nessuna vestizione nell’orizzonte scelto.",
-    horizonTitle: (n: number) => (n === 1 ? "Nel prossimo anno ti arrivano" : `Nei prossimi ${n} anni ti arrivano`),
+    horizonTitle: (year: number) => `Da qui a fine ${year} ti arrivano`,
     totalLine: (units: string, lordo: string) => `${units} unità, ${lordo} lordi.`,
     salaryCompare: (pct: number, from: string, to: string) =>
       `Come avere una RAL più alta del ${pct}%: da ${from} a ${to} netti l’anno.`,
@@ -185,7 +185,7 @@ export const it = {
       "La trattenuta sul vesting non la paghi in contanti: il broker vende una parte delle azioni nel momento stesso in cui vestono e versa le tasse. È il «sell to cover». Nessuno ti chiede soldi — ti arrivano meno azioni, ed è la cosa che sorprende di più al primo vesting.",
     chartGross: "Le cifre e le unità sono lorde, prima del sell to cover.",
     quarterEmpty: "Non arriva niente",
-    yearPartial: "anno parziale: l’orizzonte lo taglia a metà",
+    yearPartial: "contato da oggi: quello che è già vestito non c’è",
     yearSalaryEquiv: "RAL equivalente",
     yearSalaryEquivHint: "stipendio + RSU dell’anno",
     tableTitle: "Le vestizioni, una per una",

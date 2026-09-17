@@ -173,7 +173,8 @@ export default function RsuTool() {
   ) : (
     <Card>
       <h2 className="answer" style={{ marginBottom: 0 }} key={Math.round(projection.totalNet)}>
-        {t.rsu.horizonTitle(horizonYears)} <span className="big">{eur0(projection.totalNet, lang)}</span>
+        {t.rsu.horizonTitle(projection.years[projection.years.length - 1]?.year ?? 0)}{" "}
+        <span className="big">{eur0(projection.totalNet, lang)}</span>
       </h2>
       <p className="note">
         {t.rsu.totalLine(num(projection.totalUnits, lang, 2), eur0(projection.totalGross, lang))}

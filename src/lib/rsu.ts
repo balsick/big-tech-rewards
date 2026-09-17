@@ -182,13 +182,12 @@ export interface RsuYear {
   /** shares sold on the day to cover the withholding, plus the odd fraction */
   sharesSold: number;
   /**
-   * Whether the horizon cuts this year in half.
+   * Whether this year is only counted from today.
    *
-   * The first year starts today and the last one ends on the horizon, so both
-   * usually hold fewer vests than a whole year would — which makes the last
-   * card look like a drop in the plan when it is only a drop in the window.
-   * Reported so the card can say so, instead of leaving people to work out why
-   * 2031 is smaller than 2030.
+   * Every year in the horizon is a whole one except the current, which is
+   * already half spent — what vested before today vested, and no window can
+   * bring it back. Reported so its card can say so instead of looking like a
+   * thin year.
    */
   partial: boolean;
   tranches: Tranche[];
@@ -243,7 +242,12 @@ export interface RsuInput {
 export function project(i: RsuInput, regime?: TaxRegime): Projection {
   const calendar = i.calendar ?? VESTING_CALENDAR;
   const all = i.grants.flatMap((g) => tranches(g, calendar)).sort((a, b) => a.date.localeCompare(b.date));
-  const end = addMonths(i.today, Math.round(i.horizonYears * 12));
+  // The horizon runs to the **end of a calendar year**, not to today's date N
+  // years out. A year closes on 31 December: a window that stopped in
+  // mid-September left the last card holding three quarters instead of four,
+  // which reads as the plan tailing off when it is only the window closing. And
+  // years you cannot compare are not worth putting side by side.
+  const end = `${Number(i.today.slice(0, 4)) + Math.round(i.horizonYears) + 1}-01-01`;
   const upcoming = all.filter((t) => t.date >= i.today && t.date < end);
 
   const perUnitEur = i.fxRate > 0 ? i.price / i.fxRate : 0;
@@ -263,7 +267,7 @@ export function project(i: RsuInput, regime?: TaxRegime): Projection {
         netEur: grossEur * m.kept,
         netShares: Math.floor(units * m.kept),
         sharesSold: units - Math.floor(units * m.kept),
-        partial: i.today > `${year}-01-01` || end < `${year + 1}-01-01`,
+        partial: i.today > `${year}-01-01`,
         tranches: ofYear,
       };
     });
@@ -277,12 +281,15 @@ export function project(i: RsuInput, regime?: TaxRegime): Projection {
   // columns the bars are finally wide enough to carry their own value above
   // them. Empty periods stay in the list: they are the information, not noise.
   const quarters: ChartPeriod[] = [];
-  const horizonMonths = Math.round(i.horizonYears * 12);
   // Start from the beginning of the calendar quarter today falls in, so the
   // columns line up with real quarters rather than a rolling window.
   const monthToday = Number(i.today.slice(5, 7));
   const start = `${i.today.slice(0, 4)}-${String(Math.floor((monthToday - 1) / 3) * 3 + 1).padStart(2, "0")}-01`;
-  for (let k = 0; k < Math.ceil(horizonMonths / 3) + 1; k++) {
+  // The count comes from `end` and nothing else. It used to come from
+  // `horizonYears * 12`, which was the same number until the horizon started
+  // rounding up to the end of the year — after which the chart quietly stopped
+  // a quarter short of the years the cards below it were showing.
+  for (let k = 0; k < 200; k++) {
     const from = addMonths(start, k * 3);
     const to = addMonths(start, (k + 1) * 3);
     if (from >= end) break;

@@ -173,7 +173,7 @@ export const en: Dict = {
     chartHint:
       "One quarter per bar, the colours are the grants. Empty quarters are information: they are the months when nothing arrives.",
     noVesting: "Nothing vests within the chosen horizon.",
-    horizonTitle: (n: number) => (n === 1 ? "Over the next year you get" : `Over the next ${n} years you get`),
+    horizonTitle: (year: number) => `From now to the end of ${year} you get`,
     totalLine: (units: string, lordo: string) => `${units} units, ${lordo} gross.`,
     salaryCompare: (pct: number, from: string, to: string) =>
       `Like a salary ${pct}% higher: from ${from} to ${to} net a year.`,
@@ -187,7 +187,7 @@ export const en: Dict = {
       "The withholding on a vest is not paid in cash: the broker sells part of the shares the moment they vest and hands over the tax. That is the \u201csell to cover\u201d. Nobody asks you for money \u2014 fewer shares arrive, and it is the single most surprising thing about a first vest.",
     chartGross: "Figures and units are gross, before the sell to cover.",
     quarterEmpty: "Nothing arrives",
-    yearPartial: "partial year: the horizon cuts it in half",
+    yearPartial: "counted from today: what already vested is not here",
     yearSalaryEquiv: "Equivalent salary",
     yearSalaryEquivHint: "salary + that year’s RSUs",
     tableTitle: "Every vest, one by one",

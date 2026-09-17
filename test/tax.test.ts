@@ -219,12 +219,11 @@ test("RSU: the rate is computed on the year's total, not on the tranche", () => 
   const highTwice = project({ ...base, salary: 60000, grants: [one, two] });
   near(highTwice.totalNet, highOnce.totalNet * 2, 1);
 
-  // The horizon is split into **calendar** quarters, gaps included: three
-  // years from mid-September span thirteen of them, not twelve, because the
-  // first and the last are cut in half. Aligning the columns to real quarters
-  // is worth the extra column: a rolling window would give bars matching no
-  // quarter of any plan.
-  assert.equal(once.quarters.length, 13);
+  // The horizon runs to the end of a calendar year, so from mid-September 2026
+  // a three-year window reaches 31 December 2029: the rest of this year plus
+  // three whole ones, fourteen quarters in all.
+  assert.equal(once.quarters.length, 14);
+  assert.equal(once.quarters[once.quarters.length - 1].from, "2029-10-01");
   // every tranche falls in exactly one quarter: the sum has to add up
   near(
     once.quarters.reduce((s, q) => s + q.units, 0),
@@ -427,10 +426,11 @@ test("RSU: grant ids never collide, so editing one grant edits only that one", (
   assert.equal(restored[4].id, "g3");
 });
 
-test("RSU: the years the horizon cuts in half are flagged as partial", () => {
-  // Otherwise the last card reads as the plan tailing off when it is only the
-  // window ending mid-year: at a five-year horizon starting in September, the
-  // final year holds three quarters instead of four and looks like a drop.
+test("RSU: the horizon ends on 31 December, and only today's year is partial", () => {
+  // A year closes on 31 December. A window that stopped on today's date N years
+  // out left the last card holding three quarters instead of four, which reads
+  // as the plan tailing off when it is only the window closing — and made two
+  // year cards that could not be compared sit side by side.
   const p = project({
     grants: [
       {
@@ -442,15 +442,16 @@ test("RSU: the years the horizon cuts in half are flagged as partial", () => {
   });
 
   const flags = Object.fromEntries(p.years.map((y) => [y.year, y.partial]));
-  // 2026 starts at "today", not in January; 2029 ends at the horizon, not in
-  // December. The two in the middle are whole.
+  // Only the current year is counted from part-way through: what vested before
+  // today vested, and no window brings it back. Every later year is whole —
+  // 2029 included, which is where the old window cut.
   assert.equal(flags[2026], true);
   assert.equal(flags[2027], false);
   assert.equal(flags[2028], false);
-  assert.equal(flags[2029], true);
+  assert.equal(flags[2029], false);
 
-  // And a partial year really does hold less: it is the fact the flag explains.
-  const full = p.years.find((y) => y.year === 2027)!;
-  const cut = p.years.find((y) => y.year === 2029)!;
-  assert.ok(cut.units < full.units, "the cut year holds fewer vests");
+  // And the one that is counted from today really does hold less.
+  const whole = p.years.find((y) => y.year === 2027)!;
+  const fromToday = p.years.find((y) => y.year === 2026)!;
+  assert.ok(fromToday.units < whole.units, "the year counted from today holds fewer vests");
 });
