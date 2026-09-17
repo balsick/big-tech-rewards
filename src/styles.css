@@ -121,7 +121,12 @@ header.top {
   position: sticky;
   top: 0;
   z-index: 20;
-  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  /* 96% e non 88%: la sfocatura e' un vezzo, non un fondale. Dove
+     `backdrop-filter` non c'e' o non viene applicato (e su iOS vuole ancora il
+     prefisso) il 12% di trasparenza lasciava passare nitido lo spigolo delle
+     schede che scorrono sotto, e la testata sembrava bucata. */
+  background: color-mix(in srgb, var(--bg) 96%, transparent);
+  -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--border);
 }
@@ -197,6 +202,14 @@ header.top {
   border-radius: 999px;
   cursor: pointer;
   white-space: nowrap;
+  /* Le opzioni possono essere un'icona o una parola: il flex tiene le due cose
+     centrate nello stesso modo, e la min-width fa si' che tre icone non
+     risultino piu' strette di tre parole. */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.1rem;
+  min-height: 1.85rem;
 }
 
 .seg button[aria-pressed="true"] {
@@ -244,6 +257,17 @@ nav.tabs button[aria-current="page"] { color: var(--text); border-bottom-color: 
 
 .card + .card { margin-top: 16px; }
 
+/* Dentro una griglia lo spazio fra le schede lo fa il `gap`. La regola qui
+   sopra serve alle schede impilate in colonna, ma `+` non sa in che
+   contenitore si trova: applicata dentro una griglia spinge in basso ogni
+   scheda che non e' la prima, e le colonne della stessa riga partono da
+   altezze diverse. Da fuori sembra un errore di allineamento e invece e' un
+   margine di troppo. */
+.grid2 > .card + .card,
+.grid3 > .card + .card {
+  margin-top: 0;
+}
+
 .card h2 { font-size: 15px; margin: 0 0 8px; letter-spacing: -0.01em; }
 
 .card h3 { font-size: 13px; margin: 16px 0 8px; color: var(--text-2); }
@@ -273,6 +297,20 @@ nav.tabs button[aria-current="page"] { color: var(--text); border-bottom-color: 
   gap: 16px;
   align-items: start;
   padding: 16px 0 0;
+  /* La colonna va dichiarata anche quando e' una sola.
+     Un grid senza `grid-template-columns` crea una colonna implicita `auto`,
+     e una traccia `auto` si dimensiona sul **min-content** dei figli: basta un
+     campo nativo o una tabella larga la' in fondo e la colonna si allarga oltre
+     il viewport, portandosi dietro tutte le schede. Da fuori si vede solo una
+     card col bordo destro fuori schermo e i bottoni tagliati, e sembra un
+     problema di padding. `minmax(0, …)` toglie quel minimo. */
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* Stessa ragione per i figli: in un grid l'`auto` di `min-width` non e' zero,
+   e un contenuto incomprimibile lo sfrutta. */
+.tool > * {
+  min-width: 0;
 }
 
 @media (min-width: 900px) {
@@ -323,21 +361,79 @@ input.inp.soglia {
   display: inline-block;
 }
 
-/* Un campo data nativo non si stringe. "01/04/2026" piu' l'icona del
-   calendario vogliono circa 140 px, e sotto quella soglia il browser non manda
-   niente a capo: ci mette l'icona SOPRA l'ultima cifra dell'anno, e la data
-   diventa illeggibile senza che nulla sembri rotto (nessun overflow, nessuna
-   sovrapposizione fra i box — solo il contenuto schiacciato). Quando la coppia
-   non ci sta, si impila.
+/* I campi data, che ogni motore disegna a modo suo.
+ *
+ * Due difetti diversi, e nessuno dei due si vede sul desktop dove si sviluppa:
+ *
+ * 1. **WebKit centra il valore.** Su iPhone "1 apr 2026" finisce in mezzo al
+ *    campo mentre ogni altro campo della pagina ha il testo a sinistra: il
+ *    modulo sembra disallineato e non si capisce perche'. `appearance: none`
+ *    piu' `text-align: left` lo riportano in riga con gli altri.
+ *
+ * 2. **Blink ci mette l'icona sopra l'ultima cifra.** "01/04/2026" piu'
+ *    l'icona del calendario vogliono ~140 px e sotto quella soglia il browser
+ *    non manda niente a capo: sovrappone. Non e' un overflow e non e' una
+ *    sovrapposizione fra box — e' solo il contenuto schiacciato, percio' non lo
+ *    rileva nessun controllo sulle geometrie.
+ *
+ * La coppia resta affiancata, perche' due date sono un intervallo e si leggono
+ * da sinistra a destra: impilarle a tutta larghezza costa tre dita di scroll e
+ * fa sembrare i due campi piu' importanti di tutto il resto del modulo. Quello
+ * che si stringe e' il loro contenuto, e solo dove serve. */
+input.inp[type="date"] {
+  appearance: none;
+  -webkit-appearance: none;
+  text-align: left;
+  min-height: 2.6rem;
+}
 
-   La classe c'e' per i browser senza `:has()`; il selettore con `:has()` prende
-   da solo qualsiasi altra coppia che contenga una data, comprese quelle che
-   verranno dopo. */
-@media (max-width: 430px) {
+input.inp[type="date"]::-webkit-date-and-time-value {
+  text-align: left;
+}
+
+/* L'icona del calendario: la stessa larghezza in meno che serviva. */
+input.inp[type="date"]::-webkit-calendar-picker-indicator {
+  margin: 0 0 0 2px;
+  padding: 0;
+  opacity: 0.55;
+}
+
+input.inp[type="date"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}
+
+/* Sotto i 400 px il valore rimpicciolisce quel tanto che basta a starci con
+   l'icona accanto invece che sotto. */
+@media (max-width: 400px) {
+  input.inp[type="date"] {
+    font-size: 15px;
+    padding-inline: 7px;
+  }
+}
+
+/* Solo sugli schermi davvero stretti (i 320 px dei telefoni piccoli) non c'e'
+   proprio spazio per due, e allora si impila. La classe serve ai browser senza
+   `:has()`; il selettore con `:has()` prende da solo le coppie che verranno. */
+@media (max-width: 350px) {
   .grid2.has-date,
   .grid2:has(input[type="date"]) {
-    grid-template-columns: 1fr;
+    /* `minmax(0, …)` e non `1fr`: `1fr` vale `minmax(auto, 1fr)`, e su WebKit
+       il min-content di un campo data e' piu' largo di quanto sembri — la
+       traccia si allarga per contenerlo e la griglia sfonda il bordo della
+       scheda, portandosi dietro lo scroll orizzontale di tutta la pagina.
+       E' lo stesso motivo per cui `.grid2` lo usa gia' nel caso a due
+       colonne: qui mancava solo nell'override. */
+    grid-template-columns: minmax(0, 1fr);
   }
+}
+
+/* L'ultima rete: il contenuto di un campo nativo non e' sotto il nostro
+   controllo, e su un telefono uno scroll orizzontale di pochi pixel e' un
+   difetto che si sente a ogni gesto senza che si capisca da dove venga.
+   `clip` non crea un contenitore di scroll, quindi non rompe lo `position:
+   sticky` della testata come farebbe `hidden`. */
+body {
+  overflow-x: clip;
 }
 
 .row-inline { display: flex; gap: 8px; align-items: flex-end; }
@@ -407,7 +503,20 @@ li.sum { border-top: 1px solid var(--text); margin-top: 4px; padding-top: 8px; f
 
 .pos { color: var(--good); }
 
-table.tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+/* La tabella delle vestizioni: sei colonne, che su un telefono non ci stanno.
+   `width: 100%` da solo non le fa scorrere — le **schiaccia**, fino a
+   comprimere ogni cella al suo min-content, e i valori di colonne diverse
+   finiscono attaccati ("1/3" "41,99" "29,18 €" diventa "1/341,9929,18 €").
+   Il `min-width` le da' lo spazio che le serve e lascia scorrere il box che la
+   contiene, che e' il modo giusto di stringere una tabella di dati: i numeri
+   restano leggibili e si scorre di lato, invece di avere tutto visibile e
+   niente comprensibile. */
+table.tbl {
+  width: 100%;
+  min-width: 25rem;
+  border-collapse: collapse;
+  font-size: 13px;
+}
 
 table.tbl th {
   text-align: left;
@@ -415,18 +524,48 @@ table.tbl th {
   text-transform: uppercase;
   letter-spacing: 0.02em;
   color: var(--muted);
-  padding: 0 8px 6px 0;
+  padding: 0 12px 6px 0;
   font-weight: 700;
   position: sticky;
   top: 0;
   background: var(--surface);
 }
 
-table.tbl td { padding: 6px 8px 6px 0; border-top: 1px solid var(--border); font-variant-numeric: tabular-nums; }
+table.tbl td {
+  padding: 6px 12px 6px 0;
+  border-top: 1px solid var(--border);
+  font-variant-numeric: tabular-nums;
+  /* Un importo spezzato su due righe non e' un importo. */
+  white-space: nowrap;
+}
 
-table.tbl td.r, table.tbl th.r { text-align: right; padding-right: 0; }
+/* Le colonne allineate a destra: lo spazio va messo **a sinistra**.
+   Azzerare il `padding-right` le fa finire a filo del bordo (giusto), ma senza
+   nulla dal lato opposto il valore tocca la colonna precedente appena e' lungo
+   abbastanza: "1/3" e "41,99" diventano "1/341,99", e lo stesso fanno le
+   intestazioni ("TRANCHE" + "UNITÀ" = "TRANCHEUNITÀ"). */
+table.tbl td.r,
+table.tbl th.r {
+  text-align: right;
+  padding-right: 0;
+  padding-left: 14px;
+}
 
-.scroll-y { max-height: 340px; overflow: auto; }
+/* Su uno schermo stretto una colonna in meno vale piu' di una colonna in piu':
+   "1/12" e' l'unico dato della riga che si ricava guardando le altre. */
+@media (max-width: 620px) {
+  table.tbl .opz {
+    display: none;
+  }
+}
+
+.scroll-y {
+  max-height: 340px;
+  overflow: auto;
+  /* Arrivato in fondo alla tabella, lo scroll non deve rubare quello della
+     pagina: su un telefono e' il modo piu' rapido di restare incastrati. */
+  overscroll-behavior: contain;
+}
 
 .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
 

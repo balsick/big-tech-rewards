@@ -13,6 +13,8 @@ import {
 } from "../lib/rsu.ts";
 import { caricaQuote, storicoAllaData, type Quote } from "../lib/prices.ts";
 import RegimeEditor from "./RegimeEditor.tsx";
+import Salvataggio from "./Salvataggio.tsx";
+import { cancella, disponibile, leggi, scrivi } from "../lib/salvataggio.ts";
 import { RAL_DEFAULT } from "../lib/meta.ts";
 
 // Le RSU, guardate da tre anni di distanza.
@@ -25,8 +27,16 @@ import { RAL_DEFAULT } from "../lib/meta.ts";
 let seq = 0;
 const nuovoId = () => `g${++seq}`;
 
-/** Quello che si scrive: il grant in dollari, senza il prezzo che lo converte. */
-type GrantScritto = Omit<Grant, "prezzoGrant">;
+/**
+ * Quello che si scrive.
+ *
+ * Il grant e' in dollari e il prezzo che li converte in unita' non si scrive:
+ * lo dice l'archivio. Tranne quando non puo' dirlo — un grant con la data nel
+ * futuro non ha una chiusura — e allora `prezzoScritto` prende il posto del
+ * numero letto, come per ogni altro campo di questi due strumenti: il letto e'
+ * il fondo, lo scritto e' quello che ci sta sopra.
+ */
+type GrantScritto = Omit<Grant, "prezzoGrant"> & { prezzoScritto: number | null };
 
 // I due grant che quasi tutti hanno insieme, e che insieme spiegano perche'
 // serve guardare tre anni: il welcome, che vesta 30-30-40 e quindi ha la coda
@@ -43,29 +53,46 @@ function grantIniziali(oggi: string): GrantScritto[] {
       cadenza: "30-30-40",
       anni: 3,
       dateFisse: false,
+      prezzoScritto: null,
     },
     {
       id: nuovoId(),
       etichetta: `Bonus ${anno}`,
-      data: `${anno}-02-20`,
+      data: `${anno}-11-20`,
       valoreUsd: 10000,
       cadenza: "trimestrale",
       anni: 3,
       dateFisse: true,
+      prezzoScritto: null,
     },
   ];
 }
+const CHIAVE = "rsu";
+
+/** Quello che il tasto «salva» mette nel browser: solo i campi del modulo. */
+interface StatoRsu {
+  grants: GrantScritto[];
+  ral: number;
+  orizzonte: number;
+  prezzo: number | null;
+  cambio: number | null;
+}
+
 export default function RsuTool() {
   const { t, lang, regime } = useStore();
   const oggi = todayISO();
-  const [grants, setGrants] = useState<GrantScritto[]>(() => grantIniziali(oggi));
-  const [ral, setRal] = useState(RAL_DEFAULT);
-  const [orizzonte, setOrizzonte] = useState(3);
+  const [salvato, setSalvato] = useState(() => leggi<StatoRsu>(CHIAVE));
+  const s0 = salvato?.dati;
+  const possibileSalvare = useMemo(() => disponibile(), []);
+
+  const [grants, setGrants] = useState<GrantScritto[]>(() => s0?.grants ?? grantIniziali(oggi));
+  const [ral, setRal] = useState(s0?.ral ?? RAL_DEFAULT);
+  const [orizzonte, setOrizzonte] = useState(s0?.orizzonte ?? 3);
   const [scala, setScala] = useState<"eur" | "unita">("eur");
 
   const [quote, setQuote] = useState<Quote | null>(null);
-  const [prezzo, setPrezzo] = useState<number | null>(null);
-  const [cambio, setCambio] = useState<number | null>(null);
+  const [prezzo, setPrezzo] = useState<number | null>(s0?.prezzo ?? null);
+  const [cambio, setCambio] = useState<number | null>(s0?.cambio ?? null);
 
   useEffect(() => {
     let vivo = true;
@@ -82,14 +109,28 @@ export default function RsuTool() {
   // Il prezzo che converte i dollari in unita' e' quello del **giorno del
   // grant**, non quello di oggi: e' cosi' che il piano fissa le unita', ed e'
   // la ragione per cui un grant vecchio oggi vale piu' di uno nuovo dello
-  // stesso importo. Se quella data non e' nell'archivio si ricade sul prezzo
-  // corrente, e il campo lo dice.
-  const prezzoAlGrant = (data: string) => storicoAllaData(data)?.close ?? vPrezzo;
+  // stesso importo.
+  //
+  // Un grant con la data nel futuro, pero', non ha una chiusura: il prezzo
+  // migliore che si possa dire e' quello di adesso. L'archivio da' sempre
+  // l'ultima chiusura *precedente* alla data chiesta, quindi per una data
+  // futura tornerebbe una chiusura di mesi fa — vecchia e pure sbagliata di
+  // verso. Il campo dice sempre da quale giorno viene il numero.
+  const prezzoAlGrant = (
+    g: GrantScritto
+  ): { prezzo: number; quando: string; scritto: boolean; futuro: boolean } => {
+    const futuro = g.data > oggi;
+    if (g.prezzoScritto != null)
+      return { prezzo: g.prezzoScritto, quando: "", scritto: true, futuro };
+    const storico = futuro ? null : storicoAllaData(g.data);
+    if (storico) return { prezzo: storico.close, quando: storico.closeOn, scritto: false, futuro };
+    return { prezzo: vPrezzo, quando: quote?.date ?? oggi, scritto: false, futuro };
+  };
   const risolti = useMemo<Grant[]>(
-    // `prezzoAlGrant` legge solo l'archivio (una funzione pura) e vPrezzo,
-    // quindi le dipendenze sono queste due e basta.
-    () => grants.map((g) => ({ ...g, prezzoGrant: prezzoAlGrant(g.data) })),
-    [grants, vPrezzo]
+    // `prezzoAlGrant` legge l'archivio (una funzione pura), vPrezzo e la data
+    // della quote: le dipendenze sono queste.
+    () => grants.map((g) => ({ ...g, prezzoGrant: prezzoAlGrant(g).prezzo })),
+    [grants, vPrezzo, quote?.date, oggi]
   );
 
   const p = useMemo(
@@ -100,6 +141,9 @@ export default function RsuTool() {
       ),
     [risolti, vPrezzo, vCambio, ral, oggi, orizzonte, regime]
   );
+
+  const stato: StatoRsu = { grants, ral, orizzonte, prezzo, cambio };
+  const sporco = JSON.stringify(stato) !== JSON.stringify(salvato?.dati ?? null);
 
   const stipendio = soloStipendio(ral, regime);
   const patch = (id: string, q: Partial<GrantScritto>) =>
@@ -156,14 +200,12 @@ export default function RsuTool() {
                   value={g.valoreUsd}
                   onChange={(v) => patch(g.id, { valoreUsd: v })}
                   hint={(() => {
-                    const storico = storicoAllaData(g.data);
-                    const prezzo = prezzoAlGrant(g.data);
+                    const { prezzo, quando, scritto } = prezzoAlGrant(g);
                     if (!(prezzo > 0)) return t.rsu.grantValueNoPrice;
-                    return t.rsu.grantValueHint(
-                      num(unitaDelGrant({ ...g, prezzoGrant: prezzo }), lang, 2),
-                      usd(prezzo, lang),
-                      dateShort(storico?.closeOn ?? oggi, lang)
-                    );
+                    const unita = num(unitaDelGrant({ ...g, prezzoGrant: prezzo }), lang, 2);
+                    return scritto
+                      ? t.rsu.grantValueHintManual(unita, usd(prezzo, lang))
+                      : t.rsu.grantValueHint(unita, usd(prezzo, lang), dateShort(quando, lang));
                   })()}
                 />
                 <Select<Cadenza>
@@ -181,16 +223,50 @@ export default function RsuTool() {
                           : t.rsu.schedule.mensileHint
                   }
                 />
-                <NumField
-                  lang={lang}
-                  label={t.rsu.grantYears}
-                  suffix={t.rsu.years}
-                  dec={0}
-                  value={g.anni}
-                  onChange={(v) => patch(g.id, { anni: Math.max(1, Math.round(v)) })}
-                  disabled={g.cadenza === "30-30-40"}
-                />
+                {/* Il 30-30-40 ha la durata dentro il nome: tre vestizioni
+                    annuali, e il campo non c'e' niente da cambiare. Mostrarlo
+                    disabilitato con un "3" grigio dentro sembrava un campo
+                    rotto, e sul telefono era una riga sprecata su quattro. */}
+                {g.cadenza === "30-30-40" ? null : (
+                  <NumField
+                    lang={lang}
+                    label={t.rsu.grantYears}
+                    suffix={t.rsu.years}
+                    dec={0}
+                    value={g.anni}
+                    onChange={(v) => patch(g.id, { anni: Math.max(1, Math.round(v)) })}
+                  />
+                )}
               </div>
+              {/* Il prezzo del grant si scrive solo quando l'archivio non
+                  puo' dirlo — data nel futuro — o quando l'hai gia' scritto:
+                  un campo che compare e scompare al cambio di data non deve
+                  portarsi via il numero che ci avevi messo. */}
+              {(() => {
+                const r = prezzoAlGrant(g);
+                if (!r.futuro && !r.scritto) return null;
+                return (
+                  <div style={{ marginTop: 10 }}>
+                    <NumField
+                      lang={lang}
+                      label={t.rsu.grantPrice}
+                      suffix="$"
+                      value={r.prezzo}
+                      onChange={(v) => patch(g.id, { prezzoScritto: v })}
+                      hint={r.scritto ? t.common.manual : t.rsu.grantPriceFuture}
+                    />
+                    {r.scritto ? (
+                      <button
+                        className="btn link"
+                        type="button"
+                        onClick={() => patch(g.id, { prezzoScritto: null })}
+                      >
+                        {t.common.reset}
+                      </button>
+                    ) : null}
+                  </div>
+                );
+              })()}
               {g.cadenza === "trimestrale" || g.cadenza === "mensile" ? (
                 <div style={{ marginTop: 10 }}>
                   <Check
@@ -219,6 +295,7 @@ export default function RsuTool() {
                   cadenza: "trimestrale",
                   anni: 3,
                   dateFisse: true,
+                  prezzoScritto: null,
                 },
               ]);
             }}
@@ -279,6 +356,19 @@ export default function RsuTool() {
             <Disclosure label={t.tax.title}>
               <RegimeEditor ral={ral} />
             </Disclosure>
+          </div>
+
+          <div style={{ marginTop: 14, borderTop: "1px solid var(--border)", paddingTop: 14 }}>
+            <Salvataggio
+              quando={salvato?.quando ?? null}
+              sporco={sporco}
+              possibile={possibileSalvare}
+              onSalva={() => setSalvato(scrivi(CHIAVE, stato))}
+              onDimentica={() => {
+                cancella(CHIAVE);
+                setSalvato(null);
+              }}
+            />
           </div>
         </Card>
       </div>
@@ -368,7 +458,7 @@ export default function RsuTool() {
                     <tr>
                       <th>{t.rsu.tableDate}</th>
                       <th>{t.rsu.tableGrant}</th>
-                      <th className="r">{t.rsu.tableTranche}</th>
+                      <th className="r opz">{t.rsu.tableTranche}</th>
                       <th className="r">{t.rsu.tableUnits}</th>
                       <th className="r">{t.rsu.tableValue}</th>
                       <th className="r">{t.rsu.tableNet}</th>
@@ -393,7 +483,7 @@ export default function RsuTool() {
                             />
                             {tr.etichetta}
                           </td>
-                          <td className="r">
+                          <td className="r opz">
                             {tr.indice}/{tr.totali}
                           </td>
                           <td className="r">{num(tr.unita, lang, 2)}</td>

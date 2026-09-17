@@ -17,7 +17,7 @@ export const it = {
   footer: {
     privacyTitle: "Nessuna raccolta di dati",
     privacy:
-      "Questa pagina non raccoglie, non salva e non trasmette nulla. Non ci sono analytics, cookie, tracker o server: tutti i conti si fanno nel tuo browser e i numeri che scrivi non lasciano il dispositivo. L’unica richiesta di rete è al file delle quotazioni servito da questo stesso sito.",
+      "Questa pagina non raccoglie e non trasmette nulla, e non ha un server a cui potrebbe mandare qualcosa. Non ci sono analytics, cookie o tracker: tutti i conti si fanno nel tuo browser e i numeri che scrivi non lasciano il dispositivo. Salva qualcosa soltanto se glielo chiedi tu con l’apposito tasto, e solo nella memoria di questo browser: puoi dimenticare tutto dallo stesso posto. L’unica richiesta di rete è al file delle quotazioni servito da questo stesso sito.",
     unofficialTitle: "Strumento assolutamente non ufficiale",
     unofficial:
       "Non è uno strumento ufficiale di nessuna azienda, né di un piano azionario, né di un broker, né di un’amministrazione fiscale. Non è associato, approvato o sponsorizzato da nessuno di essi, e non sostituisce i documenti del tuo piano, la tua busta paga o un consulente.",
@@ -30,7 +30,7 @@ export const it = {
   common: {
     ral: "RAL",
     ralWhy:
-      "Perché serve: RSU ed ESPP non sono guadagni di borsa, sono reddito da lavoro che si somma al tuo stipendio. Quindi non conta un’aliquota media, conta lo scaglione in cui quel reddito in più va a cadere — e per saperlo bisogna sapere da dove parti. Serve solo a questo: resta nel browser, non viene salvata né inviata da nessuna parte.",
+      "Perché serve: RSU ed ESPP non sono guadagni di borsa, sono reddito da lavoro che si somma al tuo stipendio. Quindi non conta un’aliquota media, conta lo scaglione in cui quel reddito in più va a cadere — e per saperlo bisogna sapere da dove parti. Serve solo a questo, e non lascia il dispositivo: non viene inviata da nessuna parte, e viene salvata soltanto se lo chiedi tu col tasto in fondo a questa colonna.",
     price: "Prezzo azione",
     priceStart: "Prezzo a inizio periodo",
     priceEnd: "Prezzo il giorno dell’acquisto",
@@ -67,11 +67,9 @@ export const it = {
     windowEnd: "Giorno dell’acquisto",
     contribution: "Quanto accantoni",
     contributionHint: "percentuale della retribuzione trattenuta in busta ogni mese",
-    contributionFree: "oppure scrivila",
     saved: "Accantonato nel periodo",
     savedHint: (pct: string, mesi: number) => `${pct} della RAL per ${mesi} mesi`,
     savedManual: "scritto a mano: la percentuale non lo governa più",
-    capWarning: (max: number) => `Il piano si ferma al ${max}%: oltre, la trattenuta non aumenta.`,
     atMinimum: "Al minimo",
     atMinimumHint:
       "Titolo fermo: mette il prezzo dell’acquisto uguale a quello d’inizio, così resta solo lo sconto. È il pavimento del piano — quello che prendi se il mercato non fa niente.",
@@ -137,6 +135,10 @@ export const it = {
     grantValueHint: (unita: string, prezzo: string, data: string) =>
       `${unita} unità, al prezzo di ${prezzo} del ${data}`,
     grantValueNoPrice: "manca il prezzo del giorno del grant: scrivilo qui sotto",
+    grantPrice: "Prezzo al grant",
+    grantPriceFuture: "Il grant è nel futuro: una chiusura di quel giorno non esiste ancora. Parte dall\u2019ultima nota — riscrivila per provare un altro scenario.",
+    grantValueHintManual: (unita: string, prezzo: string) =>
+      `${unita} unità, al prezzo di ${prezzo} che hai scritto`,
     grantSchedule: "Vestizione",
     grantYears: "Durata",
     years: "anni",
@@ -181,6 +183,20 @@ export const it = {
       "Le unità restano frazionarie: l’arrotondamento ad azioni intere avviene al vesting, su quello che resta dopo la trattenuta, e la frazione che avanza viene pagata in contanti.",
     priceNote:
       "Il prezzo è lo stesso per tutte le vestizioni future: nessuno sa quello di fra due anni, e usarne uno inventato darebbe una precisione che non esiste.",
+  },
+  salva: {
+    title: "Salvare su questo browser",
+    button: "Salva su questo browser",
+    buttonDirty: "Salva le modifiche",
+    upToDate: "Salvato",
+    forget: "Dimentica tutto",
+    savedOn: (quando: string) => `Ultimo salvataggio: ${quando}.`,
+    where:
+      "Finisce nel localStorage di questo browser, su questo dispositivo. Non è un account e non è un file: nessuno dei tuoi altri dispositivi lo vedrà, e cancellando i dati del sito sparisce. «Dimentica tutto» lo rimuove subito.",
+    nothingLeaves:
+      "Niente di quello che scrivi lascia il dispositivo, né quando salvi né quando non salvi: questa pagina non ha un server a cui mandarlo. Salvare cambia solo per quanto tempo i numeri restano qui — da «finché la tengo aperta» a «finché non la dimentico».",
+    unavailable:
+      "Questo browser non permette di salvare — succede in navigazione privata o con i dati dei siti bloccati. I numeri restano validi finché la pagina è aperta.",
   },
   tax: {
     title: "Tasse e addizionali",

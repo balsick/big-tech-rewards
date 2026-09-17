@@ -12,6 +12,8 @@ import {
 } from "../lib/espp.ts";
 import { caricaQuote, cambioLive, storicoAllaData, type Quote } from "../lib/prices.ts";
 import RegimeEditor from "./RegimeEditor.tsx";
+import Salvataggio from "./Salvataggio.tsx";
+import { cancella, disponibile, leggi, scrivi } from "../lib/salvataggio.ts";
 import { RAL_DEFAULT } from "../lib/meta.ts";
 
 // L'ESPP: cosa succede il giorno dell'acquisto, e quanto rende il giro.
@@ -23,25 +25,47 @@ import { RAL_DEFAULT } from "../lib/meta.ts";
 
 const PASSI = Array.from({ length: 15 }, (_, i) => i + 1);
 
+const CHIAVE = "espp";
+
+/** Quello che il tasto «salva» mette nel browser: solo i campi del modulo. */
+interface StatoEspp {
+  inizio: string;
+  acquisto: string;
+  ral: number;
+  percentuale: number;
+  accantonato: number | null;
+  prezzoInizio: number | null;
+  prezzoFine: number | null;
+  cambio: number | null;
+  piano: PianoEspp;
+}
+
 export default function EsppTool() {
   const { t, lang, regime } = useStore();
-  const [piano, setPiano] = useState<PianoEspp>(PIANO_ESPP);
+  // Il salvataggio si legge una volta, negli inizializzatori: leggerlo in un
+  // effetto vorrebbe dire mostrare i default per un fotogramma e poi
+  // sovrascriverli sotto gli occhi.
+  const [salvato, setSalvato] = useState(() => leggi<StatoEspp>(CHIAVE));
+  const s0 = salvato?.dati;
+  const possibileSalvare = useMemo(() => disponibile(), []);
+
+  const [piano, setPiano] = useState<PianoEspp>(s0?.piano ?? PIANO_ESPP);
   const finestra = useMemo(() => finestraEspp(todayISO(), piano), [piano]);
 
-  const [inizio, setInizio] = useState(finestra.inizio);
-  const [acquisto, setAcquisto] = useState(finestra.acquisto);
-  const [ral, setRal] = useState(RAL_DEFAULT);
-  const [percentuale, setPercentuale] = useState(15);
+  const [inizio, setInizio] = useState(s0?.inizio ?? finestra.inizio);
+  const [acquisto, setAcquisto] = useState(s0?.acquisto ?? finestra.acquisto);
+  const [ral, setRal] = useState(s0?.ral ?? RAL_DEFAULT);
+  const [percentuale, setPercentuale] = useState(s0?.percentuale ?? 15);
   // L'accantonato si calcola dalla percentuale finche' non lo riscrivi: due
   // stati per un campo sarebbero due verita', quindi il calcolato e' il fondo e
   // lo scritto e' quello che ci sta sopra.
-  const [accantonatoScritto, setAccantonato] = useState<number | null>(null);
+  const [accantonatoScritto, setAccantonato] = useState<number | null>(s0?.accantonato ?? null);
 
   const [quote, setQuote] = useState<Quote | null>(null);
   const [quoteFallita, setQuoteFallita] = useState(false);
-  const [prezzoInizio, setPrezzoInizio] = useState<number | null>(null);
-  const [prezzoFine, setPrezzoFine] = useState<number | null>(null);
-  const [cambio, setCambio] = useState<number | null>(null);
+  const [prezzoInizio, setPrezzoInizio] = useState<number | null>(s0?.prezzoInizio ?? null);
+  const [prezzoFine, setPrezzoFine] = useState<number | null>(s0?.prezzoFine ?? null);
+  const [cambio, setCambio] = useState<number | null>(s0?.cambio ?? null);
   const [cambioNota, setCambioNota] = useState<string | null>(null);
 
   useEffect(() => {
@@ -81,6 +105,21 @@ export default function EsppTool() {
     [ral, accantonato, vInizio, vFine, vCambio, piano, regime]
   );
 
+  const stato: StatoEspp = {
+    inizio,
+    acquisto,
+    ral,
+    percentuale,
+    accantonato: accantonatoScritto,
+    prezzoInizio,
+    prezzoFine,
+    cambio,
+    piano,
+  };
+  // «Sporco» si decide confrontando il JSON e non i singoli campi: i campi
+  // cambiano a ogni modifica dello strumento, il confronto no.
+  const sporco = JSON.stringify(stato) !== JSON.stringify(salvato?.dati ?? null);
+
   const alMinimo = () => setPrezzoFine(vInizio);
   const giaAlMinimo = Math.abs(vFine - vInizio) < 1e-9;
 
@@ -97,7 +136,7 @@ export default function EsppTool() {
           <h3>{t.espp.contribution}</h3>
           <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
             <span className="mid" style={{ fontSize: 26 }}>
-              {num(percentuale, lang, 2)}%
+              {num(percentuale, lang, 0)}%
             </span>
             <span className="hint" style={{ margin: 0 }}>
               {t.espp.contributionHint}
@@ -112,7 +151,7 @@ export default function EsppTool() {
             min={1}
             max={piano.maxPct}
             step={1}
-            value={Math.min(Math.max(Math.round(percentuale), 1), piano.maxPct)}
+            value={percentuale}
             aria-label={t.espp.contribution}
             onChange={(ev) => {
               setPercentuale(Number(ev.target.value));
@@ -124,18 +163,13 @@ export default function EsppTool() {
               <span key={p}>{p}%</span>
             ))}
           </div>
-          <div className="grid2" style={{ marginTop: 10 }}>
-            <NumField
-              lang={lang}
-              label={t.espp.contributionFree}
-              suffix="%"
-              value={percentuale}
-              onChange={(v) => {
-                setPercentuale(v);
-                setAccantonato(null);
-              }}
-              hint={percentuale > piano.maxPct ? t.espp.capWarning(piano.maxPct) : undefined}
-            />
+          {/* Il campo libero e' in **euro**, non in percentuale: il portale del
+              piano accetta punti percentuali interi, quindi una percentuale
+              scritta a mano non e' un caso in piu', e' lo stesso caso dello
+              slider scritto peggio. Quello che invece non si ricava dalla
+              percentuale e' l'importo vero — una finestra cominciata a metta',
+              un mese di aspettativa, un tetto in valuta — e quello si scrive. */}
+          <div style={{ marginTop: 12 }}>
             <NumField
               lang={lang}
               label={t.espp.saved}
@@ -144,10 +178,15 @@ export default function EsppTool() {
               onChange={setAccantonato}
               hint={
                 accantonatoScritto === null
-                  ? t.espp.savedHint(`${num(percentuale, lang, 2)}%`, piano.mesi)
+                  ? t.espp.savedHint(`${num(percentuale, lang, 0)}%`, piano.mesi)
                   : t.espp.savedManual
               }
             />
+            {accantonatoScritto !== null ? (
+              <button className="btn link" type="button" onClick={() => setAccantonato(null)}>
+                {t.common.reset}
+              </button>
+            ) : null}
           </div>
 
           <h3>{t.common.ral}</h3>
@@ -279,6 +318,19 @@ export default function EsppTool() {
             <Disclosure label={t.tax.title}>
               <RegimeEditor ral={ral} />
             </Disclosure>
+          </div>
+
+          <div style={{ marginTop: 14, borderTop: "1px solid var(--border)", paddingTop: 14 }}>
+            <Salvataggio
+              quando={salvato?.quando ?? null}
+              sporco={sporco}
+              possibile={possibileSalvare}
+              onSalva={() => setSalvato(scrivi(CHIAVE, stato))}
+              onDimentica={() => {
+                cancella(CHIAVE);
+                setSalvato(null);
+              }}
+            />
           </div>
         </Card>
       </div>

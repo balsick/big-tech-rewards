@@ -7,9 +7,11 @@ export type Tema = "light" | "dark" | "auto";
 // Lo stato che sopravvive a un reload: lingua, tema e il regime fiscale, che
 // una volta tarato sul proprio comune non si ha nessuna voglia di ritarare.
 //
-// Nient'altro viene salvato — in particolare **nessun numero personale**: RAL,
-// unita' e percentuali restano nella memoria della pagina e se ne vanno quando
-// la chiudi. Il tema e le addizionali sono preferenze, non dati.
+// Qui dentro finiscono solo **preferenze**, mai un importo: lingua, tema e le
+// aliquote del proprio comune. I numeri personali — RAL, grant, percentuali —
+// stanno altrove (`src/lib/salvataggio.ts`) e li salva soltanto il tasto
+// esplicito dei due strumenti, perche' una preferenza si puo' ricordare senza
+// chiedere e un dato no.
 
 const CHIAVE_TEMA = "btr:theme";
 const CHIAVE_LANG = "btr:lang";

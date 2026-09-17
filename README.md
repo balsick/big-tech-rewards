@@ -25,10 +25,17 @@ documenti del tuo piano e un professionista.
 
 ## 🔒 Nessuna raccolta di dati
 
-Nessun analytics, nessun cookie, nessun tracker, nessun server. I numeri che
-scrivi restano nella memoria della pagina e se ne vanno quando la chiudi: non
-vengono salvati e non vengono trasmessi. In `localStorage` finiscono soltanto
-tre preferenze — lingua, tema e le aliquote delle addizionali — mai un importo.
+Nessun analytics, nessun cookie, nessun tracker, nessun server — non c'è un
+backend a cui questa pagina *potrebbe* mandare qualcosa. I numeri che scrivi
+restano nella memoria della pagina e se ne vanno quando la chiudi.
+
+Se ti scoccia ricompilare i moduli ogni volta, c'è un **tasto esplicito** in
+fondo alla colonna di sinistra di ogni strumento: salva i campi nel
+`localStorage` di quel browser, su quel dispositivo, e «Dimentica tutto» accanto
+li rimuove. Niente salvataggio automatico e niente casella preselezionata: una
+promessa di non conservare nulla vale se è l'utente a decidere quando fare
+eccezione. Senza premerlo, in `localStorage` finiscono solo tre preferenze —
+lingua, tema e le aliquote delle addizionali — mai un importo.
 
 L'unica richiesta di rete è a `quote.json`, servito da questa stessa origine.
 C'è un secondo fetch **opzionale**, solo se premi «aggiorna il cambio»: va a
@@ -70,6 +77,10 @@ comunicato: le unità sono il risultato, e le fissa il prezzo del **giorno
 dell'assegnazione** — che lo strumento pesca dallo storico. È anche il modo di
 vedere una cosa che in azioni non si nota: due grant dello stesso importo
 assegnati in due anni diversi valgono oggi cifre molto diverse.
+
+Per un grant con la data **nel futuro** una chiusura non esiste, quindi il
+prezzo diventa un campo, precompilato con l'ultima quotazione nota e
+riscrivibile: è lì che si prova «e se al prossimo grant il titolo fosse a».
 
 Serve perché con un grant nuovo ogni anno e vestizioni trimestrali, in un anno
 qualsiasi vestono pezzi di tre o quattro grant diversi — e **il fisco somma

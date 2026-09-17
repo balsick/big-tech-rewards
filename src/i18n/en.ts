@@ -19,7 +19,7 @@ export const en: Dict = {
   footer: {
     privacyTitle: "No data collection whatsoever",
     privacy:
-      "This page collects nothing, stores nothing and transmits nothing. There are no analytics, cookies, trackers or servers: every calculation happens in your browser and the numbers you type never leave your device. The only network request is to the quote file served by this same site.",
+      "This page collects nothing and transmits nothing, and it has no server it could send anything to. There are no analytics, cookies or trackers: every calculation happens in your browser and the numbers you type never leave your device. It stores something only if you ask it to, with the explicit button, and only in this browser’s memory — and you can forget it all from the same place. The only network request is to the quote file served by this same site.",
     unofficialTitle: "Absolutely unofficial tool",
     unofficial:
       "This is not an official tool of any company, stock plan, broker or tax authority. It is not affiliated with, endorsed by or sponsored by any of them, and it does not replace your plan documents, your payslip or a professional adviser.",
@@ -32,7 +32,7 @@ export const en: Dict = {
   common: {
     ral: "Gross annual salary",
     ralWhy:
-      "Why it is needed: RSUs and ESPP are not stock market gains, they are employment income stacked on top of your salary. So an average tax rate tells you nothing — what matters is the bracket that extra income lands in, and to know that you need to know where you start from. That is all it is used for: it stays in your browser, it is never stored or sent anywhere.",
+      "Why it is needed: RSUs and ESPP are not stock market gains, they are employment income stacked on top of your salary. So an average tax rate tells you nothing — what matters is the bracket that extra income lands in, and to know that you need to know where you start from. That is all it is used for, and it never leaves your device: it is not sent anywhere, and it is only stored if you ask for it with the button at the foot of this column.",
     price: "Share price",
     priceStart: "Price at start of period",
     priceEnd: "Price on purchase day",
@@ -68,11 +68,9 @@ export const en: Dict = {
     windowEnd: "Purchase day",
     contribution: "How much you set aside",
     contributionHint: "share of your pay withheld from each payslip",
-    contributionFree: "or type it",
     saved: "Set aside over the period",
     savedHint: (pct: string, mesi: number) => `${pct} of gross salary for ${mesi} months`,
     savedManual: "typed in by hand: the percentage no longer drives it",
-    capWarning: (max: number) => `The plan caps at ${max}%: beyond that the deduction does not grow.`,
     atMinimum: "At the floor",
     atMinimumHint:
       "Flat stock: sets the purchase-day price equal to the starting price, so only the discount is left. It is the plan's floor — what you get if the market does nothing.",
@@ -138,6 +136,10 @@ export const en: Dict = {
     grantValueHint: (unita: string, prezzo: string, data: string) =>
       `${unita} units, at the ${prezzo} price of ${data}`,
     grantValueNoPrice: "the grant-date price is missing: type it below",
+    grantPrice: "Price at grant",
+    grantPriceFuture: "The grant is in the future: there is no closing price for that day yet. It starts from the last one on file — overwrite it to try another scenario.",
+    grantValueHintManual: (unita: string, prezzo: string) =>
+      `${unita} units, at the ${prezzo} you typed`,
     grantSchedule: "Vesting",
     grantYears: "Length",
     years: "years",
@@ -181,6 +183,20 @@ export const en: Dict = {
       "Units stay fractional: rounding to whole shares happens at vesting, on what is left after withholding, and the leftover fraction is paid in cash.",
     priceNote:
       "The same price is used for every future vest: nobody knows the price two years out, and inventing one would give a precision that does not exist.",
+  },
+  salva: {
+    title: "Saving in this browser",
+    button: "Save in this browser",
+    buttonDirty: "Save changes",
+    upToDate: "Saved",
+    forget: "Forget everything",
+    savedOn: (quando: string) => `Last saved: ${quando}.`,
+    where:
+      "It goes into this browser's localStorage, on this device. It is not an account and not a file: none of your other devices will see it, and clearing the site data removes it. \u201cForget everything\u201d removes it right away.",
+    nothingLeaves:
+      "Nothing you type leaves the device, whether you save or not: this page has no server to send it to. Saving only changes how long the numbers stay here \u2014 from \u201cuntil I close the tab\u201d to \u201cuntil I forget them\u201d.",
+    unavailable:
+      "This browser will not let the page save \u2014 that happens in private browsing or with site data blocked. Your numbers hold for as long as the page stays open.",
   },
   tax: {
     title: "Tax & local surtaxes",
