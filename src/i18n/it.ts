@@ -179,7 +179,11 @@ export const it = {
     yearGross: "Lordo",
     yearRate: "Aliquota",
     yearShares: "Azioni che ti arrivano",
-    yearSharesHint: "le altre se le prende la trattenuta",
+    yearSharesHint: "quelle che restano dopo il sell to cover",
+    yearSold: "Vendute per le tasse",
+    sellToCover:
+      "La trattenuta sul vesting non la paghi in contanti: il broker vende una parte delle azioni nel momento stesso in cui vestono e versa le tasse. È il «sell to cover». Nessuno ti chiede soldi — ti arrivano meno azioni, ed è la cosa che sorprende di più al primo vesting.",
+    chartGross: "Le cifre e le unità sono lorde, prima del sell to cover.",
     yearSalaryEquiv: "RAL equivalente",
     yearSalaryEquivHint: "stipendio + RSU dell’anno",
     tableTitle: "Le vestizioni, una per una",

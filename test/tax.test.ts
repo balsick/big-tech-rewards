@@ -358,3 +358,33 @@ test("ESPP: the plan cap cuts before buying", () => {
   near(uncapped.contributedUsd, 17250);
   near(uncapped.aboveCap, 0);
 });
+
+test("RSU: sell to cover splits the vest in two, and the halves add up", () => {
+  // The withholding on a vest is not paid in cash: the broker sells part of the
+  // shares on the day. Whatever is sold plus whatever arrives has to be exactly
+  // what vested — if those two ever stop adding up, shares are being invented
+  // or lost somewhere.
+  const grant: Grant = {
+    id: "a", label: "A", date: "2026-02-20", valueUsd: 40000, priceAtGrant: 100,
+    schedule: "quarterly", years: 3, usePlanDates: true,
+  };
+  const p = project({
+    grants: [grant], price: 100, fxRate: 1.16, salary: 60000,
+    today: "2026-09-17", horizonYears: 3,
+  });
+
+  for (const y of p.years) {
+    near(y.netShares + y.sharesSold, y.units, 1e-9);
+    assert.ok(y.sharesSold > 0, `${y.year}: something must be sold to cover the tax`);
+    // At a marginal rate above 50% more than half the vest goes to the taxman,
+    // which is the number that surprises people at their first vest.
+    assert.ok(y.sharesSold > y.netShares, `${y.year}: over half the vest is withheld`);
+  }
+
+  // No tax, nothing sold: the split follows the rate and is not a fixed cut.
+  const free = project({
+    grants: [grant], price: 100, fxRate: 1.16, salary: 0,
+    today: "2026-09-17", horizonYears: 3,
+  });
+  assert.ok(free.years[0].sharesSold < p.years[0].sharesSold);
+});

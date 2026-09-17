@@ -133,8 +133,18 @@ export interface RsuYear {
   grossEur: number;
   taxRate: number;
   netEur: number;
-  /** shares that actually reach your account; the rest go to withholding */
+  /**
+   * Shares that actually reach your account.
+   *
+   * The withholding on a vest is not paid in cash: the broker **sells part of
+   * the shares the moment they vest** and hands over the tax — "sell to cover".
+   * Nobody asks you for money; fewer shares arrive. It is the single most
+   * surprising thing about a first vest, so both halves are reported: what is
+   * sold and what is left.
+   */
   netShares: number;
+  /** shares sold on the day to cover the withholding, plus the odd fraction */
+  sharesSold: number;
   tranches: Tranche[];
 }
 
@@ -206,6 +216,7 @@ export function project(i: RsuInput, regime?: TaxRegime): Projection {
         taxRate: m.rate,
         netEur: grossEur * m.kept,
         netShares: Math.floor(units * m.kept),
+        sharesSold: units - Math.floor(units * m.kept),
         tranches: ofYear,
       };
     });

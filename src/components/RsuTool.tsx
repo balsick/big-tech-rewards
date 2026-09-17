@@ -186,8 +186,6 @@ export default function RsuTool() {
 
   return (
     <div className="tool">
-      <div className="summary">{headline}</div>
-
       <div className="panel">
         <Card>
           <h2>{t.rsu.grants}</h2>
@@ -415,7 +413,10 @@ export default function RsuTool() {
         </Card>
       </div>
 
-      <div className="detail">
+      <div className="results">
+        <div className="summary">{headline}</div>
+
+        <div className="detail">
         {projection.upcoming.length ? (
           <>
             <Card>
@@ -440,7 +441,12 @@ export default function RsuTool() {
                   </span>
                 ))}
               </div>
-              <p className="hint">{t.rsu.chartHint}</p>
+              <p className="hint">
+                {t.rsu.chartHint} {t.rsu.chartGross}
+                <Info label={t.common.whatIsThis}>
+                  <p>{t.rsu.sellToCover}</p>
+                </Info>
+              </p>
             </Card>
 
             <div className="grid3" style={{ marginTop: 14 }}>
@@ -452,6 +458,7 @@ export default function RsuTool() {
                     <Line name={t.rsu.yearUnits} value={num(y.units, lang, 2)} />
                     <Line name={t.rsu.yearGross} value={eur0(y.grossEur, lang)} />
                     <Line name={t.rsu.yearRate} value={pct(y.taxRate, lang)} tone="neg" />
+                    <Line name={t.rsu.yearSold} value={`\u2212${num(y.sharesSold, lang, 0)}`} tone="neg" />
                     <Line name={t.rsu.yearShares} hint={t.rsu.yearSharesHint} value={num(y.netShares, lang, 0)} />
                     {/* The number that makes a year of RSUs comparable to a
                         salary: it is the question people actually ask looking at
@@ -528,6 +535,7 @@ export default function RsuTool() {
           <p className="note">{t.rsu.intro}</p>
           <p className="note">{t.rsu.whyProspect}</p>
         </Card>
+        </div>
       </div>
     </div>
   );

@@ -380,22 +380,62 @@ nav.tabs button[aria-current="page"] { color: var(--text); border-bottom-color: 
 
 .tool > * { min-width: 0; }
 
-/* On a phone the order is the source order: **the answer first**, then the
-   form, then the detail. The number people open the page for cannot sit below
-   two thousand pixels of already-filled fields. */
+/* Two columns on desktop, one on a phone, and the order changes with them.
+ *
+ * The form is a single tall element and the answer is two — the headline and
+ * the detail — so the right-hand column has to be **one** box, not two grid
+ * rows. With the form spanning two auto rows, the browser has to fit its height
+ * into those rows: the surplus lands in row one, and the headline ends up
+ * floating above hundreds of pixels of nothing. That is a real grid rule, not a
+ * margin to hunt down.
+ *
+ * So the answer is wrapped in `.results`, which on a phone becomes
+ * `display: contents` and hands its two children straight to the grid, where
+ * `order` puts them either side of the form: **answer, form, detail**. The
+ * number people open the page for cannot sit below two thousand pixels of
+ * already-filled fields.
+ */
+.tool > .results {
+  display: contents;
+}
+
+/* Descendant selectors, not `>`: `display: contents` removes the box but not
+   the DOM node, so `.summary` is still a child of `.results` and `.tool > …`
+   never matches it. The rule silently did nothing and the form dropped to the
+   bottom of the page. */
+.tool .summary {
+  order: 1;
+}
+
+.tool > .panel {
+  order: 2;
+}
+
+.tool .detail {
+  order: 3;
+}
+
 @media (min-width: 900px) {
   .tool {
     grid-template-columns: 22rem minmax(0, 1fr);
     gap: 20px;
   }
   .tool > .panel {
-    grid-column: 1;
-    grid-row: 1 / span 2;
     position: sticky;
     top: 72px;
+    /* Back to source order. Without this the `order` above still applies, and
+       since `.results` keeps the default 0 it would be placed *before* the
+       form: the two columns come out swapped. */
+    order: 0;
   }
-  .tool > .summary { grid-column: 2; grid-row: 1; }
-  .tool > .detail { grid-column: 2; grid-row: 2; }
+  /* Back to a real box, so the whole right-hand column is one track. */
+  .tool > .results {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    min-width: 0;
+    order: 0;
+  }
 }
 
 .grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }

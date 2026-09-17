@@ -163,8 +163,6 @@ export default function EsppTool() {
 
   return (
     <div className="tool">
-      <div className="summary">{headline}</div>
-
       <div className="panel">
         <Card>
           <h2>{t.espp.title}</h2>
@@ -395,7 +393,10 @@ export default function EsppTool() {
         </Card>
       </div>
 
-      <div className="detail">
+      <div className="results">
+        <div className="summary">{headline}</div>
+
+        <div className="detail">
         {quoteFailed && !quote ? (
           <Card>
             <p className="note">{t.common.quoteMissing}</p>
@@ -498,6 +499,7 @@ export default function EsppTool() {
           </ul>
           <p className="hint">{t.espp.guaranteed(pct(guaranteedFloor(plan.discount), lang))}</p>
         </Card>
+        </div>
       </div>
     </div>
   );
