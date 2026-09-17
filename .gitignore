@@ -6,3 +6,6 @@ dist
 # Locally installed agent tooling (Impeccable): downloaded per machine, ships a
 # platform binary, and is not part of what this site is made of.
 .claude/
+
+# TypeScript incremental build cache: a local artifact, rebuilt on every build.
+tsconfig.tsbuildinfo

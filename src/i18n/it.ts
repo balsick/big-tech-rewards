@@ -8,7 +8,7 @@ export const it = {
   nav: { espp: "ESPP", rsu: "RSU" },
   header: {
     repo: "Codice su GitHub",
-    theme: "Theme",
+    theme: "Tema",
     lang: "Lingua",
     themeLight: "Chiaro",
     themeDark: "Scuro",
@@ -86,7 +86,7 @@ export const it = {
       `Su base annua fa circa ${r}: i soldi restano immobilizzati in media metà del periodo, non tutto.`,
     payslipTitle: "Sul cedolino dell’acquisto trattengono",
     payslipLine: (discount: string, rate: string) =>
-      `Lo sconto vale ${discount} ed è imponibile: te lo tassano in busta al ${rate}, la tua aliquota marginalRate.`,
+      `Lo sconto vale ${discount} ed è imponibile: te lo tassano in busta al ${rate}, la tua aliquota marginale.`,
     payslipRest: (refund: string, delta: string, direction: string) =>
       `Tornano indietro ${refund} che non hanno comprato un’azione intera, quindi il netto di quel mese è ${delta} ${direction} del solito.`,
     lower: "più basso",
@@ -120,7 +120,7 @@ export const it = {
     cap: "Tetto, in % della RAL",
     capUsd: "Tetto per periodo",
     capUsdHint:
-      "Il limite fiscale americano: 25.000 $ l’anno di valore alla concessione, che con il 15% di sconto si comprano con 21.250 $ di socialSecurity — 10.625 per finestra semestrale.",
+      "Il limite fiscale americano: 25.000 $ l’anno di valore alla concessione, che con il 15% di sconto si comprano con 21.250 $ di contributi — 10.625 per finestra semestrale.",
     capHit: (above: string, cap: string) =>
       `Il piano si ferma a ${cap} per periodo: ${above} accantonati oltre il tetto non comprano azioni e tornano in busta.`,
     fractional: "Compra frazioni di azione",
@@ -214,11 +214,60 @@ export const it = {
     unavailable:
       "Questo browser non permette di salvare — succede in navigazione privata o con i dati dei siti bloccati. I numeri restano validi finché la pagina è aperta.",
   },
+  guided: {
+    open: "Guidami",
+    title: "Modalità guidata",
+    exit: "Esci dalla modalità guidata",
+    exitShort: "Esci",
+    reopen: "Si riapre da qui, sempre. La prima volta si apre da sola.",
+    chooseTitle: "Che cosa vuoi capire?",
+    chooseSub: "Due strumenti, due domande diverse. Te ne chiedo due o tre, il resto lo compilo io.",
+    esppDesc:
+      "Compri azioni della tua azienda a sconto, con una parte della busta paga. Ti dico quanto ci guadagni davvero e quanto ti trattengono il mese dell’acquisto.",
+    rsuDesc:
+      "Azioni che ti assegnano e diventano tue un pezzo per volta. Ti dico quante te ne arrivano davvero, dopo il sell to cover.",
+    full: "Modalità completa",
+    fullSub: "Tutti i campi, nessuna domanda",
+    step: (n: number, tot: number, tool: string) => `Passo ${n} di ${tot} · ${tool}`,
+    back: "Indietro",
+    next: "Avanti",
+    see: "Vedi il risultato",
+    preview: "anteprima",
+    redo: "Rifai",
+    openTool: "Apri lo strumento",
+    pctTitle: "Quanto accantoni?",
+    pctSub: "È la fetta di busta paga che il piano ti trattiene ogni mese.",
+    esppPrefilled: (from: string, to: string, cap: string) =>
+      `Il resto lo so già: periodo ${from} → ${to}, sconto del 15% sul prezzo più basso, tetto di ${cap}, prezzi presi dal mercato. Li puoi cambiare tutti dopo.`,
+    salaryTitle: "Quanto guadagni lordo all’anno?",
+    salarySub: "L’ultima domanda.",
+    whyTitle: "Perché serve",
+    welcomeTitle: "Quanto vale il welcome grant?",
+    welcomeSub: "In dollari, come te l’hanno comunicato.",
+    welcomeField: "Valore del welcome grant",
+    welcomePrefilled: (date: string) =>
+      `Data dell’assegnazione già impostata al ${date}, con vestizione 30-30-40: tre tranche annuali, l’ultima più grossa.`,
+    bonusTitle: "E il bonus annuale?",
+    bonusSub: "Quello che ti assegnano a fine anno, se c’è.",
+    bonusField: "Valore del bonus annuale",
+    bonusPrefilled: (date: string) =>
+      `Assegnato ogni anno il ${date}, con vestizione trimestrale su tre anni.`,
+    esppHeadline: (pct: string, salary: string) => `Con il ${pct} su una RAL da ${salary}`,
+    esppHeadlineSub: (contributed: string, shares: string, price: string) =>
+      `Accantoni ${contributed} in sei mesi e compri ${shares} azioni a ${price} l’una.`,
+    rsuHeadline: (year: number, shares: string) => `Da qui a fine ${year} ti arrivano ${shares} azioni`,
+    rsuHeadlineSub: (units: string, gross: string) =>
+      `${units} unità maturano, ${gross} lordi. Il resto se lo prende la trattenuta, venduto il giorno stesso.`,
+    rsuPrefilled: (welcome: string, bonus: string) =>
+      `Le date le ho messe io: welcome al ${welcome}, bonus ogni ${bonus}. Nello strumento completo si aggiungono altre assegnazioni e si cambia la cadenza.`,
+    total: "In tutto",
+    missing: "Manca un numero: senza le quotazioni non c’è un risultato da mostrare. Apri lo strumento e scrivi i prezzi a mano.",
+  },
   tax: {
     title: "Tasse e addizionali",
     intro:
       "Le addizionali sono l’unica parte di questo conto che nessuna costante nazionale può indovinare: cambiano per regione e per comune, e su una RAL da 50.000 valgono quasi 1.800 euro l’anno. Qui sono precompilate con quelle in uso a Torino, in Piemonte.",
-    marginalTitle: "Aliquota marginalRate",
+    marginalTitle: "Aliquota marginale",
     marginalLine: (rate: string) =>
       `Di ogni euro lordo in più il fisco si prende il ${rate}: è l’aliquota con cui vengono tassate RSU ed ESPP, non quella media.`,
     marginalWhy:
@@ -236,13 +285,13 @@ export const it = {
     ssFirstBand: "Prima fascia pensionabile",
     ssFirstBandHint: "oltre questa quota si aggiunge l’aliquota dell’1%",
     ssCeiling: "Massimale annuo",
-    ssCeilingHint: "oltre questo non si versano più socialSecurity (iscritti dopo il 1995)",
+    ssCeilingHint: "oltre questo non si versano più contributi (iscritti dopo il 1995)",
     applyCeiling: "Applica il massimale",
     regional: "Surtax regionale",
     municipal: "Surtax comunale",
     exemption: "Soglia di esenzione",
     exemptionHint:
-      "È una soglia, non una franchigia: se il reddito la supera, l’surtax si paga su tutto il reddito, non sull’eccedenza.",
+      "È una soglia, non una franchigia: se il reddito la supera, l’addizionale si paga su tutto il reddito, non sull’eccedenza.",
     months: "Mensilità",
     monthsHint: "quante buste paga fa un anno, tredicesima e quattordicesima comprese",
     presets: "Preimpostazioni",

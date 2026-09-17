@@ -17,6 +17,7 @@ import {
 import { historyAt, liveFxRate, loadQuote, type Quote } from "../lib/prices.ts";
 import { available, clear, read, write } from "../lib/storage.ts";
 import { DEFAULT_SALARY } from "../lib/meta.ts";
+import type { Seed } from "../lib/guided.ts";
 
 // The ESPP: what happens on purchase day, and how much the round trip returns.
 //
@@ -42,7 +43,7 @@ interface EsppState {
   plan: EsppPlan;
 }
 
-export default function EsppTool() {
+export default function EsppTool({ seed }: { seed?: Extract<Seed, { tool: "espp" }> | null }) {
   const { t, lang, regime } = useStore();
 
   // The save is read once, in the initialisers: reading it in an effect would
@@ -57,8 +58,10 @@ export default function EsppTool() {
 
   const [start, setStart] = useState(s0?.start ?? window_.start);
   const [purchase, setPurchase] = useState(s0?.purchase ?? window_.purchase);
-  const [salary, setSalary] = useState(s0?.salary ?? DEFAULT_SALARY);
-  const [percent, setPercent] = useState(s0?.percent ?? 15);
+  // The walkthrough's answers win over a saved state: they were given a second
+  // ago, and a save is from another day.
+  const [salary, setSalary] = useState(seed?.salary ?? s0?.salary ?? DEFAULT_SALARY);
+  const [percent, setPercent] = useState(seed?.percent ?? s0?.percent ?? 15);
   // The contribution follows the percentage until you overwrite it: two states
   // for one field would be two truths, so the computed one is the floor and the
   // typed one sits on top.

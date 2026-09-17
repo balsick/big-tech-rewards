@@ -231,6 +231,14 @@ header.top {
 
 .repo-link:hover { color: var(--accent-ink); border-color: var(--border-strong); }
 
+/* In the header it is a pill like its neighbours, but filled: it is the only
+   thing up there that does something. */
+button.btn.primary.guidami {
+  border-radius: var(--r-pill);
+  padding: 7px 14px;
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 16%, transparent);
+}
+
 /* ----------------------------------------------------------------- controls */
 
 .seg {
@@ -868,6 +876,254 @@ table.tbl th.r {
 }
 
 .chart .bar-value { fill: var(--text-2); font-size: 9.5px; font-variant-numeric: tabular-nums; }
+
+/* ------------------------------------------------------- guided mode */
+
+/* A real <dialog> opened with showModal(): it brings the top layer, the focus
+   trap and Escape with it, and those three are exactly what a div with a high
+   z-index gets wrong. */
+dialog.guida {
+  width: min(620px, calc(100vw - 32px));
+  max-width: none;
+  max-height: calc(100vh - 64px);
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 2px 6px rgb(20 23 26 / 0.08), 0 28px 60px -30px rgb(20 23 26 / 0.55);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+dialog.guida.larga { width: min(1000px, calc(100vw - 32px)); }
+
+dialog.guida::backdrop {
+  background: rgb(21 23 26 / 0.46);
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+}
+
+/* On a phone it is the screen, not a window on it: a frame inside a 390px pane
+   is a border around nothing. */
+@media (max-width: 720px) {
+  dialog.guida,
+  dialog.guida.larga {
+    width: 100vw;
+    height: 100dvh;
+    max-height: none;
+    border: 0;
+    border-radius: 0;
+  }
+}
+
+.guida-testa {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 20px 0;
+  flex: 0 0 auto;
+}
+
+.guida-passo {
+  font-size: var(--t-12);
+  font-weight: 660;
+  color: var(--muted);
+}
+
+button.btn.link.guida-esci {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  text-decoration: none;
+}
+
+button.btn.link.guida-esci:hover { color: var(--text); }
+
+.guida-esci-corto { display: none; }
+
+@media (max-width: 720px) {
+  .guida-esci-lungo { display: none; }
+  .guida-esci-corto { display: inline; }
+}
+
+.guida-corpo {
+  padding: 10px 28px 24px;
+  flex: 1 1 auto;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.guida-corpo h2 {
+  margin: 0 0 6px;
+  font-size: var(--t-24);
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+
+.guida-corpo h3 { margin: 0; font-size: var(--t-15); font-weight: 660; color: var(--text); }
+
+@media (max-width: 720px) { .guida-corpo { padding: 10px 20px 20px; } }
+
+.guida-piede {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 28px;
+  border-top: 1px solid var(--border);
+  background: var(--surface-2);
+  flex: 0 0 auto;
+}
+
+@media (max-width: 720px) { .guida-piede { padding: 12px 20px calc(12px + env(safe-area-inset-bottom)); } }
+
+.guida-punti { display: flex; gap: 5px; align-items: center; margin-right: 4px; }
+
+.guida-punti span {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--r-pill);
+  background: var(--border-strong);
+  transition: width 160ms ease, background-color 160ms ease;
+}
+
+.guida-punti span.on { width: 18px; background: var(--accent); }
+
+/* The two choices. Real buttons, because a div with an onClick is skipped by
+   Tab and this is the first thing anyone touches here. */
+.guida-scelta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 20px;
+}
+
+@media (max-width: 720px) { .guida-scelta { grid-template-columns: minmax(0, 1fr); gap: 12px; } }
+
+.guida-scelta button {
+  appearance: none;
+  display: block;
+  text-align: left;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  background: var(--surface);
+  cursor: pointer;
+  font: inherit;
+  transition: border-color 150ms ease, transform 150ms ease;
+}
+
+.guida-scelta button:hover { border-color: var(--accent); }
+
+.guida-scelta button:active { transform: translateY(1px); }
+
+.guida-art {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 112px;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+}
+
+.guida-art svg { max-width: 100%; height: auto; }
+
+.guida-scelta-t {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 13px 15px 0;
+  font-size: var(--t-16);
+  font-weight: 660;
+  color: var(--text);
+}
+
+.guida-scelta-t svg { margin-left: auto; color: var(--accent); }
+
+.guida-scelta-d {
+  display: block;
+  padding: 6px 15px 15px;
+  font-size: var(--t-13);
+  line-height: 1.5;
+  color: var(--text-2);
+}
+
+/* The third way out, full width at the foot: the two cards answer "which
+   tool", this one answers "skip the questions" — a different question, so not
+   a third card of the same weight. */
+.guida-piede-completa { padding-block: 12px; }
+
+button.guida-completa {
+  appearance: none;
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+  padding: 11px 15px;
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text-2);
+  cursor: pointer;
+  font: inherit;
+  transition: border-color 150ms ease;
+}
+
+button.guida-completa:hover { border-color: var(--accent); }
+
+button.guida-completa strong {
+  display: block;
+  font-size: var(--t-15);
+  font-weight: 640;
+  color: var(--text);
+}
+
+button.guida-completa small {
+  display: block;
+  font-size: var(--t-12);
+  color: var(--muted);
+  margin-top: 1px;
+}
+
+button.guida-completa span { flex: 1 1 auto; min-width: 0; }
+
+.guida-pct {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-top: 22px;
+}
+
+.guida-perche {
+  margin-top: 18px;
+  padding: 15px 16px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-2);
+}
+
+.guida-perche-t {
+  font-size: var(--t-13);
+  font-weight: 660;
+  color: var(--text);
+  margin-bottom: 5px;
+}
+
+.guida-esito .guida-carte {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 14px;
+  margin-top: 20px;
+}
+
+.guida-esito .card.accent { border-color: var(--accent); }
+
+.guida-esito .card p.big { margin: 4px 0 0; }
 
 /* ------------------------------------------------------------------- footer */
 

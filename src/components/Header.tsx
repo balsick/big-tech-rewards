@@ -1,13 +1,21 @@
 import { useStore } from "../state/store.tsx";
 import { Segmented } from "./ui.tsx";
-import { Github, Moon, Sun } from "./Icons.tsx";
+import { Compass, Github, Moon, Sun } from "./Icons.tsx";
 import { REPO } from "../lib/meta.ts";
 import type { Lang } from "../i18n/index.ts";
 import type { Theme } from "../state/store.tsx";
 
 export type Tab = "espp" | "rsu";
 
-export default function Header({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void }) {
+export default function Header({
+  tab,
+  setTab,
+  onGuide,
+}: {
+  tab: Tab;
+  setTab: (t: Tab) => void;
+  onGuide: () => void;
+}) {
   const { t, lang, setLang, theme, setTheme } = useStore();
   return (
     <header className="top">
@@ -17,6 +25,13 @@ export default function Header({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => 
             {t.app.title}
             <small>{t.app.tagline}</small>
           </div>
+          {/* The way back into the walkthrough. It is the one pressable thing
+              in the header, so it is filled rather than outlined: next to two
+              outlined pills it read as a third label. */}
+          <button type="button" className="btn primary guidami" onClick={onGuide}>
+            <Compass />
+            {t.guided.open}
+          </button>
           <a className="repo-link" href={REPO} target="_blank" rel="noreferrer noopener">
             <Github />
             {t.header.repo}

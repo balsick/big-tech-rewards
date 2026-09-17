@@ -2,16 +2,38 @@ export type Lang = "it" | "en";
 
 const loc = (l: Lang) => (l === "it" ? "it-IT" : "en-GB");
 
+/**
+ * Grouping is forced on, never left to the locale.
+ *
+ * `Intl`'s default is "auto", and for several locales that means `min2`: no
+ * thousands separator until five digits. The result is that "70.000 €" and
+ * "1215 €" sit next to each other in the same card, one grouped and one not,
+ * which reads as a bug in the number rather than a rule of the locale.
+ */
+const GROUPED = { useGrouping: "always" } as const;
+
 export const eur = (v: number, l: Lang, dec = 2) =>
-  new Intl.NumberFormat(loc(l), { style: "currency", currency: "EUR", minimumFractionDigits: dec, maximumFractionDigits: dec }).format(v);
+  new Intl.NumberFormat(loc(l), {
+    ...GROUPED,
+    style: "currency",
+    currency: "EUR",
+    minimumFractionDigits: dec,
+    maximumFractionDigits: dec,
+  }).format(v);
 
 export const eur0 = (v: number, l: Lang) => eur(v, l, 0);
 
 export const usd = (v: number, l: Lang, dec = 2) =>
-  new Intl.NumberFormat(loc(l), { style: "currency", currency: "USD", minimumFractionDigits: dec, maximumFractionDigits: dec }).format(v);
+  new Intl.NumberFormat(loc(l), {
+    ...GROUPED,
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: dec,
+    maximumFractionDigits: dec,
+  }).format(v);
 
 export const num = (v: number, l: Lang, dec = 2) =>
-  new Intl.NumberFormat(loc(l), { minimumFractionDigits: 0, maximumFractionDigits: dec }).format(v);
+  new Intl.NumberFormat(loc(l), { ...GROUPED, minimumFractionDigits: 0, maximumFractionDigits: dec }).format(v);
 
 /**
  * The short form for places where the full one does not fit — a bar label on a

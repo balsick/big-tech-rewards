@@ -20,6 +20,7 @@ import {
 import { historyAt, loadQuote, type Quote } from "../lib/prices.ts";
 import { available, clear, read, write } from "../lib/storage.ts";
 import { DEFAULT_SALARY } from "../lib/meta.ts";
+import type { Seed } from "../lib/guided.ts";
 
 // RSUs, seen from three years away.
 //
@@ -54,14 +55,14 @@ interface RsuState {
 // years are needed: the welcome grant, which vests 30-30-40 and so has its
 // weight at the end, and the annual bonus, which vests in slices every quarter.
 // They land in the same years, and the taxman adds them up.
-function initialGrants(today: string): GrantInput[] {
+function initialGrants(today: string, welcomeUsd = 20000, bonusUsd = 10000): GrantInput[] {
   const year = Number(today.slice(0, 4));
   return [
     {
       id: newGrantId(),
       label: "Welcome grant",
       date: `${year}-02-20`,
-      valueUsd: 20000,
+      valueUsd: welcomeUsd,
       schedule: "30-30-40",
       years: 3,
       usePlanDates: false,
@@ -71,7 +72,7 @@ function initialGrants(today: string): GrantInput[] {
       id: newGrantId(),
       label: `Bonus ${year}`,
       date: `${year}-11-20`,
-      valueUsd: 10000,
+      valueUsd: bonusUsd,
       schedule: "quarterly",
       years: 3,
       usePlanDates: true,
@@ -80,7 +81,7 @@ function initialGrants(today: string): GrantInput[] {
   ];
 }
 
-export default function RsuTool() {
+export default function RsuTool({ seed }: { seed?: Extract<Seed, { tool: "rsu" }> | null }) {
   const { t, lang, regime } = useStore();
   const today = todayISO();
 
@@ -92,9 +93,13 @@ export default function RsuTool() {
   // by an earlier version can carry duplicate ids, and those make two rows share
   // one entry in the list.
   const [grants, setGrants] = useState<GrantInput[]>(() =>
-    s0?.grants ? withUniqueIds(s0.grants) : initialGrants(today)
+    seed
+      ? initialGrants(today, seed.welcomeUsd, seed.bonusUsd)
+      : s0?.grants
+        ? withUniqueIds(s0.grants)
+        : initialGrants(today)
   );
-  const [salary, setSalary] = useState(s0?.salary ?? DEFAULT_SALARY);
+  const [salary, setSalary] = useState(seed?.salary ?? s0?.salary ?? DEFAULT_SALARY);
   const [horizonYears, setHorizonYears] = useState(s0?.horizonYears ?? 3);
   const [scale, setScale] = useState<"eur" | "units">("eur");
 

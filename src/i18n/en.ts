@@ -216,6 +216,55 @@ export const en: Dict = {
     unavailable:
       "This browser will not let the page save — that happens in private browsing or with site data blocked. Your numbers hold for as long as the page stays open.",
   },
+  guided: {
+    open: "Guide me",
+    title: "Guided mode",
+    exit: "Leave guided mode",
+    exitShort: "Leave",
+    reopen: "It reopens from here, always. The first time it opens on its own.",
+    chooseTitle: "What do you want to work out?",
+    chooseSub: "Two tools, two different questions. I ask you two or three, the rest I fill in.",
+    esppDesc:
+      "You buy your company's shares at a discount with part of your pay. I tell you what you really gain and what they withhold in the month of the purchase.",
+    rsuDesc:
+      "Shares granted to you that become yours a slice at a time. I tell you how many actually reach you, after the sell to cover.",
+    full: "Full mode",
+    fullSub: "Every field, no questions",
+    step: (n: number, tot: number, tool: string) => `Step ${n} of ${tot} · ${tool}`,
+    back: "Back",
+    next: "Next",
+    see: "See the result",
+    preview: "preview",
+    redo: "Start over",
+    openTool: "Open the tool",
+    pctTitle: "How much do you set aside?",
+    pctSub: "It is the slice of pay the plan withholds every month.",
+    esppPrefilled: (from: string, to: string, cap: string) =>
+      `The rest I already know: period ${from} → ${to}, 15% off the lower price, a ${cap} cap, prices from the market. You can change every one of them later.`,
+    salaryTitle: "What do you earn gross a year?",
+    salarySub: "The last question.",
+    whyTitle: "Why it is needed",
+    welcomeTitle: "What is the welcome grant worth?",
+    welcomeSub: "In dollars, the way they told you.",
+    welcomeField: "Welcome grant value",
+    welcomePrefilled: (date: string) =>
+      `Grant date already set to ${date}, vesting 30-30-40: three annual tranches, the last one bigger.`,
+    bonusTitle: "And the annual bonus?",
+    bonusSub: "The one granted at year end, if there is one.",
+    bonusField: "Annual bonus value",
+    bonusPrefilled: (date: string) =>
+      `Granted every year on ${date}, vesting quarterly over three years.`,
+    esppHeadline: (pct: string, salary: string) => `At ${pct} on a ${salary} salary`,
+    esppHeadlineSub: (contributed: string, shares: string, price: string) =>
+      `You set aside ${contributed} over six months and buy ${shares} shares at ${price} each.`,
+    rsuHeadline: (year: number, shares: string) => `From now to the end of ${year} you get ${shares} shares`,
+    rsuHeadlineSub: (units: string, gross: string) =>
+      `${units} units vest, ${gross} gross. The rest goes to withholding, sold on the day.`,
+    rsuPrefilled: (welcome: string, bonus: string) =>
+      `I set the dates: welcome on ${welcome}, bonus every ${bonus}. In the full tool you can add more grants and change the schedule.`,
+    total: "In total",
+    missing: "A number is missing: without the quotes there is no result to show. Open the tool and type the prices in.",
+  },
   tax: {
     title: "Tax & local surtaxes",
     intro:

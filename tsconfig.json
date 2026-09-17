@@ -1,7 +1,10 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    // ES2023.Intl for `useGrouping: "always"`: the ES2022 typings still
+    // declare it as a boolean, and "auto" is exactly the default we need to
+    // override.
+    "lib": ["ES2022", "ES2023.Intl", "DOM", "DOM.Iterable"],
     "module": "ESNext",
     "moduleResolution": "bundler",
     "jsx": "react-jsx",

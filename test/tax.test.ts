@@ -24,7 +24,7 @@ import {
   withUniqueIds,
   type Grant,
 } from "../src/lib/rsu.ts";
-import { toField, parseNum } from "../src/lib/format.ts";
+import { toField, parseNum, eur0, num, usd } from "../src/lib/format.ts";
 
 const near = (a: number, b: number, eps = 0.01) =>
   assert.ok(Math.abs(a - b) < eps, `${a} != ${b} (tolerance ${eps})`);
@@ -454,4 +454,18 @@ test("RSU: the horizon ends on 31 December, and only today's year is partial", (
   const whole = p.years.find((y) => y.year === 2027)!;
   const fromToday = p.years.find((y) => y.year === 2026)!;
   assert.ok(fromToday.units < whole.units, "the year counted from today holds fewer vests");
+});
+
+test("four-digit figures group like the rest", () => {
+  // `Intl`'s default grouping is "auto", which for several locales means no
+  // thousands separator until five digits. Left alone it put "70.000 €" and
+  // "1215 €" side by side in the same card — one grouped, one not, which reads
+  // as a broken number rather than a rule of the locale.
+  assert.ok(eur0(1215, "it").includes("1.215"), eur0(1215, "it"));
+  assert.ok(eur0(70000, "it").includes("70.000"), eur0(70000, "it"));
+  assert.ok(eur0(1215, "en").includes("1,215"), eur0(1215, "en"));
+  assert.ok(num(1215, "it", 0).includes("1.215"), num(1215, "it", 0));
+  assert.ok(usd(1215, "it", 0).includes("1.215"), usd(1215, "it", 0));
+  // and nothing changes below a thousand
+  assert.ok(!eur0(999, "it").includes("."), eur0(999, "it"));
 });
