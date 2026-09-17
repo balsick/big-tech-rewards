@@ -121,15 +121,24 @@ conosce solo le **valute**.
 
 La quotazione la prende la **CI**, non il browser:
 
-1. `.github/workflows/refresh-quote.yml` gira dopo ogni chiusura;
+1. `.github/workflows/deploy.yml` gira a ogni push e ogni mattina alle 06:00
+   UTC, da martedì a sabato — cioè dopo ogni chiusura;
 2. `scripts/fetch-quote.mjs` legge il simbolo dal secret `QUOTE_SYMBOL`,
    scarica la quotazione **nel runner** e scrive `public/quote.json`;
-3. il commit su `main` fa ripartire il deploy, e la pagina legge `quote.json`
-   **dalla propria origine**.
+3. il build finisce dentro l'artefatto di Pages, e la pagina legge
+   `quote.json` **dalla propria origine**.
 
 Risultato: nessun CORS, nessuna chiave nel bundle, nessuna richiesta a terzi
 mentre uno naviga, e un prezzo fermo al massimo all'ultima chiusura. Il campo
 resta sempre riscrivibile a mano, che è l'unica cosa che funziona comunque.
+
+`quote.json` si rigenera a ogni deploy, quindi la schedule sta sul deploy e non
+su un workflow a parte: **un commit fatto con `GITHUB_TOKEN` non fa scattare
+altri workflow**, e un giro che aggiornasse il file aspettandosi che il deploy
+parta da solo non pubblicherebbe mai niente. Il secondo workflow,
+`refresh-quote.yml`, serve solo ad aggiungere allo storico committato le date
+del piano appena passate — sei volte l'anno — e ci pensa il deploy del mattino
+dopo a portarle online.
 
 ### Le alternative, e perché no
 
