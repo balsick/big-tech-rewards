@@ -22,13 +22,34 @@ export interface Grant {
   etichetta: string;
   /** data dell'assegnazione, ISO */
   data: string;
-  unita: number;
+  /**
+   * Il valore assegnato, in dollari.
+   *
+   * E' cosi' che un grant viene comunicato — «ti diamo 20.000 dollari in RSU» —
+   * e non in unita': le unita' sono il *risultato*, e le fissa il prezzo del
+   * giorno dell'assegnazione. Chiederle in input vorrebbe dire far fare a mano
+   * la divisione che il piano ha gia' fatto.
+   */
+  valoreUsd: number;
+  /**
+   * Il prezzo del giorno dell'assegnazione, che converte i dollari in unita'.
+   *
+   * Sta nel grant e non fra i parametri globali perche' e' una proprieta' di
+   * *quel* grant: due assegnazioni di anni diversi valgono lo stesso in dollari
+   * e un numero di azioni completamente diverso, ed e' esattamente la ragione
+   * per cui un grant vecchio oggi vale piu' di uno nuovo.
+   */
+  prezzoGrant: number;
   cadenza: Cadenza;
   /** durata complessiva del piano, in anni */
   anni: number;
   /** se le vestizioni si allineano al calendario del piano invece che al grant */
   dateFisse: boolean;
 }
+
+/** Le unita' che quel grant ha prodotto: dollari assegnati / prezzo del giorno. */
+export const unitaDelGrant = (g: Grant): number =>
+  g.prezzoGrant > 0 ? g.valoreUsd / g.prezzoGrant : 0;
 
 /** I giorni in cui il piano fa vestire, come MM-GG. */
 export const CALENDARIO_VESTING = ["02-20", "05-20", "08-20", "11-20"];
@@ -79,6 +100,7 @@ export interface Tranche {
  */
 export function tranche(g: Grant, calendario = CALENDARIO_VESTING): Tranche[] {
   const anni = Math.max(1, Math.round(g.anni));
+  const unitaTotali = unitaDelGrant(g);
   const quote: number[] =
     g.cadenza === "30-30-40"
       ? [0.3, 0.3, 0.4]
@@ -93,8 +115,8 @@ export function tranche(g: Grant, calendario = CALENDARIO_VESTING): Tranche[] {
   return quote.map((q, i) => {
     const u =
       i === quote.length - 1
-        ? Math.round((g.unita - dato) * 1e4) / 1e4
-        : Math.round(g.unita * q * 1e4) / 1e4;
+        ? Math.round((unitaTotali - dato) * 1e4) / 1e4
+        : Math.round(unitaTotali * q * 1e4) / 1e4;
     dato += u;
     const naturale = piuMesi(g.data, passo * (i + 1));
     // Le date fisse valgono per le cadenze che ci stanno dentro: allineare una

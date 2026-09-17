@@ -5,7 +5,7 @@ export const it = {
     intro:
       "Due simulatori per i compensi in azioni: quante te ne arrivano davvero e quanto se ne prende il fisco. Tutto il conto avviene nel tuo browser — nessun dato esce da questa pagina.",
   },
-  nav: { espp: "ESPP", rsu: "RSU", tax: "Tasse e addizionali" },
+  nav: { espp: "ESPP", rsu: "RSU" },
   header: {
     repo: "Codice su GitHub",
     theme: "Tema",
@@ -131,7 +131,12 @@ export const it = {
     removeGrant: "Rimuovi",
     grantLabel: "Nome",
     grantDate: "Data del grant",
-    grantUnits: "Unità",
+    grantValue: "Valore del grant",
+    grantValueWhy:
+      "In dollari, come te lo comunicano: le unità sono il risultato, e le fissa il prezzo del giorno dell’assegnazione.",
+    grantValueHint: (unita: string, prezzo: string, data: string) =>
+      `${unita} unità, al prezzo di ${prezzo} del ${data}`,
+    grantValueNoPrice: "manca il prezzo del giorno del grant: scrivilo qui sotto",
     grantSchedule: "Vestizione",
     grantYears: "Durata",
     years: "anni",
@@ -180,7 +185,12 @@ export const it = {
   tax: {
     title: "Tasse e addizionali",
     intro:
-      "Le addizionali sono l’unica parte di questo conto che nessuna costante nazionale può indovinare: cambiano per regione e per comune, e su una RAL da 60.000 valgono quasi 2.000 euro l’anno. Qui sono precompilate con quelle in uso a Torino, in Piemonte, e si possono riscrivere tutte.",
+      "Le addizionali sono l’unica parte di questo conto che nessuna costante nazionale può indovinare: cambiano per regione e per comune, e su una RAL da 50.000 valgono quasi 1.800 euro l’anno. Qui sono precompilate con quelle in uso a Torino, in Piemonte, e si possono riscrivere tutte.",
+    marginalTitle: "Aliquota marginale",
+    marginalLine: (aliquota: string) =>
+      `Con questi parametri, di ogni euro lordo in più il fisco si prende il ${aliquota}: è l’aliquota con cui vengono tassate RSU ed ESPP, non quella media.`,
+    marginalWhy:
+      "Sul margine si accavallano quattro cose: lo scaglione IRPEF, la detrazione da lavoro dipendente che si spegne fra 28.000 e 50.000, l’1% INPS sopra la prima fascia e gli scaglioni delle addizionali. Sommarle a mano è il conto che nessuno fa giusto — qui è calcolata per differenza.",
     irpef: "Scaglioni IRPEF",
     irpefHint:
       "Progressivi per scaglioni: chi supera i 28.000 non paga il 33% su tutto, lo paga sulla parte che sta fra 28.000 e 50.000.",
@@ -206,29 +216,6 @@ export const it = {
     presets: "Preimpostazioni",
     presetTorino: "Torino — Piemonte",
     presetFlat: "Aliquota unica",
-    breakdownTitle: "Dalla RAL al netto",
-    breakdown: {
-      gross: "Lordo",
-      inps: "Contributi INPS",
-      taxable: "Imponibile IRPEF",
-      irpefGross: "IRPEF lorda",
-      deductions: "Detrazioni lavoro dipendente",
-      irpef: "IRPEF netta",
-      regional: "Addizionale regionale",
-      municipal: "Addizionale comunale",
-      supplement: "Somma integrativa",
-      net: "Netto",
-    },
-    perMonth: (n: number) => `In busta, su ${n} mensilità`,
-    keepsLine: (netto: string, lordo: string, tasso: number) =>
-      `${netto} netti l’anno su ${lordo} lordi — te ne resta il ${tasso}%.`,
-    marginalTitle: "E di un euro in più?",
-    marginalLine: (aliquota: string) =>
-      `Di ogni euro lordo in più il fisco si prende il ${aliquota}. È questa l’aliquota con cui vengono tassate RSU ed ESPP, non quella media.`,
-    marginalWhy:
-      "Sul margine si accavallano quattro cose: lo scaglione IRPEF, la detrazione da lavoro dipendente che si spegne fra 28.000 e 50.000, l’1% INPS sopra la prima fascia e gli scaglioni delle addizionali. Sommarle a mano è il conto che nessuno fa giusto — qui è calcolata per differenza.",
-    raise: "Aumento lordo",
-    sourcesTitle: "Da dove vengono i numeri",
   },
 };
 

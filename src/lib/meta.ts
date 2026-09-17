@@ -2,11 +2,11 @@
 export const REPO = "https://github.com/balsick/big-tech-rewards";
 
 /**
- * La RAL da cui partono i tre strumenti.
+ * La RAL da cui partono i due strumenti.
  *
- * Un numero tondo e generico, scelto solo perche' un modulo vuoto non spiega
- * niente: la prima cosa che fa chiunque e' riscriverlo. Sta qui e non nei tre
- * componenti perche' una costante copiata tre volte e' una costante che a un
- * certo punto vale tre cose diverse.
+ * Cinquantamila: il confine dell'ultimo scaglione IRPEF, quindi un numero tondo
+ * che fa vedere subito la cosa piu' utile di tutte — cosa cambia sul margine
+ * appena lo si supera. Sta qui e non nei componenti perche' una costante
+ * copiata due volte e' una costante che a un certo punto vale due cose diverse.
  */
-export const RAL_DEFAULT = 60000;
+export const RAL_DEFAULT = 50000;

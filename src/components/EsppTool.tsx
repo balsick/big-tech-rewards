@@ -11,6 +11,7 @@ import {
   type PianoEspp,
 } from "../lib/espp.ts";
 import { caricaQuote, cambioLive, storicoAllaData, type Quote } from "../lib/prices.ts";
+import RegimeEditor from "./RegimeEditor.tsx";
 import { RAL_DEFAULT } from "../lib/meta.ts";
 
 // L'ESPP: cosa succede il giorno dell'acquisto, e quanto rende il giro.
@@ -88,7 +89,7 @@ export default function EsppTool() {
       <div className="panel">
         <Card>
           <h2>{t.espp.title}</h2>
-          <div className="grid2">
+          <div className="grid2 has-date">
             <DateField label={t.espp.windowStart} value={inizio} onChange={setInizio} />
             <DateField label={t.espp.windowEnd} value={acquisto} onChange={setAcquisto} />
           </div>
@@ -271,6 +272,12 @@ export default function EsppTool() {
                   onChange={(v) => setPiano({ ...piano, frazioni: v })}
                 />
               </div>
+            </Disclosure>
+          </div>
+
+          <div style={{ marginTop: 14, borderTop: "1px solid var(--border)", paddingTop: 14 }}>
+            <Disclosure label={t.tax.title}>
+              <RegimeEditor ral={ral} />
             </Disclosure>
           </div>
         </Card>

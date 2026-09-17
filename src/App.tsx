@@ -3,7 +3,6 @@ import Header, { type Tab } from "./components/Header.tsx";
 import Footer from "./components/Footer.tsx";
 import EsppTool from "./components/EsppTool.tsx";
 import RsuTool from "./components/RsuTool.tsx";
-import TaxPanel from "./components/TaxPanel.tsx";
 import { useStore } from "./state/store.tsx";
 
 export default function App() {
@@ -16,7 +15,7 @@ export default function App() {
         <p className="note" style={{ maxWidth: "62ch", paddingTop: 14 }}>
           {t.app.intro}
         </p>
-        {tab === "espp" ? <EsppTool /> : tab === "rsu" ? <RsuTool /> : <TaxPanel />}
+        {tab === "espp" ? <EsppTool /> : <RsuTool />}
       </main>
       <Footer />
     </>

@@ -7,7 +7,7 @@ export const en: Dict = {
     intro:
       "Two simulators for equity compensation: how much actually reaches you, and how much the taxman takes. Every calculation runs in your browser — no data leaves this page.",
   },
-  nav: { espp: "ESPP", rsu: "RSU", tax: "Tax & local surtaxes" },
+  nav: { espp: "ESPP", rsu: "RSU" },
   header: {
     repo: "Code on GitHub",
     theme: "Theme",
@@ -132,7 +132,12 @@ export const en: Dict = {
     removeGrant: "Remove",
     grantLabel: "Name",
     grantDate: "Grant date",
-    grantUnits: "Units",
+    grantValue: "Grant value",
+    grantValueWhy:
+      "In dollars, the way they tell you: the units are the result, and they are set by the share price on the grant date.",
+    grantValueHint: (unita: string, prezzo: string, data: string) =>
+      `${unita} units, at the ${prezzo} price of ${data}`,
+    grantValueNoPrice: "the grant-date price is missing: type it below",
     grantSchedule: "Vesting",
     grantYears: "Length",
     years: "years",
@@ -180,7 +185,12 @@ export const en: Dict = {
   tax: {
     title: "Tax & local surtaxes",
     intro:
-      "Local surtaxes are the one part of this calculation no national constant can guess: they vary by region and by municipality, and on a 60,000 salary they come to nearly 2,000 euro a year. They are prefilled with the rates in force in Turin, Piedmont, and every one of them can be overwritten.",
+      "Local surtaxes are the one part of this calculation no national constant can guess: they vary by region and by municipality, and on a 50,000 salary they come to nearly 1,800 euro a year. They are prefilled with the rates in force in Turin, Piedmont, and every one of them can be overwritten.",
+    marginalTitle: "Marginal rate",
+    marginalLine: (aliquota: string) =>
+      `With these parameters the taxman takes ${aliquota} of every extra gross euro: that is the rate RSUs and ESPP are taxed at, not the average one.`,
+    marginalWhy:
+      "Four things pile up at the margin: the income tax bracket, the employment tax credit phasing out between 28,000 and 50,000, the extra 1% of social security above the first band, and the surtax brackets. Adding them up by hand is the calculation nobody gets right — here it is computed by difference.",
     irpef: "Income tax brackets",
     irpefHint:
       "Progressive by bracket: someone above 28,000 does not pay 33% on everything, they pay it on the slice between 28,000 and 50,000.",
@@ -206,28 +216,5 @@ export const en: Dict = {
     presets: "Presets",
     presetTorino: "Turin — Piedmont",
     presetFlat: "Single rate",
-    breakdownTitle: "From gross salary to take-home",
-    breakdown: {
-      gross: "Gross",
-      inps: "Social security",
-      taxable: "Taxable income",
-      irpefGross: "Income tax before credits",
-      deductions: "Employment tax credit",
-      irpef: "Income tax",
-      regional: "Regional surtax",
-      municipal: "Municipal surtax",
-      supplement: "Low-income supplement",
-      net: "Net",
-    },
-    perMonth: (n: number) => `Per payslip, over ${n} periods`,
-    keepsLine: (netto: string, lordo: string, tasso: number) =>
-      `${netto} net a year on ${lordo} gross — you keep ${tasso}%.`,
-    marginalTitle: "And one more euro?",
-    marginalLine: (aliquota: string) =>
-      `Of every extra gross euro the taxman takes ${aliquota}. That is the rate RSUs and ESPP are taxed at, not the average one.`,
-    marginalWhy:
-      "Four things pile up at the margin: the income tax bracket, the employment tax credit phasing out between 28,000 and 50,000, the extra 1% of social security above the first band, and the surtax brackets. Adding them up by hand is the calculation nobody gets right — here it is computed by difference.",
-    raise: "Gross rise",
-    sourcesTitle: "Where the numbers come from",
   },
 };

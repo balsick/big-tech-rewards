@@ -65,6 +65,12 @@ aggiunge è la **prospettiva a tre anni** su una **lista** di assegnazioni, con
 vestizione annuale, 30-30-40, trimestrale o mensile, e con le trimestrali
 allineabili al calendario fisso del piano.
 
+Il grant si scrive **in dollari**, non in azioni, perché è così che viene
+comunicato: le unità sono il risultato, e le fissa il prezzo del **giorno
+dell'assegnazione** — che lo strumento pesca dallo storico. È anche il modo di
+vedere una cosa che in azioni non si nota: due grant dello stesso importo
+assegnati in due anni diversi valgono oggi cifre molto diverse.
+
 Serve perché con un grant nuovo ogni anno e vestizioni trimestrali, in un anno
 qualsiasi vestono pezzi di tre o quattro grant diversi — e **il fisco somma
 tutto quello che vesta nello stesso anno**. È il totale dell'anno a decidere
@@ -72,6 +78,11 @@ l'aliquota, non la singola tranche, quindi guardare un grant per volta dà il
 numero sbagliato.
 
 ### Tasse e addizionali
+
+Non è una terza schermata: è la **taratura** delle altre due, in fondo alla
+colonna di sinistra di entrambe. Le RSU e l'ESPP rispondono a «quanto mi
+arriva», e questo pannello è il pezzo di quella risposta che dipende da dove
+abiti — non una domanda a parte.
 
 Il motore fiscale, con tutto quello che serve per un'aliquota marginale vera:
 
@@ -86,8 +97,8 @@ Il motore fiscale, con tutto quello che serve per un'aliquota marginale vera:
 | Addizionale comunale | Torino: 0,8 / 1,1 / 1,2%, esenzione 11.790 € | **modificabile** |
 
 Le addizionali sono l'unica parte del conto che nessuna costante nazionale può
-indovinare — cambiano per regione e per comune e su una RAL da 60.000 valgono
-quasi 2.000 euro l'anno — quindi sono **tutte modificabili**, aliquote e
+indovinare — cambiano per regione e per comune e su una RAL da 50.000 valgono
+quasi 1.800 euro l'anno — quindi sono **tutte modificabili**, aliquote e
 scaglioni, e restano salvate fra una visita e l'altra.
 
 L'aliquota marginale si calcola **per differenza** e non con una formula, perché
@@ -178,7 +189,7 @@ simbolo, perché su un repo pubblico quei log li legge chiunque.
 ```bash
 npm install
 npm run dev          # http://localhost:5173/big-tech-rewards/
-npm test             # 23 test sul motore fiscale, ESPP e RSU (zero dipendenze)
+npm test             # 24 test sul motore fiscale, ESPP e RSU (zero dipendenze)
 npm run typecheck
 npm run build
 ```
@@ -197,8 +208,9 @@ QUOTE_SYMBOL=... npm run quote -- --history
 2. `Settings → Pages` → *Source: **GitHub Actions***;
 3. cambia `base` in [`vite.config.ts`](vite.config.ts) e `REPO` in
    [`src/lib/meta.ts`](src/lib/meta.ts) se il repo ha un altro nome;
-4. adatta le addizionali nel pannello **Tasse** al tuo comune, o cambia i
-   default in [`src/lib/tax.ts`](src/lib/tax.ts).
+4. adatta le addizionali nel pannello **Tasse e addizionali** (in fondo alla
+   colonna di sinistra dei due strumenti) al tuo comune, o cambia i default in
+   [`src/lib/tax.ts`](src/lib/tax.ts).
 
 Senza il secret il deploy va avanti comunque (`--soft`): il sito resta con il
 `quote.json` già in repo, e i prezzi si scrivono a mano.

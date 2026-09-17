@@ -15,7 +15,7 @@ import {
   INPS_2026,
 } from "../src/lib/tax.ts";
 import { minimoGarantito, simulaEspp, PIANO_ESPP, accantonamentoAtteso } from "../src/lib/espp.ts";
-import { prospetto, tranche, piuMesi, type Grant } from "../src/lib/rsu.ts";
+import { prospetto, tranche, piuMesi, unitaDelGrant, type Grant } from "../src/lib/rsu.ts";
 import { toField, parseNum } from "../src/lib/format.ts";
 
 const vicino = (a: number, b: number, eps = 0.01) =>
@@ -153,7 +153,7 @@ test("ESPP: l'accantonamento atteso segue la percentuale", () => {
 
 test("RSU: le tranche trimestrali cadono sul calendario del piano", () => {
   const g: Grant = {
-    id: "a", etichetta: "G", data: "2026-02-20", unita: 400,
+    id: "a", etichetta: "G", data: "2026-02-20", valoreUsd: 40000, prezzoGrant: 100,
     cadenza: "trimestrale", anni: 3, dateFisse: true,
   };
   const ts = tranche(g);
@@ -167,7 +167,7 @@ test("RSU: le tranche trimestrali cadono sul calendario del piano", () => {
 
 test("RSU: senza date fisse le tranche cadono a tre mesi dal grant", () => {
   const ts = tranche({
-    id: "a", etichetta: "G", data: "2026-01-31", unita: 100,
+    id: "a", etichetta: "G", data: "2026-01-31", valoreUsd: 10000, prezzoGrant: 100,
     cadenza: "trimestrale", anni: 1, dateFisse: false,
   });
   assert.equal(ts[0].data, "2026-04-30"); // il giorno si schiaccia sul mese corto
@@ -176,7 +176,7 @@ test("RSU: senza date fisse le tranche cadono a tre mesi dal grant", () => {
 
 test("RSU: 30-30-40 e' un elenco, non una percentuale arrotondata", () => {
   const ts = tranche({
-    id: "a", etichetta: "G", data: "2026-02-20", unita: 479,
+    id: "a", etichetta: "G", data: "2026-02-20", valoreUsd: 47900, prezzoGrant: 100,
     cadenza: "30-30-40", anni: 3, dateFisse: false,
   });
   assert.equal(ts.length, 3);
@@ -186,11 +186,11 @@ test("RSU: 30-30-40 e' un elenco, non una percentuale arrotondata", () => {
 
 test("RSU: l'aliquota si calcola sul totale dell'anno, non sulla tranche", () => {
   const uno: Grant = {
-    id: "a", etichetta: "A", data: "2026-02-20", unita: 400,
+    id: "a", etichetta: "A", data: "2026-02-20", valoreUsd: 40000, prezzoGrant: 100,
     cadenza: "trimestrale", anni: 3, dateFisse: true,
   };
   const due: Grant = { ...uno, id: "b", etichetta: "B" };
-  const base = { prezzo: 170, cambio: 1.16, oggi: "2026-09-17", orizzonte: 3 };
+  const base = { prezzo: 100, cambio: 1.16, oggi: "2026-09-17", orizzonte: 3 };
 
   // Due grant identici valgono il doppio di lordo, e questo e' aritmetica.
   const solo = prospetto({ ...base, ral: 20000, grants: [uno] });
@@ -268,4 +268,23 @@ test("parseNum accetta conti, virgole e punti", () => {
   assert.equal(parseNum(""), null);
   assert.equal(parseNum("ciao"), null);
   assert.equal(parseNum("1/0"), null);
+});
+
+test("RSU: i dollari diventano unita' col prezzo del giorno del grant", () => {
+  const base = {
+    id: "a", etichetta: "G", data: "2026-02-20", valoreUsd: 20000,
+    cadenza: "30-30-40" as const, anni: 3, dateFisse: false,
+  };
+  // 20.000 $ assegnati quando l'azione stava a 142,88 fanno ~140 unita'
+  vicino(unitaDelGrant({ ...base, prezzoGrant: 142.88 }), 139.9776, 1e-3);
+  // lo stesso importo assegnato a un prezzo doppio fa meta' delle unita': e' la
+  // ragione per cui un grant vecchio oggi vale piu' di uno nuovo dello stesso
+  // valore, e per cui il prezzo del grant sta nel grant e non nei parametri
+  vicino(unitaDelGrant({ ...base, prezzoGrant: 285.76 }), 69.9888, 1e-3);
+  // senza prezzo non si divide per zero: zero unita', e il campo lo dice
+  assert.equal(unitaDelGrant({ ...base, prezzoGrant: 0 }), 0);
+
+  // le tranche sommano sempre le unita' del grant, qualunque sia il prezzo
+  const ts = tranche({ ...base, prezzoGrant: 142.88 });
+  vicino(ts.reduce((s, t) => s + t.unita, 0), 139.9776, 1e-3);
 });

@@ -1,10 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
 import { useStore } from "../state/store.tsx";
-import { Card, Check, DateField, Line, NumField, Segmented, Select } from "./ui.tsx";
+import { Card, Check, DateField, Disclosure, Line, NumField, Segmented, Select } from "./ui.tsx";
 import VestingChart, { coloreGrant } from "./VestingChart.tsx";
 import { dateShort, eur, eur0, num, pct, todayISO, usd } from "../lib/format.ts";
-import { CALENDARIO_VESTING, prospetto, soloStipendio, type Cadenza, type Grant } from "../lib/rsu.ts";
+import {
+  CALENDARIO_VESTING,
+  prospetto,
+  soloStipendio,
+  unitaDelGrant,
+  type Cadenza,
+  type Grant,
+} from "../lib/rsu.ts";
 import { caricaQuote, storicoAllaData, type Quote } from "../lib/prices.ts";
+import RegimeEditor from "./RegimeEditor.tsx";
 import { RAL_DEFAULT } from "../lib/meta.ts";
 
 // Le RSU, guardate da tre anni di distanza.
@@ -17,34 +25,40 @@ import { RAL_DEFAULT } from "../lib/meta.ts";
 let seq = 0;
 const nuovoId = () => `g${++seq}`;
 
-function grantIniziali(oggi: string): Grant[] {
+/** Quello che si scrive: il grant in dollari, senza il prezzo che lo converte. */
+type GrantScritto = Omit<Grant, "prezzoGrant">;
+
+// I due grant che quasi tutti hanno insieme, e che insieme spiegano perche'
+// serve guardare tre anni: il welcome, che vesta 30-30-40 e quindi ha la coda
+// pesante in fondo, e il bonus annuale, che vesta a pezzetti ogni trimestre.
+// Nello stesso anno arrivano entrambi, e il fisco li somma.
+function grantIniziali(oggi: string): GrantScritto[] {
   const anno = Number(oggi.slice(0, 4));
   return [
     {
       id: nuovoId(),
-      etichetta: `Grant ${anno - 1}`,
-      data: `${anno - 1}-02-20`,
-      unita: 400,
-      cadenza: "trimestrale",
+      etichetta: "Welcome grant",
+      data: `${anno}-02-20`,
+      valoreUsd: 20000,
+      cadenza: "30-30-40",
       anni: 3,
-      dateFisse: true,
+      dateFisse: false,
     },
     {
       id: nuovoId(),
-      etichetta: `Grant ${anno}`,
+      etichetta: `Bonus ${anno}`,
       data: `${anno}-02-20`,
-      unita: 300,
+      valoreUsd: 10000,
       cadenza: "trimestrale",
       anni: 3,
       dateFisse: true,
     },
   ];
 }
-
 export default function RsuTool() {
   const { t, lang, regime } = useStore();
   const oggi = todayISO();
-  const [grants, setGrants] = useState<Grant[]>(() => grantIniziali(oggi));
+  const [grants, setGrants] = useState<GrantScritto[]>(() => grantIniziali(oggi));
   const [ral, setRal] = useState(RAL_DEFAULT);
   const [orizzonte, setOrizzonte] = useState(3);
   const [scala, setScala] = useState<"eur" | "unita">("eur");
@@ -65,13 +79,30 @@ export default function RsuTool() {
   const vPrezzo = prezzo ?? quote?.close ?? ultimo?.close ?? 0;
   const vCambio = cambio ?? quote?.eurusd ?? ultimo?.eurusd ?? 1;
 
+  // Il prezzo che converte i dollari in unita' e' quello del **giorno del
+  // grant**, non quello di oggi: e' cosi' che il piano fissa le unita', ed e'
+  // la ragione per cui un grant vecchio oggi vale piu' di uno nuovo dello
+  // stesso importo. Se quella data non e' nell'archivio si ricade sul prezzo
+  // corrente, e il campo lo dice.
+  const prezzoAlGrant = (data: string) => storicoAllaData(data)?.close ?? vPrezzo;
+  const risolti = useMemo<Grant[]>(
+    // `prezzoAlGrant` legge solo l'archivio (una funzione pura) e vPrezzo,
+    // quindi le dipendenze sono queste due e basta.
+    () => grants.map((g) => ({ ...g, prezzoGrant: prezzoAlGrant(g.data) })),
+    [grants, vPrezzo]
+  );
+
   const p = useMemo(
-    () => prospetto({ grants, prezzo: vPrezzo, cambio: vCambio, ral, oggi, orizzonte, calendario: CALENDARIO_VESTING }, regime),
-    [grants, vPrezzo, vCambio, ral, oggi, orizzonte, regime]
+    () =>
+      prospetto(
+        { grants: risolti, prezzo: vPrezzo, cambio: vCambio, ral, oggi, orizzonte, calendario: CALENDARIO_VESTING },
+        regime
+      ),
+    [risolti, vPrezzo, vCambio, ral, oggi, orizzonte, regime]
   );
 
   const stipendio = soloStipendio(ral, regime);
-  const patch = (id: string, q: Partial<Grant>) =>
+  const patch = (id: string, q: Partial<GrantScritto>) =>
     setGrants((gs) => gs.map((g) => (g.id === id ? { ...g, ...q } : g)));
 
   const cadenze: { id: Cadenza; label: string }[] = [
@@ -115,14 +146,25 @@ export default function RsuTool() {
                   </button>
                 ) : null}
               </div>
-              <div className="grid2">
+              <div className="grid2 has-date">
                 <DateField label={t.rsu.grantDate} value={g.data} onChange={(v) => patch(g.id, { data: v })} />
                 <NumField
                   lang={lang}
-                  label={t.rsu.grantUnits}
-                  dec={4}
-                  value={g.unita}
-                  onChange={(v) => patch(g.id, { unita: v })}
+                  label={t.rsu.grantValue}
+                  suffix="$"
+                  dec={0}
+                  value={g.valoreUsd}
+                  onChange={(v) => patch(g.id, { valoreUsd: v })}
+                  hint={(() => {
+                    const storico = storicoAllaData(g.data);
+                    const prezzo = prezzoAlGrant(g.data);
+                    if (!(prezzo > 0)) return t.rsu.grantValueNoPrice;
+                    return t.rsu.grantValueHint(
+                      num(unitaDelGrant({ ...g, prezzoGrant: prezzo }), lang, 2),
+                      usd(prezzo, lang),
+                      dateShort(storico?.closeOn ?? oggi, lang)
+                    );
+                  })()}
                 />
                 <Select<Cadenza>
                   label={t.rsu.grantSchedule}
@@ -171,9 +213,9 @@ export default function RsuTool() {
                 ...gs,
                 {
                   id: nuovoId(),
-                  etichetta: `Grant ${anno + gs.length - 1}`,
+                  etichetta: `Bonus ${anno + gs.length - 1}`,
                   data: `${anno}-02-20`,
-                  unita: 300,
+                  valoreUsd: 10000,
                   cadenza: "trimestrale",
                   anni: 3,
                   dateFisse: true,
@@ -183,6 +225,10 @@ export default function RsuTool() {
           >
             + {t.rsu.addGrant}
           </button>
+
+          <p className="hint" style={{ marginTop: 10 }}>
+            {t.rsu.grantValueWhy}
+          </p>
 
           <h3>{t.common.ral}</h3>
           <NumField lang={lang} label={t.common.ral} suffix="€" dec={0} value={ral} onChange={setRal} />
@@ -228,6 +274,12 @@ export default function RsuTool() {
               { id: "5", label: `5 ${t.rsu.years}` },
             ]}
           />
+
+          <div style={{ marginTop: 18, borderTop: "1px solid var(--border)", paddingTop: 14 }}>
+            <Disclosure label={t.tax.title}>
+              <RegimeEditor ral={ral} />
+            </Disclosure>
+          </div>
         </Card>
       </div>
 

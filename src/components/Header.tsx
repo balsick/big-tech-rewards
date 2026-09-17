@@ -4,7 +4,7 @@ import { REPO } from "../lib/meta.ts";
 import type { Lang } from "../i18n/index.ts";
 import type { Tema } from "../state/store.tsx";
 
-export type Tab = "espp" | "rsu" | "tax";
+export type Tab = "espp" | "rsu";
 
 // L'icona di GitHub disegnata a mano: una dipendenza in meno e nessun carattere
 // tipografico da scaricare per un logo di sedici pixel.
@@ -49,7 +49,7 @@ export default function Header({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => 
           />
         </div>
         <nav className="tabs" aria-label={t.app.title}>
-          {(["espp", "rsu", "tax"] as Tab[]).map((k) => (
+          {(["espp", "rsu"] as Tab[]).map((k) => (
             <button
               key={k}
               type="button"

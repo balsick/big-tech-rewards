@@ -314,6 +314,32 @@ input.inp:focus-visible, select.inp:focus-visible {
 
 input.inp[aria-invalid="true"] { border-color: var(--bad); }
 
+/* Il campetto del tetto di scaglione: sta dentro la riga di aiuto sotto
+   l'aliquota, percio' e' piu' piccolo del campo che descrive. */
+input.inp.soglia {
+  width: 6.5rem;
+  padding: 2px 6px;
+  font-size: 11px;
+  display: inline-block;
+}
+
+/* Un campo data nativo non si stringe. "01/04/2026" piu' l'icona del
+   calendario vogliono circa 140 px, e sotto quella soglia il browser non manda
+   niente a capo: ci mette l'icona SOPRA l'ultima cifra dell'anno, e la data
+   diventa illeggibile senza che nulla sembri rotto (nessun overflow, nessuna
+   sovrapposizione fra i box — solo il contenuto schiacciato). Quando la coppia
+   non ci sta, si impila.
+
+   La classe c'e' per i browser senza `:has()`; il selettore con `:has()` prende
+   da solo qualsiasi altra coppia che contenga una data, comprese quelle che
+   verranno dopo. */
+@media (max-width: 430px) {
+  .grid2.has-date,
+  .grid2:has(input[type="date"]) {
+    grid-template-columns: 1fr;
+  }
+}
+
 .row-inline { display: flex; gap: 8px; align-items: flex-end; }
 
 button.btn {
