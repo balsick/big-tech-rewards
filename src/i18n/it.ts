@@ -256,6 +256,10 @@ export const it = {
     esppHeadlineSub: (contributed: string, shares: string, price: string) =>
       `Accantoni ${contributed} in sei mesi e compri ${shares} azioni a ${price} l’una.`,
     rsuHeadline: (year: number, shares: string) => `Da qui a fine ${year} ti arrivano ${shares} azioni`,
+    rsuQuarter: "Trimestre",
+    rsuQuarterVest: "Vestizione",
+    rsuRateIsYearly:
+      "L’aliquota è quella dell’anno, non del trimestre: il fisco somma tutto quello che vesta nello stesso anno civile, quindi i trimestri di uno stesso anno la condividono. È anche ciò che fa il broker — trattiene a ogni vestizione e l’anno fa i conti.",
     rsuHeadlineSub: (units: string, gross: string) =>
       `${units} unità maturano, ${gross} lordi. Il resto se lo prende la trattenuta, venduto il giorno stesso.`,
     rsuPrefilled: (welcome: string, bonus: string) =>

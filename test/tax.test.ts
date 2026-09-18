@@ -469,3 +469,42 @@ test("four-digit figures group like the rest", () => {
   // and nothing changes below a thousand
   assert.ok(!eur0(999, "it").includes("."), eur0(999, "it"));
 });
+
+test("RSU: the quarterly rows add up to the year they belong to", () => {
+  // The guided view lists quarters, the tax is worked out per year, and the
+  // shares that reach you are whole. Rounding each quarter on its own makes the
+  // column add up to a share or two away from the year's figure — and a table
+  // whose rows contradict the total printed under them costs you both numbers.
+  // Largest remainder is what keeps the parts equal to the whole.
+  const grants: Grant[] = [
+    { id: "w", label: "Welcome", date: "2026-02-20", valueUsd: 20000, priceAtGrant: 142.88,
+      schedule: "30-30-40", years: 3, usePlanDates: true },
+    { id: "b", label: "Bonus", date: "2026-11-20", valueUsd: 10000, priceAtGrant: 188.71,
+      schedule: "quarterly", years: 3, usePlanDates: true },
+  ];
+  // Several salaries, because the rate is what drives the fractions: the Italian
+  // marginal curve is not monotonic, so one salary is not a sample.
+  for (const salary of [0, 28000, 36000, 50000, 70000, 140000]) {
+    const p = project({ grants, price: 188.71, fxRate: 1.148, salary, today: "2026-09-18", horizonYears: 3 });
+    for (const y of p.years) {
+      const mine = p.quarters.filter((q) => q.year === y.year && q.units > 0);
+      assert.ok(mine.length > 0, `${y.year}: a year with vests must have quarters with vests`);
+      const net = mine.reduce((s, q) => s + q.netShares, 0);
+      assert.equal(net, y.netShares, `salary ${salary}, ${y.year}: quarters sum to the year`);
+      // Whole shares, never negative, never more than vested.
+      for (const q of mine) {
+        assert.equal(q.netShares, Math.floor(q.netShares), "a share is not divisible");
+        assert.ok(q.netShares >= 0 && q.netShares <= q.units, "a quarter cannot hand out more than it vests");
+        near(q.netShares + q.sharesSold, q.units, 1e-9);
+        assert.equal(q.taxRate, y.taxRate, "a quarter carries its year's rate");
+      }
+      // And the units themselves partition the year, or the split is of the
+      // wrong denominator to begin with.
+      near(mine.reduce((s, q) => s + q.units, 0), y.units, 1e-9);
+      near(mine.reduce((s, q) => s + q.grossEur, 0), y.grossEur, 1e-6);
+    }
+    // Empty quarters stay empty rather than inheriting anything.
+    for (const q of p.quarters.filter((x) => x.units === 0))
+      assert.equal(q.netShares + q.sharesSold + q.netEur + q.taxRate, 0, "an empty quarter stays empty");
+  }
+});

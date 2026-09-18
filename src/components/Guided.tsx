@@ -4,7 +4,7 @@ import { Card, Line, NumField } from "./ui.tsx";
 import { Close } from "./Icons.tsx";
 import { dateShort, eur0, num, pct, todayISO, usd } from "../lib/format.ts";
 import { ESPP_PLAN, currentWindow, expectedContribution, simulateEspp } from "../lib/espp.ts";
-import { VESTING_CALENDAR, grantUnits, project, type Grant } from "../lib/rsu.ts";
+import { VESTING_CALENDAR, addMonths, grantUnits, project, type ChartPeriod, type Grant } from "../lib/rsu.ts";
 import { historyAt, loadQuote, type Quote } from "../lib/prices.ts";
 import { markSeen, type Seed } from "../lib/guided.ts";
 import { DEFAULT_SALARY } from "../lib/meta.ts";
@@ -189,6 +189,20 @@ export default function Guided({
         : null,
     [grants, endPrice, fx, salary, today, regime]
   );
+
+  // Only the quarters something actually vests in. An empty quarter is
+  // information in the chart — it is the shape of the plan — but in a table
+  // answering "when do shares arrive" a row of zeroes says nothing the gap in
+  // the dates does not already say.
+  const vesting = useMemo(() => (rsu ? rsu.quarters.filter((q) => q.units > 0) : []), [rsu]);
+
+  /** The day the quarter's shares land, for the line under its label. */
+  const vestDay = (q: ChartPeriod): string | null => {
+    if (!rsu) return null;
+    const to = addMonths(q.from, 3);
+    const inside = rsu.upcoming.filter((tr) => tr.date >= q.from && tr.date < to);
+    return inside.length ? inside[0].date : null;
+  };
 
   const leave = () => {
     markSeen();
@@ -498,28 +512,31 @@ export default function Guided({
               <p className="note">
                 {t.guided.rsuHeadlineSub(num(rsu.totalUnits, lang, 2), eur0(rsu.totalGross, lang))}
               </p>
-              <div className="scroll-y" style={{ marginTop: 16 }}>
+              <div className="scroll-x" style={{ marginTop: 16 }}>
                 <table className="tbl">
                   <thead>
                     <tr>
-                      <th>{t.common.year}</th>
-                      <th className="r">{t.rsu.tableUnits}</th>
+                      <th>{t.guided.rsuQuarter}</th>
+                      <th className="r optional-phone">{t.rsu.tableUnits}</th>
                       <th className="r">{t.rsu.tableValue}</th>
                       <th className="r optional">{t.rsu.yearRate}</th>
-                      <th className="r">{t.rsu.yearSold}</th>
+                      <th className="r optional-phone">{t.rsu.yearSold}</th>
                       <th className="r">{t.rsu.yearShares}</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {rsu.years.map((y) => (
-                      <tr key={y.year}>
-                        <td style={{ fontWeight: 660 }}>{y.year}</td>
-                        <td className="r">{num(y.units, lang, 2)}</td>
-                        <td className="r">{eur0(y.grossEur, lang)}</td>
-                        <td className="r optional neg">{pct(y.taxRate, lang)}</td>
-                        <td className="r neg">&#8722;{num(y.sharesSold, lang, 0)}</td>
+                    {vesting.map((q, k) => (
+                      <tr key={q.from} className={k > 0 && q.year !== vesting[k - 1].year ? "year-break" : ""}>
+                        <td>
+                          <span style={{ fontWeight: 660 }}>{`${q.year} Q${q.quarter}`}</span>
+                          {vestDay(q) ? <span className="cell-sub">{dateShort(vestDay(q)!, lang)}</span> : null}
+                        </td>
+                        <td className="r optional-phone">{num(q.units, lang, 2)}</td>
+                        <td className="r">{eur0(q.grossEur, lang)}</td>
+                        <td className="r optional neg">{pct(q.taxRate, lang)}</td>
+                        <td className="r neg optional-phone">&#8722;{num(q.sharesSold, lang, 0)}</td>
                         <td className="r" style={{ fontWeight: 660, fontSize: "var(--t-20)" }}>
-                          {num(y.netShares, lang, 0)}
+                          {num(q.netShares, lang, 0)}
                         </td>
                       </tr>
                     ))}
@@ -535,6 +552,9 @@ export default function Guided({
               </ul>
               <p className="hint" style={{ marginTop: 12 }}>
                 {t.rsu.sellToCover}
+              </p>
+              <p className="hint" style={{ marginTop: 8 }}>
+                {t.guided.rsuRateIsYearly}
               </p>
             </>
           ) : (

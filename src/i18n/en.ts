@@ -258,6 +258,10 @@ export const en: Dict = {
     esppHeadlineSub: (contributed: string, shares: string, price: string) =>
       `You set aside ${contributed} over six months and buy ${shares} shares at ${price} each.`,
     rsuHeadline: (year: number, shares: string) => `From now to the end of ${year} you get ${shares} shares`,
+    rsuQuarter: "Quarter",
+    rsuQuarterVest: "Vests",
+    rsuRateIsYearly:
+      "The rate is the year’s, not the quarter’s: the taxman adds up everything that vests in the same calendar year, so the quarters inside one share a rate. It is also what the broker does — it withholds at every vest and the year reconciles.",
     rsuHeadlineSub: (units: string, gross: string) =>
       `${units} units vest, ${gross} gross. The rest goes to withholding, sold on the day.`,
     rsuPrefilled: (welcome: string, bonus: string) =>

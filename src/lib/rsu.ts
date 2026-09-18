@@ -202,6 +202,20 @@ export interface ChartPeriod {
   byGrant: { grant: string; units: number }[];
   units: number;
   grossEur: number;
+  /**
+   * The year's rate, carried onto the quarter.
+   *
+   * There is no such thing as a quarter's own rate: the taxman adds up
+   * everything that vests in the same calendar year, so the rate is the year's
+   * and every quarter inside it shares one. Repeated here so a quarterly row
+   * can show what was withheld from it without having to look its year up.
+   */
+  taxRate: number;
+  netEur: number;
+  /** shares that reach the account this quarter — see `netShares` on RsuYear */
+  netShares: number;
+  /** sold on the vesting day to cover the withholding */
+  sharesSold: number;
 }
 
 export interface Projection {
@@ -308,6 +322,44 @@ export function project(i: RsuInput, regime?: TaxRegime): Projection {
       byGrant,
       units,
       grossEur: units * perUnitEur,
+      // filled in below, once the year they belong to is known
+      taxRate: 0,
+      netEur: 0,
+      netShares: 0,
+      sharesSold: 0,
+    });
+  }
+
+  // The shares a single quarter leaves you with.
+  //
+  // The rate is the year's and cannot be anything else, but the shares arrive a
+  // quarter at a time, and "how many land in February" is the question people
+  // actually ask. So each quarter takes its year's rate — which is also what
+  // the broker does: it withholds at every vest and the year reconciles.
+  //
+  // The integer count is split by **largest remainder** rather than by
+  // rounding each quarter on its own. Rounding independently makes the parts
+  // add up to one or two shares away from the year's figure, and a table whose
+  // rows contradict the total printed under them is worse than no table: you
+  // stop trusting both numbers. Largest remainder makes the parts sum to the
+  // year exactly, and puts the spare share where the fraction was biggest.
+  for (const y of years) {
+    const mine = quarters.filter((q) => q.year === y.year && q.units > 0);
+    if (!mine.length) continue;
+    const kept = 1 - y.taxRate;
+    const ideal = mine.map((q) => q.units * kept);
+    const floors = ideal.map((v) => Math.floor(v));
+    const byFraction = ideal
+      .map((v, k) => ({ k, frac: v - Math.floor(v) }))
+      .sort((a, b) => b.frac - a.frac);
+    const spare = new Array(mine.length).fill(0);
+    let left = y.netShares - floors.reduce((a, b) => a + b, 0);
+    for (let j = 0; left > 0 && j < byFraction.length; j++, left--) spare[byFraction[j].k] = 1;
+    mine.forEach((q, k) => {
+      q.taxRate = y.taxRate;
+      q.netEur = q.grossEur * kept;
+      q.netShares = floors[k] + spare[k];
+      q.sharesSold = q.units - q.netShares;
     });
   }
 

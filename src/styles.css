@@ -780,11 +780,38 @@ table.tbl th.r {
   table.tbl .optional { display: none; }
 }
 
+/* The second tier, for a phone.
+   A table with a `min-width` scrolls sideways when it does not fit, and what
+   goes off the right edge is the LAST column — which here was "shares that
+   reach you", the one number the table exists to show. Reading it meant
+   scrolling for it, while the columns you could see were the workings. So on a
+   phone the workings go and the answer stays. */
+@media (max-width: 480px) {
+  table.tbl .optional-phone { display: none; }
+  table.tbl { min-width: 0; }
+}
+
 .scroll-y {
   max-height: 340px;
   overflow: auto;
   overscroll-behavior: contain;
 }
+
+/* Sideways only, for a table inside a panel that already scrolls down.
+   Capping the height here too would nest one scroll area in another: two
+   scrollbars, and — worse — a total sitting right under six of twelve rows,
+   where it reads as contradicting the rows you can see rather than summing the
+   ones you cannot. */
+.scroll-x {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+
+/* Where one year ends and the next begins. Twelve quarterly rows are a wall
+   without it; the rule is the only thing that lets the eye group them, and it
+   is a border rather than a heading row because the grouping is a glance, not
+   a level of structure. */
+table.tbl tr.year-break td { border-top: 1px solid var(--border-strong); }
 
 .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 
@@ -1142,6 +1169,17 @@ button.guida-completa span { flex: 1 1 auto; min-width: 0; }
 .guida-esito .card.accent { border-color: var(--accent); }
 
 .guida-esito .card p.big { margin: 4px 0 0; }
+
+/* The vesting day under a quarter's label. Its own line rather than a second
+   column, because the two say the same thing at different resolutions: the
+   quarter is the grouping, the date is where it lands. */
+.cell-sub {
+  display: block;
+  margin-top: 1px;
+  font-size: var(--t-12);
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
 
 /* ------------------------------------------------------------------- footer */
 
