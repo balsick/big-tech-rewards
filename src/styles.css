@@ -1181,6 +1181,44 @@ button.guida-completa span { flex: 1 1 auto; min-width: 0; }
   font-variant-numeric: tabular-nums;
 }
 
+/* The answer, in both units. Not a card inside a card — it already sits in
+   one — so it is a plain group separated by space, and the two figures share a
+   size because neither outranks the other. */
+.answer-pair {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 32px;
+  align-items: flex-start;
+}
+
+.answer-one {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.answer-name {
+  font-size: var(--t-11);
+  letter-spacing: 0.02em;
+  font-weight: 660;
+  color: var(--muted);
+}
+
+.answer-value {
+  font-size: var(--t-36);
+  font-weight: 640;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.answer-hint {
+  margin-top: 2px;
+  font-size: var(--t-12);
+  color: var(--text-2);
+}
+
 /* ------------------------------------------------------------------- footer */
 
 footer.bottom {

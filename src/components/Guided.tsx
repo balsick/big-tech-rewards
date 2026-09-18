@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useStore } from "../state/store.tsx";
-import { Card, Line, NumField } from "./ui.tsx";
+import { Answer, Card, Line, NumField } from "./ui.tsx";
 import { Close } from "./Icons.tsx";
 import { dateShort, eur0, num, pct, todayISO, usd } from "../lib/format.ts";
-import { ESPP_PLAN, currentWindow, expectedContribution, simulateEspp } from "../lib/espp.ts";
-import { VESTING_CALENDAR, addMonths, grantUnits, project, type ChartPeriod, type Grant } from "../lib/rsu.ts";
+import { ESPP_PLAN, defaultWindow, expectedContribution, simulateEspp } from "../lib/espp.ts";
+import { VESTING_CALENDAR, grantUnits, project, type Grant } from "../lib/rsu.ts";
 import { historyAt, loadQuote, type Quote } from "../lib/prices.ts";
 import { markSeen, type Seed } from "../lib/guided.ts";
 import { DEFAULT_SALARY } from "../lib/meta.ts";
@@ -130,7 +130,7 @@ export default function Guided({
 
   const today = todayISO();
   const year = Number(today.slice(0, 4));
-  const window_ = useMemo(() => currentWindow(today, ESPP_PLAN), [today]);
+  const window_ = useMemo(() => defaultWindow(today, ESPP_PLAN), [today]);
 
   // The prices the walkthrough never asks for: the close stored in the sources
   // at the start of the period, and the latest one for purchase day.
@@ -195,14 +195,6 @@ export default function Guided({
   // answering "when do shares arrive" a row of zeroes says nothing the gap in
   // the dates does not already say.
   const vesting = useMemo(() => (rsu ? rsu.quarters.filter((q) => q.units > 0) : []), [rsu]);
-
-  /** The day the quarter's shares land, for the line under its label. */
-  const vestDay = (q: ChartPeriod): string | null => {
-    if (!rsu) return null;
-    const to = addMonths(q.from, 3);
-    const inside = rsu.upcoming.filter((tr) => tr.date >= q.from && tr.date < to);
-    return inside.length ? inside[0].date : null;
-  };
 
   const leave = () => {
     markSeen();
@@ -456,8 +448,26 @@ export default function Guided({
           {where.tool === "espp" ? (
             espp ? (
               <>
-                <h2>{t.guided.esppHeadline(`${num(percent, lang, 0)}%`, eur0(salary, lang))}</h2>
-                <p className="note">
+                <h2 style={{ marginBottom: 12 }}>
+                  {t.guided.esppHeadline(`${num(percent, lang, 0)}%`, eur0(salary, lang))}
+                </h2>
+                {/* The shares and what they are worth, before the three cards
+                    that explain the money. It is what you are left holding. */}
+                <Answer
+                  items={[
+                    { name: t.espp.answerShares, value: num(espp.shares, lang, 0) },
+                    {
+                      name: t.espp.answerValue,
+                      value: eur0(espp.marketValue, lang),
+                      // The MARKET price, not the discounted one. What they
+                      // are worth is 39 x 188.71; what they cost is 39 x
+                      // 108.19, and pairing the market value with the purchase
+                      // price made the line contradict its own figure.
+                      hint: t.espp.answerValueHint(usd(endPrice, lang)),
+                    },
+                  ]}
+                />
+                <p className="note" style={{ marginTop: 14 }}>
                   {t.guided.esppHeadlineSub(
                     eur0(contributed, lang),
                     num(espp.shares, lang, 0),
@@ -503,13 +513,18 @@ export default function Guided({
             )
           ) : rsu && rsu.upcoming.length ? (
             <>
-              <h2>
-                {t.guided.rsuHeadline(
-                  lastYear,
-                  num(rsu.years.reduce((s, y) => s + y.netShares, 0), lang, 0)
-                )}
-              </h2>
-              <p className="note">
+              <h2 style={{ marginBottom: 12 }}>{t.rsu.horizonSpan(lastYear)}</h2>
+              <Answer
+                items={[
+                  { name: t.rsu.answerShares, value: num(rsu.totalNetShares, lang, 0) },
+                  {
+                    name: t.rsu.answerValue,
+                    value: eur0(rsu.netSharesEur, lang),
+                    hint: t.rsu.answerValueHint(usd(endPrice, lang)),
+                  },
+                ]}
+              />
+              <p className="note" style={{ marginTop: 14 }}>
                 {t.guided.rsuHeadlineSub(num(rsu.totalUnits, lang, 2), eur0(rsu.totalGross, lang))}
               </p>
               <div className="scroll-x" style={{ marginTop: 16 }}>
@@ -529,7 +544,7 @@ export default function Guided({
                       <tr key={q.from} className={k > 0 && q.year !== vesting[k - 1].year ? "year-break" : ""}>
                         <td>
                           <span style={{ fontWeight: 660 }}>{`${q.year} Q${q.quarter}`}</span>
-                          {vestDay(q) ? <span className="cell-sub">{dateShort(vestDay(q)!, lang)}</span> : null}
+                          {q.vestOn ? <span className="cell-sub">{dateShort(q.vestOn, lang)}</span> : null}
                         </td>
                         <td className="r optional-phone">{num(q.units, lang, 2)}</td>
                         <td className="r">{eur0(q.grossEur, lang)}</td>
@@ -546,9 +561,10 @@ export default function Guided({
               <ul className="lines" style={{ marginTop: 14 }}>
                 <Line
                   name={t.guided.total}
-                  value={`${num(rsu.years.reduce((s, y) => s + y.netShares, 0), lang, 0)} ${t.common.shares}`}
+                  value={`${num(rsu.totalNetShares, lang, 0)} ${t.common.shares}`}
                   sum
                 />
+                <Line name={t.rsu.answerValue} value={eur0(rsu.netSharesEur, lang)} sum />
               </ul>
               <p className="hint" style={{ marginTop: 12 }}>
                 {t.rsu.sellToCover}

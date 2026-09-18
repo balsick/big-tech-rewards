@@ -203,6 +203,15 @@ export interface ChartPeriod {
   units: number;
   grossEur: number;
   /**
+   * The day the quarter's shares actually land, or null for an empty one.
+   *
+   * The quarter is the grouping, but the plan vests on a date — 20 February,
+   * not "Q1" — and that date is what you put in a calendar. Computed here so
+   * both the walkthrough and the full tool read the same one instead of each
+   * deriving it from the tranche list.
+   */
+  vestOn: string | null;
+  /**
    * The year's rate, carried onto the quarter.
    *
    * There is no such thing as a quarter's own rate: the taxman adds up
@@ -226,6 +235,18 @@ export interface Projection {
   totalUnits: number;
   totalGross: number;
   totalNet: number;
+  /**
+   * Whole shares that reach the account over the whole horizon.
+   *
+   * The sum of the years, not a rounding of the total: each year withholds at
+   * its own rate and rounds once, so re-deriving this from the totals would
+   * disagree with the rows it sits under.
+   */
+  totalNetShares: number;
+  /** what those shares are worth at the projection's price */
+  netSharesEur: number;
+  /** euro per share, the rate every figure here was converted with */
+  perUnitEur: number;
   /** quarter by quarter, for the chart */
   quarters: ChartPeriod[];
 }
@@ -322,6 +343,7 @@ export function project(i: RsuInput, regime?: TaxRegime): Projection {
       byGrant,
       units,
       grossEur: units * perUnitEur,
+      vestOn: inside.length ? inside[0].date : null,
       // filled in below, once the year they belong to is known
       taxRate: 0,
       netEur: 0,
@@ -363,6 +385,8 @@ export function project(i: RsuInput, regime?: TaxRegime): Projection {
     });
   }
 
+  const totalNetShares = years.reduce((s, y) => s + y.netShares, 0);
+
   return {
     tranches: all,
     upcoming,
@@ -370,6 +394,9 @@ export function project(i: RsuInput, regime?: TaxRegime): Projection {
     totalUnits: upcoming.reduce((s, t) => s + t.units, 0),
     totalGross: years.reduce((s, y) => s + y.grossEur, 0),
     totalNet: years.reduce((s, y) => s + y.netEur, 0),
+    totalNetShares,
+    netSharesEur: totalNetShares * perUnitEur,
+    perUnitEur,
     quarters,
   };
 }

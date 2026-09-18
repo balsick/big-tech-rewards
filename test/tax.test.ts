@@ -14,7 +14,15 @@ import {
   extraCredit,
   SOCIAL_SECURITY_2026,
 } from "../src/lib/tax.ts";
-import { guaranteedFloor, simulateEspp, ESPP_PLAN, expectedContribution } from "../src/lib/espp.ts";
+import {
+  guaranteedFloor,
+  simulateEspp,
+  ESPP_PLAN,
+  expectedContribution,
+  esppWindows,
+  defaultWindow,
+  CLOSED_WINDOW_GRACE_DAYS,
+} from "../src/lib/espp.ts";
 import {
   project,
   tranches,
@@ -506,5 +514,80 @@ test("RSU: the quarterly rows add up to the year they belong to", () => {
     // Empty quarters stay empty rather than inheriting anything.
     for (const q of p.quarters.filter((x) => x.units === 0))
       assert.equal(q.netShares + q.sharesSold + q.netEur + q.taxRate, 0, "an empty quarter stays empty");
+  }
+});
+
+test("ESPP: the windows on offer, and which one the tool opens on", () => {
+  // A period runs from one purchase day to the next, so the dates are not
+  // something to type. What needs pinning down is *when* each window appears
+  // and disappears, because both edges are off-by-one-day traps.
+  const w = (today: string) =>
+    esppWindows(today, ESPP_PLAN).map((x) => `${x.start}->${x.purchase}${x.closed ? " closed" : ""}`);
+
+  // Mid-period: one window, the one running. The window before it closed six
+  // months ago and is long past being the question.
+  assert.deepEqual(w("2026-09-18"), ["2026-04-01->2026-10-01"]);
+
+  // On purchase day the period starting that morning has accumulated nothing,
+  // so it is not offered yet — and the one purchasing today is not yet closed,
+  // because that day's close does not exist until the day is over.
+  assert.deepEqual(w("2026-10-01"), ["2026-04-01->2026-10-01"]);
+
+  // The day after, both: the one that just closed and the one just begun.
+  assert.deepEqual(w("2026-10-02"), [
+    "2026-04-01->2026-10-01 closed",
+    "2026-10-01->2027-04-01",
+  ]);
+
+  // The closed one drops off once it is past the grace period.
+  const afterGrace = "2026-10-30"; // 29 days after the purchase
+  assert.ok(29 > CLOSED_WINDOW_GRACE_DAYS, "the fixture has to be outside the grace period");
+  assert.deepEqual(w(afterGrace), ["2026-10-01->2027-04-01"]);
+
+  // The default: the window that just closed while it is still on offer,
+  // because the purchase happened and the withholding is on that payslip.
+  assert.equal(defaultWindow("2026-10-02", ESPP_PLAN).purchase, "2026-10-01");
+  assert.equal(defaultWindow("2026-10-02", ESPP_PLAN).closed, true);
+  // And otherwise the one running.
+  assert.equal(defaultWindow("2026-09-18", ESPP_PLAN).purchase, "2026-10-01");
+  assert.equal(defaultWindow("2026-09-18", ESPP_PLAN).closed, false);
+  assert.equal(defaultWindow(afterGrace, ESPP_PLAN).purchase, "2027-04-01");
+
+  // Every window is exactly the plan's length, and no window is ever offered
+  // before it has begun.
+  for (const today of ["2026-01-05", "2026-04-01", "2026-04-02", "2026-09-18", "2026-10-01", "2027-03-31"]) {
+    const all = esppWindows(today, ESPP_PLAN);
+    assert.ok(all.length >= 1, `${today}: there is always a window running`);
+    for (const x of all) {
+      assert.ok(x.start < today, `${today}: ${x.start} has not begun`);
+      const [sy, sm] = x.start.split("-").map(Number);
+      const [py, pm] = x.purchase.split("-").map(Number);
+      assert.equal((py - sy) * 12 + (pm - sm), ESPP_PLAN.months, `${today}: ${x.start}->${x.purchase}`);
+    }
+    // Exactly one window is running at any moment.
+    assert.equal(all.filter((x) => !x.closed).length, 1, `${today}: one and only one open window`);
+  }
+});
+
+test("RSU: the share totals are the sum of the years, not a re-rounding", () => {
+  // The headline count and the table have to be the same number. Deriving the
+  // total from the euro figures would round once more, on a different
+  // denominator, and disagree with the rows underneath it by a share.
+  const grants: Grant[] = [
+    { id: "w", label: "Welcome", date: "2026-02-20", valueUsd: 20000, priceAtGrant: 142.88,
+      schedule: "30-30-40", years: 3, usePlanDates: true },
+    { id: "b", label: "Bonus", date: "2026-11-20", valueUsd: 10000, priceAtGrant: 188.71,
+      schedule: "quarterly", years: 3, usePlanDates: true },
+  ];
+  for (const salary of [0, 36000, 50000, 140000]) {
+    const p = project({ grants, price: 188.71, fxRate: 1.148, salary, today: "2026-09-18", horizonYears: 3 });
+    assert.equal(p.totalNetShares, p.years.reduce((s, y) => s + y.netShares, 0));
+    assert.equal(p.totalNetShares, p.quarters.reduce((s, q) => s + q.netShares, 0));
+    near(p.netSharesEur, p.totalNetShares * p.perUnitEur, 1e-9);
+    // Whole shares are worth no more than the net they came out of: the
+    // rounding is always down, with the fraction paid in cash.
+    assert.ok(p.netSharesEur <= p.totalNet + 1e-9, `salary ${salary}: ${p.netSharesEur} > ${p.totalNet}`);
+    // Every quarter that vests knows the day it lands on.
+    for (const q of p.quarters) assert.equal(q.vestOn !== null, q.units > 0);
   }
 });

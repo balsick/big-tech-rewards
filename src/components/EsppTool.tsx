@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useStore } from "../state/store.tsx";
-import { Card, Check, DateField, Disclosure, Line, NumField } from "./ui.tsx";
+import { Answer, Card, Check, Disclosure, Line, NumField, Select } from "./ui.tsx";
 import Info from "./Info.tsx";
 import SaveToBrowser from "./SaveToBrowser.tsx";
 import RegimeEditor from "./RegimeEditor.tsx";
@@ -8,7 +8,8 @@ import { FlatLine } from "./Icons.tsx";
 import { dateShort, eur, eur0, num, pct, todayISO, usd } from "../lib/format.ts";
 import {
   ESPP_PLAN,
-  currentWindow,
+  defaultWindow,
+  esppWindows,
   expectedContribution,
   guaranteedFloor,
   simulateEspp,
@@ -54,10 +55,19 @@ export default function EsppTool({ seed }: { seed?: Extract<Seed, { tool: "espp"
   const canSave = useMemo(() => available(), []);
 
   const [plan, setPlan] = useState<EsppPlan>(s0?.plan ?? ESPP_PLAN);
-  const window_ = useMemo(() => currentWindow(todayISO(), plan), [plan]);
+  const today = useMemo(() => todayISO(), []);
+  const windows = useMemo(() => esppWindows(today, plan), [today, plan]);
 
-  const [start, setStart] = useState(s0?.start ?? window_.start);
-  const [purchase, setPurchase] = useState(s0?.purchase ?? window_.purchase);
+  // The window is identified by its purchase day, and a restored save has to
+  // pass through the list: a state saved last spring names a window that is no
+  // longer on offer, and selecting it would put the tool on dates nothing can
+  // price.
+  const [purchase, setPurchase] = useState(() => {
+    const fallback = defaultWindow(today, plan).purchase;
+    return s0?.purchase && windows.some((w) => w.purchase === s0.purchase) ? s0.purchase : fallback;
+  });
+  const chosen = windows.find((w) => w.purchase === purchase) ?? defaultWindow(today, plan);
+  const start = chosen.start;
   // The walkthrough's answers win over a saved state: they were given a second
   // ago, and a save is from another day.
   const [salary, setSalary] = useState(seed?.salary ?? s0?.salary ?? DEFAULT_SALARY);
@@ -145,7 +155,26 @@ export default function EsppTool({ seed }: { seed?: Extract<Seed, { tool: "espp"
       <h2 className="answer" style={{ marginBottom: 0 }} key={Math.round(result.gain)}>
         {t.espp.youGain} <span className="big">{eur0(result.gain, lang)}</span>
       </h2>
-      <p className="note">
+      {/* What the money turned into. The gain is the point of the plan, but it
+          is a difference between two numbers — the thing you end up holding is
+          a number of shares, and that was a clause inside the sentence
+          below. */}
+      <div style={{ marginTop: 16 }}>
+        <Answer
+          items={[
+            {
+              name: t.espp.answerShares,
+              value: num(result.shares, lang, plan.fractionalShares ? 4 : 0),
+            },
+            {
+              name: t.espp.answerValue,
+              value: eur0(result.marketValue, lang),
+              hint: t.espp.answerValueHint(usd(endPrice, lang)),
+            },
+          ]}
+        />
+      </div>
+      <p className="note" style={{ marginTop: 14 }}>
         {t.espp.gainLine(
           pct(result.roi, lang),
           eur0(result.outlay, lang),
@@ -169,10 +198,27 @@ export default function EsppTool({ seed }: { seed?: Extract<Seed, { tool: "espp"
       <div className="panel">
         <Card>
           <h2>{t.espp.title}</h2>
-          <div className="grid2 has-date aligned">
-            <DateField label={t.espp.windowStart} value={start} onChange={setStart} />
-            <DateField label={t.espp.windowEnd} value={purchase} onChange={setPurchase} />
-          </div>
+          {/* The window, not two free dates. A period runs from one purchase
+              day to the next, so every pair of dates you could have typed but
+              these was a plan that does not exist. */}
+          <Select<string>
+            label={t.espp.windowPick}
+            value={purchase}
+            onChange={setPurchase}
+            options={windows.map((w) => ({
+              id: w.purchase,
+              label: `${t.espp.windowLabel(dateShort(w.start, lang), dateShort(w.purchase, lang))} \u00b7 ${
+                w.closed ? t.espp.windowClosed : t.espp.windowOpen
+              }`,
+            }))}
+          />
+          <p className="hint" style={{ marginTop: 6 }}>
+            {windows.length < 2
+              ? t.espp.windowOnlyOne
+              : chosen.closed
+                ? t.espp.windowClosedHint
+                : t.espp.windowOpenHint}
+          </p>
 
           <h3>{t.espp.contribution}</h3>
           <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>

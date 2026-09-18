@@ -174,6 +174,31 @@ export function Check({
 }
 
 /** A row in a list of entries: name on the left, figure on the right. */
+/**
+ * The one or two figures the whole panel exists to produce.
+ *
+ * Put side by side and at the same size, because they are one answer in two
+ * units — a count of shares and what that count is worth — and ranking one
+ * above the other would be an opinion about which question you came with. The
+ * `key` on each value is what makes it redraw when it changes: the only motion
+ * on the page, spent where something actually moved.
+ */
+export function Answer({ items }: { items: { name: string; value: string; hint?: string }[] }) {
+  return (
+    <div className="answer-pair">
+      {items.map((it) => (
+        <div className="answer-one" key={it.name}>
+          <span className="answer-name">{it.name}</span>
+          <span className="answer-value answer" key={it.value}>
+            {it.value}
+          </span>
+          {it.hint ? <span className="answer-hint">{it.hint}</span> : null}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function Line({
   name,
   hint,

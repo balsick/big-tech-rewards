@@ -168,21 +168,86 @@ export function simulateEspp(i: EsppInput, regime?: TaxRegime): EsppResult {
   };
 }
 
+/** One contribution period: where it starts, the day it buys, and whether that
+ *  day is behind us. */
+export interface EsppWindow {
+  /** first day of the accumulation period, ISO */
+  start: string;
+  /** the day the shares are bought, ISO */
+  purchase: string;
+  /** the purchase day is behind us, so both prices are real closes */
+  closed: boolean;
+}
+
 /**
- * The window in progress: the one closing on the first purchase still to come.
- * Purchase day counts as inside — that is the day it happens.
+ * How long a closed window stays the one the tool opens on.
+ *
+ * The day after a purchase, the window that just ended is the one you have
+ * questions about: the shares were bought, the discount is taxable pay, and the
+ * withholding lands on the payslip of that same month. The window that opened
+ * the same morning has one price and five months of nothing — it can only be a
+ * projection. So for three weeks, long enough for the payslip to arrive, the
+ * tool keeps showing the purchase that happened.
  */
-export function currentWindow(today: string, plan: EsppPlan): { start: string; purchase: string } {
+export const CLOSED_WINDOW_GRACE_DAYS = 21;
+
+const shiftDays = (iso: string, days: number): string => {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d + days)).toISOString().slice(0, 10);
+};
+
+const startOf = (purchase: string, months: number): string => {
+  const [y, m, d] = purchase.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1 - months, d)).toISOString().slice(0, 10);
+};
+
+/**
+ * The windows worth offering, oldest first.
+ *
+ * There is nothing to choose about the dates. A period runs from one purchase
+ * day to the next — 1 April to 1 October, 1 October to 1 April — and any other
+ * pair of dates describes a plan that does not exist, which is what two free
+ * date fields invited you to type. So the tool offers the windows themselves.
+ *
+ * A window appears once it has **begun**: on the morning of 1 October the
+ * period starting that day has not accumulated anything yet, so it shows up the
+ * day after. It stays until its purchase is more than `graceDays` behind us,
+ * which is what keeps the concluded window available for as long as anyone is
+ * still looking at it.
+ */
+export function esppWindows(
+  today: string,
+  plan: EsppPlan,
+  graceDays: number = CLOSED_WINDOW_GRACE_DAYS
+): EsppWindow[] {
   const year = Number(today.slice(0, 4));
-  const days = [...plan.purchaseDays].sort();
-  for (const y of [year, year + 1]) {
-    for (const md of days) {
+  const oldest = shiftDays(today, -graceDays);
+  const out: EsppWindow[] = [];
+  for (const y of [year - 1, year, year + 1]) {
+    for (const md of [...plan.purchaseDays].sort()) {
       const purchase = `${y}-${md}`;
-      if (purchase < today) continue;
-      const [yy, mm, dd] = purchase.split("-").map(Number);
-      const back = new Date(Date.UTC(yy, mm - 1 - plan.months, dd));
-      return { start: back.toISOString().slice(0, 10), purchase };
+      const start = startOf(purchase, plan.months);
+      if (start >= today) continue; // not begun yet
+      if (purchase < oldest) continue; // too long gone to still be the question
+      out.push({ start, purchase, closed: purchase < today });
     }
   }
-  return { start: today, purchase: today };
+  return out.sort((a, b) => a.purchase.localeCompare(b.purchase));
+}
+
+/**
+ * The window the tool opens on: the one that just closed if it is still on
+ * offer, otherwise the one running now.
+ */
+export function defaultWindow(
+  today: string,
+  plan: EsppPlan,
+  graceDays: number = CLOSED_WINDOW_GRACE_DAYS
+): EsppWindow {
+  const all = esppWindows(today, plan, graceDays);
+  const closed = all.filter((w) => w.closed);
+  if (closed.length) return closed[closed.length - 1];
+  if (all.length) return all[0];
+  // Only reachable with a plan that has no purchase days at all.
+  return { start: today, purchase: today, closed: false };
 }

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useStore } from "../state/store.tsx";
-import { Card, Check, DateField, Disclosure, Line, NumField, Segmented, Select } from "./ui.tsx";
+import { Answer, Card, Check, DateField, Disclosure, Line, NumField, Segmented, Select } from "./ui.tsx";
 import Info from "./Info.tsx";
 import SaveToBrowser from "./SaveToBrowser.tsx";
 import RegimeEditor from "./RegimeEditor.tsx";
@@ -102,6 +102,9 @@ export default function RsuTool({ seed }: { seed?: Extract<Seed, { tool: "rsu" }
   const [salary, setSalary] = useState(seed?.salary ?? s0?.salary ?? DEFAULT_SALARY);
   const [horizonYears, setHorizonYears] = useState(s0?.horizonYears ?? 3);
   const [scale, setScale] = useState<"eur" | "units">("eur");
+  // Which granularity the table is read at. Not saved: it is how you are
+  // looking right now, not part of the plan you described.
+  const [grain, setGrain] = useState<"quarter" | "tranche">("quarter");
 
   const [quote, setQuote] = useState<Quote | null>(null);
   const [typedPrice, setTypedPrice] = useState<number | null>(s0?.price ?? null);
@@ -148,6 +151,11 @@ export default function RsuTool({ seed }: { seed?: Extract<Seed, { tool: "rsu" }
     [resolved, price, fx, salary, today, horizonYears, regime]
   );
 
+  // Only the quarters something vests in. An empty quarter is information in
+  // the chart — it is the shape of the plan — but a table row of zeroes says
+  // nothing the gap in the dates does not already say.
+  const vesting = useMemo(() => projection.quarters.filter((q) => q.units > 0), [projection]);
+
   const state: RsuState = { grants, salary, horizonYears, price: typedPrice, fxRate: typedFx };
   const dirty = JSON.stringify(state) !== JSON.stringify(saved?.data ?? null);
 
@@ -177,11 +185,24 @@ export default function RsuTool({ seed }: { seed?: Extract<Seed, { tool: "rsu" }
     </Card>
   ) : (
     <Card>
-      <h2 className="answer" style={{ marginBottom: 0 }} key={Math.round(projection.totalNet)}>
-        {t.rsu.horizonTitle(projection.years[projection.years.length - 1]?.year ?? 0)}{" "}
-        <span className="big">{eur0(projection.totalNet, lang)}</span>
+      {/* Shares first, then what they are worth. The euro net was the headline
+          and the share count sat five lines down in a card, which is the wrong
+          way round: RSUs pay in shares, and "how many actually turn up" is the
+          question the sell to cover makes hard to answer. */}
+      <h2 style={{ marginBottom: 12 }}>
+        {t.rsu.horizonSpan(projection.years[projection.years.length - 1]?.year ?? 0)}
       </h2>
-      <p className="note">
+      <Answer
+        items={[
+          { name: t.rsu.answerShares, value: num(projection.totalNetShares, lang, 0) },
+          {
+            name: t.rsu.answerValue,
+            value: eur0(projection.netSharesEur, lang),
+            hint: t.rsu.answerValueHint(usd(price, lang)),
+          },
+        ]}
+      />
+      <p className="note" style={{ marginTop: 14 }}>
         {t.rsu.totalLine(num(projection.totalUnits, lang, 2), eur0(projection.totalGross, lang))}
       </p>
       <p className="hint">
@@ -495,7 +516,54 @@ export default function RsuTool({ seed }: { seed?: Extract<Seed, { tool: "rsu" }
             </div>
 
             <Card>
-              <h2>{t.rsu.tableTitle}</h2>
+              <div className="row-inline" style={{ justifyContent: "space-between", marginBottom: 10 }}>
+                <h2 style={{ margin: 0 }}>{t.rsu.tableTitle}</h2>
+                <Segmented<"quarter" | "tranche">
+                  label={t.rsu.tableTitle}
+                  value={grain}
+                  onChange={setGrain}
+                  options={[
+                    { id: "quarter", label: t.rsu.quarterlyTable },
+                    { id: "tranche", label: t.rsu.trancheTable },
+                  ]}
+                />
+              </div>
+              {grain === "quarter" ? (
+                <div className="scroll-x">
+                  <table className="tbl">
+                    <thead>
+                      <tr>
+                        <th>{t.guided.rsuQuarter}</th>
+                        <th className="r optional-phone">{t.rsu.tableUnits}</th>
+                        <th className="r">{t.rsu.tableValue}</th>
+                        <th className="r optional">{t.rsu.yearRate}</th>
+                        <th className="r optional-phone">{t.rsu.yearSold}</th>
+                        <th className="r">{t.rsu.yearShares}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {vesting.map((q, k) => (
+                        <tr
+                          key={q.from}
+                          className={k > 0 && q.year !== vesting[k - 1].year ? "year-break" : ""}
+                        >
+                          <td>
+                            <span style={{ fontWeight: 660 }}>{`${q.year} Q${q.quarter}`}</span>
+                            {q.vestOn ? <span className="cell-sub">{dateShort(q.vestOn, lang)}</span> : null}
+                          </td>
+                          <td className="r optional-phone">{num(q.units, lang, 2)}</td>
+                          <td className="r">{eur0(q.grossEur, lang)}</td>
+                          <td className="r optional neg">{pct(q.taxRate, lang)}</td>
+                          <td className="r neg optional-phone">&#8722;{num(q.sharesSold, lang, 0)}</td>
+                          <td className="r" style={{ fontWeight: 660, fontSize: "var(--t-20)" }}>
+                            {num(q.netShares, lang, 0)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
               <div className="scroll-y">
                 <table className="tbl">
                   <thead>
@@ -539,6 +607,7 @@ export default function RsuTool({ seed }: { seed?: Extract<Seed, { tool: "rsu" }
                   </tbody>
                 </table>
               </div>
+              )}
               <p className="hint">
                 {usd(price, lang)} {t.common.perShare} · {t.common.fx} {num(fx, lang, 4)}
                 <Info label={t.common.whatIsThis}>
