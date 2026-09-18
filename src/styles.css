@@ -1003,9 +1003,18 @@ button.btn.link.guida-esci:hover { color: var(--text); }
 
 @media (max-width: 720px) { .guida-scelta { grid-template-columns: minmax(0, 1fr); gap: 12px; } }
 
+/* The flex column is load-bearing, not a habit. A <button> wraps its children
+   in an anonymous box that centres them vertically once the button is taller
+   than its content, and `display: block` does not undo it — only replacing that
+   box does. In this stretched grid the shorter card's whole content drifted
+   down by half the difference, so the two illustrations sat at different
+   heights: the thing you notice before you read a word of either card. */
 .guida-scelta button {
   appearance: none;
-  display: block;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
   text-align: left;
   padding: 0;
   overflow: hidden;
