@@ -7,7 +7,7 @@ export const en: Dict = {
     intro:
       "How much of your equity compensation actually reaches you, and how much the taxman takes. Every calculation runs in your browser.",
   },
-  nav: { espp: "ESPP", rsu: "RSU" },
+  nav: { espp: "ESPP", rsu: "RSU", total: "Total reward" },
   header: {
     repo: "Code on GitHub",
     theme: "Theme",
@@ -15,6 +15,35 @@ export const en: Dict = {
     themeLight: "Light",
     themeDark: "Dark",
     themeAuto: "System",
+  },
+  total: {
+    title: "Total reward",
+    intro:
+      "Everything this job pays you in a year, in one place: salary, cash bonus, the shares that vest and the ESPP discount. The figures come from the other two tabs — what you type there shows up here.",
+    bonus: "Cash bonus",
+    bonusHint: (amount: string) => `${amount} a year, on the current salary`,
+    bonusWhy:
+      "The bonus percentage is in your contract and moves with role and year: here it is a field to overwrite, not a figure the tool takes on faith. A cash bonus is employment income like salary, so it goes into the same calculation rather than a separate one.",
+    answerGross: "Gross over three years",
+    answerNet: "Net over three years",
+    colYear: "Year",
+    colSalary: "Salary",
+    colBonus: "Bonus",
+    colRsu: "RSUs vesting",
+    colEspp: "ESPP discount",
+    colGross: "Gross",
+    colNet: "Net",
+    colRate: "Average rate",
+    totalRow: "In total",
+    esppNote:
+      "Only the ESPP discount belongs here: it is employment income and it is taxed on the payslip — two windows a year, at the ESPP tab’s parameters. The market gain beyond the discount is not pay; it is a position in shares, and the market decides what it is worth.",
+    rsuNote:
+      "RSUs count in the year they vest, not the year they are granted: an award from three years ago pays today, and this year’s will pay over the next three.",
+    rateNote:
+      "The average rate is total tax over the year’s gross, not the marginal rate: the marginal one applies to the last euro, this one to all of them.",
+    variableShare: (p: string) => `${p} of the total is variable`,
+    variableHint:
+      "Bonus, RSUs and the ESPP discount together, on the gross. It is the part that depends on performance, on when shares vest, and on the market.",
   },
   footer: {
     privacyTitle: "No data collection whatsoever",
@@ -89,6 +118,8 @@ export const en: Dict = {
       "Sets the purchase-day price equal to the starting price: the stock does not move and only the discount is left. It is the plan’s floor — what you get if the market does nothing.",
     flatStockOn: "flat stock: only the discount is left",
     youGain: "You gain",
+    gainRoi: (roi: string, outlay: string) => `${roi} of what it costs you: ${outlay}`,
+    answerCost: "What it costs you",
     answerShares: "Shares you buy",
     answerValue: "What they are worth",
     answerValueHint: (price: string) => `at ${price} a share`,
@@ -155,7 +186,11 @@ export const en: Dict = {
     grantValueWhy:
       "In dollars, the way they tell you: the units are the result, and they are set by the share price on the grant date. It also shows something you cannot see in share counts — two grants of the same amount made in different years are worth very different sums today.",
     grantValueHint: (units: string, price: string, date: string) =>
-      `${units} units, at the ${price} price of ${date}`,
+      `${units} units, at a ${price} fair market value · mean of the 20 sessions before ${date}`,
+    grantValueHintRolling: (units: string, price: string) =>
+      `${units} units, at an estimated ${price} fair market value · the date is in the future, so this is the mean of the last 20 known sessions`,
+    fmvWhy:
+      "A grant is not priced at the close of the day but at the fair market value: the mean of the closes of the 20 trading sessions before the grant day, that day excluded. It is not a detail — on 20 February 2026 the close was $142.88 and the fair market value $146.32, which is 2.4% fewer units. For a date in the future that figure cannot exist yet, so the mean of the last 20 known sessions stands in and the field stays overwritable.",
     grantValueHintManual: (units: string, price: string) =>
       `${units} units, at the ${price} you typed`,
     grantValueNoPrice: "the grant-date price is missing: type it below",
@@ -190,13 +225,37 @@ export const en: Dict = {
       `Like a salary ${pct}% higher: from ${from} to ${to} net a year.`,
     yearUnits: "units",
     yearGross: "Gross",
+    performance: "Performance",
+    performanceHint: "the stock bonus moves with your rating",
+    performanceWhy:
+      "The dollar figure on an annual award is a target, not a fixed amount: what is actually granted moves with personal and company performance, typically between 75% and 150% of target. 100% is the target, not a forecast. It applies to the annual awards only: a welcome grant is agreed when you are hired and does not depend on a review that has not happened yet.",
+    performanceOn: "on the annual awards",
+    netWithholding:
+      "Nothing is sold. The plan moved from sell to cover to net share withholding: the company simply does not hand over the shares needed to cover the withholding, and remits the tax itself. No market transaction, nothing to report as a sale, and — the part that matters — the price after the vesting day does not change how many shares are kept back, because the count is fixed on that day’s fair market value.",
+    withholdingFlat: (rate: string) =>
+      `The withholding is computed at a flat ${rate} — the same rate used for a cash bonus — and not at your own rate. Shares kept back are rounded up.`,
+    payslipOwed: (rate: string, amount: string) =>
+      `Your rate on these vests is ${rate}, above the withholding: the difference — ${amount} — is deducted in cash from a later payslip.`,
+    payslipRefund: (rate: string, amount: string) =>
+      `Your rate on these vests is ${rate}, below the withholding: the excess — ${amount} — comes back to you on a later payslip.`,
+    payslipEven: "Your rate matches the withholding rate, so there is nothing to settle.",
+    payslipColumn: "Payslip settlement",
+    dividendTitle: "Dividend equivalents",
+    dividendLine: (units: string, value: string) =>
+      `Every time a dividend is paid, unvested RSUs are credited with extra units worth that dividend. Over the horizon that is ${units} additional units, ${value}: no award letter promises them, and they add up.`,
+    dividendAssumption: (amount: string) =>
+      `Future dividends are projected at the last known amount (${amount} a share, quarterly) at today’s price. The ones already paid are the real ones.`,
+    answerDividend: "Of which from dividends",
+    payslipTitle: "The withholding is flat, the payslip settles it",
+    answerPayslip: "Then off the payslip",
+    answerPayslipHint: "in cash, what the shares could not cover",
     yearRate: "Rate",
     yearShares: "Shares that reach you",
-    yearSharesHint: "what is left after the sell to cover",
-    yearSold: "Sold to cover tax",
+    yearSharesHint: "what is left after the withholding",
+    yearSold: "Withheld for tax",
     sellToCover:
-      "The withholding on a vest is not paid in cash: the broker sells part of the shares the moment they vest and hands over the tax. That is the \u201csell to cover\u201d. Nobody asks you for money \u2014 fewer shares arrive, and it is the single most surprising thing about a first vest.",
-    chartGross: "Figures and units are gross, before the sell to cover.",
+      "The withholding on a vest is not paid in cash, and nothing is sold: the company keeps back part of the shares the moment they vest and remits the tax itself. That is \u201cnet share withholding\u201d. Nobody asks you for money — fewer shares arrive, and it is the single most surprising thing about a first vest.",
+    chartGross: "Figures and units are gross, before the withholding.",
     quarterEmpty: "Nothing arrives",
     yearPartial: "counted from today: what already vested is not here",
     yearSalaryEquiv: "Equivalent salary",
@@ -243,7 +302,7 @@ export const en: Dict = {
     esppDesc:
       "You buy your company's shares at a discount with part of your pay. I tell you what you really gain and what they withhold in the month of the purchase.",
     rsuDesc:
-      "Shares granted to you that become yours a slice at a time. I tell you how many actually reach you, after the sell to cover.",
+      "Shares granted to you that become yours a slice at a time. I tell you how many actually reach you, after the withholding.",
     full: "Full mode",
     fullSub: "Every field, no questions",
     step: (n: number, tot: number, tool: string) => `Step ${n} of ${tot} · ${tool}`,

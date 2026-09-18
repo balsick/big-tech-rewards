@@ -5,7 +5,7 @@ import { REPO } from "../lib/meta.ts";
 import type { Lang } from "../i18n/index.ts";
 import type { Theme } from "../state/store.tsx";
 
-export type Tab = "espp" | "rsu";
+export type Tab = "espp" | "rsu" | "total";
 
 export default function Header({
   tab,
@@ -57,7 +57,7 @@ export default function Header({
           />
         </div>
         <nav className="tabs" aria-label={t.app.title}>
-          {(["espp", "rsu"] as Tab[]).map((k) => (
+          {(["espp", "rsu", "total"] as Tab[]).map((k) => (
             <button key={k} type="button" aria-current={tab === k ? "page" : undefined} onClick={() => setTab(k)}>
               {t.nav[k]}
             </button>

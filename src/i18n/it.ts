@@ -5,7 +5,7 @@ export const it = {
     intro:
       "Quanto ti arriva davvero dei compensi in azioni, e quanto se ne prende il fisco. Ogni conto avviene nel tuo browser.",
   },
-  nav: { espp: "ESPP", rsu: "RSU" },
+  nav: { espp: "ESPP", rsu: "RSU", total: "Total reward" },
   header: {
     repo: "Codice su GitHub",
     theme: "Tema",
@@ -13,6 +13,35 @@ export const it = {
     themeLight: "Chiaro",
     themeDark: "Scuro",
     themeAuto: "Sistema",
+  },
+  total: {
+    title: "Total reward",
+    intro:
+      "Tutto quello che questo posto ti paga in un anno, messo insieme: la RAL, il bonus in denaro, le azioni che vestono e lo sconto dell’ESPP. Le voci arrivano dalle altre due schede — quello che scrivi lì si vede qui.",
+    bonus: "Bonus in denaro",
+    bonusHint: (amount: string) => `${amount} all’anno, sulla RAL attuale`,
+    bonusWhy:
+      "La percentuale di bonus è sul contratto e cambia con il ruolo e con l’anno: qui è un campo da sovrascrivere, non un valore che lo strumento dà per buono. Il bonus in denaro è reddito da lavoro come lo stipendio, quindi entra nello stesso calcolo e non in uno separato.",
+    answerGross: "Lordo in tre anni",
+    answerNet: "Netto in tre anni",
+    colYear: "Anno",
+    colSalary: "RAL",
+    colBonus: "Bonus",
+    colRsu: "RSU che vestono",
+    colEspp: "Sconto ESPP",
+    colGross: "Lordo",
+    colNet: "Netto",
+    colRate: "Aliquota media",
+    totalRow: "In tutto",
+    esppNote:
+      "Dell’ESPP entra qui soltanto lo sconto, che è reddito da lavoro tassato in busta: due finestre l’anno, ai parametri della scheda ESPP. Il guadagno di mercato oltre lo sconto non è stipendio — è una posizione in azioni, e il suo valore lo decide la borsa.",
+    rsuNote:
+      "Le RSU contano nell’anno in cui vestono, non in quello in cui sono assegnate: un’assegnazione di tre anni fa paga oggi, e quella di quest’anno pagherà nei prossimi tre.",
+    rateNote:
+      "L’aliquota media è il totale delle tasse diviso il lordo dell’anno, non l’aliquota marginale: la marginale si applica all’ultimo euro, questa a tutti.",
+    variableShare: (p: string) => `${p} del totale è variabile`,
+    variableHint:
+      "Bonus, RSU e sconto ESPP insieme, sul lordo. È la parte che dipende da performance, da quando vestono le azioni e dalla borsa.",
   },
   footer: {
     privacyTitle: "Nessuna raccolta di dati",
@@ -87,6 +116,8 @@ export const it = {
       "Mette il prezzo dell’acquisto uguale a quello d’inizio: il titolo non si muove e resta solo lo sconto. È il pavimento del piano — quello che prendi se il mercato non fa niente.",
     flatStockOn: "titolo fermo: resta solo lo sconto",
     youGain: "Ci guadagni",
+    gainRoi: (roi: string, outlay: string) => `${roi} di quello che ti costa: ${outlay}`,
+    answerCost: "Quanto ti costa",
     answerShares: "Azioni che compri",
     answerValue: "Quanto valgono",
     answerValueHint: (price: string) => `al prezzo di ${price}`,
@@ -153,7 +184,11 @@ export const it = {
     grantValueWhy:
       "In dollari, come te lo comunicano: le unità sono il risultato, e le fissa il prezzo del giorno dell’assegnazione. È anche il modo di vedere una cosa che in azioni non si nota — due grant dello stesso importo assegnati in anni diversi oggi valgono cifre molto diverse.",
     grantValueHint: (units: string, price: string, date: string) =>
-      `${units} unità, al prezzo di ${price} del ${date}`,
+      `${units} unità, al fair market value di ${price} · media delle 20 sedute prima del ${date}`,
+    grantValueHintRolling: (units: string, price: string) =>
+      `${units} unità, al fair market value stimato di ${price} · la data è futura, quindi è la media delle ultime 20 sedute note`,
+    fmvWhy:
+      "Un grant non si prezza con la chiusura del giorno, ma con il fair market value: la media delle chiusure delle 20 sedute precedenti al giorno dell’assegnazione, quel giorno escluso. Non è un dettaglio: il 20 febbraio 2026 la chiusura era 142,88 $ e il fair market value 146,32 $, cioè il 2,4% di unità in meno. Per una data futura quel numero non può esistere ancora, quindi si usa la media delle ultime 20 sedute note e il campo resta sovrascrivibile.",
     grantValueHintManual: (units: string, price: string) =>
       `${units} unità, al prezzo di ${price} che hai scritto`,
     grantValueNoPrice: "manca il prezzo del giorno del grant: scrivilo qui sotto",
@@ -188,13 +223,37 @@ export const it = {
       `Come avere una RAL più alta del ${pct}%: da ${from} a ${to} netti l’anno.`,
     yearUnits: "unità",
     yearGross: "Lordo",
+    performance: "Performance",
+    performanceHint: "il bonus in azioni si muove con la valutazione",
+    performanceWhy:
+      "La cifra in dollari dell’assegnazione annuale è un obiettivo, non un importo fisso: quanto viene assegnato davvero si muove con la performance personale e con quella aziendale, tipicamente fra il 75% e il 150% del target. Il 100% è il target, non una previsione. Si applica solo alle assegnazioni annuali: il welcome grant è concordato all’assunzione e non dipende da una valutazione che non c’è ancora stata.",
+    performanceOn: "sulle assegnazioni annuali",
+    netWithholding:
+      "Non viene venduto niente. Il piano è passato dal «sell to cover» al «net share withholding»: l’azienda semplicemente non ti consegna le azioni che servono a coprire la ritenuta, e versa lei le tasse. Nessuna operazione di borsa, niente da dichiarare come vendita, e — la parte che conta — il prezzo dopo il giorno di vestizione non cambia quante azioni ti trattengono, perché il conteggio è fissato sul fair market value di quel giorno.",
+    withholdingFlat: (rate: string) =>
+      `La ritenuta è calcolata a un’aliquota fissa del ${rate} — la stessa usata per il bonus in denaro — e non alla tua aliquota personale. Le azioni trattenute si arrotondano per eccesso.`,
+    payslipOwed: (rate: string, amount: string) =>
+      `La tua aliquota su queste vestizioni è ${rate}, più alta della ritenuta: la differenza — ${amount} — viene trattenuta in denaro da un cedolino successivo.`,
+    payslipRefund: (rate: string, amount: string) =>
+      `La tua aliquota su queste vestizioni è ${rate}, più bassa della ritenuta: l’eccedenza — ${amount} — ti viene restituita su un cedolino successivo.`,
+    payslipEven: "La tua aliquota coincide con quella di ritenuta, quindi non c’è niente da conguagliare.",
+    payslipColumn: "Conguaglio in busta",
+    dividendTitle: "Dividend equivalents",
+    dividendLine: (units: string, value: string) =>
+      `Ogni volta che viene pagato un dividendo, le RSU non ancora vestite vengono accreditate di unità in più per un valore pari al dividendo. Nell’orizzonte sono ${units} unità aggiuntive, ${value}: non te le promette nessuna lettera di assegnazione, e si sommano.`,
+    dividendAssumption: (amount: string) =>
+      `I dividendi futuri sono proiettati all’ultimo importo noto (${amount} per azione, trimestrale) al prezzo di oggi. Quelli già pagati sono quelli veri.`,
+    answerDividend: "Di cui dai dividendi",
+    payslipTitle: "La ritenuta è a forfait, il conto si chiude in busta",
+    answerPayslip: "Poi dal cedolino",
+    answerPayslipHint: "in denaro, quello che le azioni non coprono",
     yearRate: "Aliquota",
     yearShares: "Azioni che ti arrivano",
-    yearSharesHint: "quelle che restano dopo il sell to cover",
-    yearSold: "Vendute per le tasse",
+    yearSharesHint: "quelle che restano dopo la ritenuta",
+    yearSold: "Trattenute per le tasse",
     sellToCover:
-      "La trattenuta sul vesting non la paghi in contanti: il broker vende una parte delle azioni nel momento stesso in cui vestono e versa le tasse. È il «sell to cover». Nessuno ti chiede soldi — ti arrivano meno azioni, ed è la cosa che sorprende di più al primo vesting.",
-    chartGross: "Le cifre e le unità sono lorde, prima del sell to cover.",
+      "La trattenuta sul vesting non la paghi in contanti e non viene venduto niente: l’azienda trattiene una parte delle azioni nel momento in cui vestono e versa lei le tasse. È il «net share withholding». Nessuno ti chiede soldi — ti arrivano meno azioni, ed è la cosa che sorprende di più al primo vesting.",
+    chartGross: "Le cifre e le unità sono lorde, prima della ritenuta.",
     quarterEmpty: "Non arriva niente",
     yearPartial: "contato da oggi: quello che è già vestito non c’è",
     yearSalaryEquiv: "RAL equivalente",
@@ -241,7 +300,7 @@ export const it = {
     esppDesc:
       "Compri azioni della tua azienda a sconto, con una parte della busta paga. Ti dico quanto ci guadagni davvero e quanto ti trattengono il mese dell’acquisto.",
     rsuDesc:
-      "Azioni che ti assegnano e diventano tue un pezzo per volta. Ti dico quante te ne arrivano davvero, dopo il sell to cover.",
+      "Azioni che ti assegnano e diventano tue un pezzo per volta. Ti dico quante te ne arrivano davvero, dopo la ritenuta.",
     full: "Modalità completa",
     fullSub: "Tutti i campi, nessuna domanda",
     step: (n: number, tot: number, tool: string) => `Passo ${n} di ${tot} · ${tool}`,

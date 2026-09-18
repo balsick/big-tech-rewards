@@ -14,6 +14,7 @@ import {
   extraCredit,
   SOCIAL_SECURITY_2026,
 } from "../src/lib/tax.ts";
+import { dividends, history } from "../src/lib/prices.ts";
 import {
   guaranteedFloor,
   simulateEspp,
@@ -25,6 +26,9 @@ import {
 } from "../src/lib/espp.ts";
 import {
   project,
+  WITHHOLDING_RATE,
+  PERFORMANCE_STEPS,
+  initialGrants,
   tranches,
   addMonths,
   grantUnits,
@@ -190,14 +194,44 @@ test("RSU: without fixed dates tranches fall three months from the grant", () =>
   assert.equal(ts.length, 4);
 });
 
-test("RSU: 30-30-40 is a list, not a rounded percentage", () => {
-  const ts = tranches({
-    id: "a", label: "G", date: "2026-02-20", valueUsd: 47900, priceAtGrant: 100,
-    schedule: "30-30-40", years: 3, usePlanDates: false,
-  });
+test("RSU: the tranches are whole shares that add up to the grant", () => {
+  // 479 units over 30-30-40 is 143.7 / 143.7 / 191.6 on paper, and whole shares
+  // in practice: what vests is a share count, and a statement never says 143.7.
+  // Largest remainder decides which tranche carries the spare share.
+  // Checked against a real grant: $70,000 at a 146.32 fair market value is
+  // 478.4, granted as 479, and the plan awards it 143 / 144 / 192. Rounding
+  // each slice on its own would give 144 / 144 / 191 — the same total and the
+  // wrong tranches. What has to be whole is the amount vested *so far*.
+  const real = {
+    id: "a", label: "G", date: "2026-02-20", valueUsd: 70000, priceAtGrant: 146.32,
+    schedule: "30-30-40" as const, years: 3, usePlanDates: false,
+  };
+  assert.equal(grantUnits(real), 479);
+  const ts = tranches(real);
   assert.equal(ts.length, 3);
-  near(ts[0].units, 143.7);
-  near(ts.reduce((s, t) => s + t.units, 0), 479);
+  for (const t of ts) assert.equal(t.units, Math.floor(t.units), "a vest is whole shares");
+  assert.equal(ts.reduce((s, t) => s + t.units, 0), 479, "and they add up to the grant");
+  assert.deepEqual(ts.map((t) => t.units), [143, 144, 192]);
+  // Which is the same as saying the running total is always whole.
+  let vested = 0;
+  for (const t of ts) {
+    vested += t.units;
+    assert.equal(vested, Math.floor(vested));
+  }
+
+  // The quarterly case is the one people see on a statement: twelve vests of a
+  // total that does not divide by twelve, so some quarters differ by one share.
+  const q = tranches({
+    id: "b", label: "Q", date: "2026-02-20", valueUsd: 46100, priceAtGrant: 100,
+    schedule: "quarterly", years: 3, usePlanDates: false,
+  });
+  assert.equal(q.length, 12);
+  assert.equal(q.reduce((s, t) => s + t.units, 0), 461);
+  const sizes = [...new Set(q.map((t) => t.units))].sort();
+  assert.deepEqual(sizes, [38, 39], "461 over twelve quarters is 38s and 39s");
+  // Not a tidy alternation, and that matters: it is whatever the running floor
+  // produces, which is what people actually see quarter to quarter.
+  assert.deepEqual(q.map((t) => t.units), [38, 38, 39, 38, 39, 38, 38, 39, 38, 39, 38, 39]);
 });
 
 test("RSU: the rate is computed on the year's total, not on the tranche", () => {
@@ -307,18 +341,25 @@ test("RSU: dollars become units at the grant-day price", () => {
     id: "a", label: "G", date: "2026-02-20", valueUsd: 20000,
     schedule: "30-30-40" as const, years: 3, usePlanDates: false,
   };
-  // $20,000 granted when the share was at 142.88 makes ~140 units
-  near(grantUnits({ ...base, priceAtGrant: 142.88 }), 139.9776, 1e-3);
+  // $20,000 at 142.88 is 139.9776, and what is granted is 140: the plan rounds
+  // UP to a whole share, so the result is never below the division.
+  assert.equal(grantUnits({ ...base, priceAtGrant: 142.88 }), 140);
+  // At the fair market value the same grant is smaller, which is the whole point
+  // of pricing it right: 136.69 rounds up to 137, not to 140.
+  assert.equal(grantUnits({ ...base, priceAtGrant: 146.32 }), 137);
+  // Up, not to the nearest: a bare fraction still gains a share.
+  assert.equal(grantUnits({ ...base, valueUsd: 1001, priceAtGrant: 100 }), 11);
+  assert.equal(grantUnits({ ...base, valueUsd: 1000, priceAtGrant: 100 }), 10);
   // the same amount granted at twice the price makes half the units: this is why
   // an old grant is worth more today than a new one of the same value, and why
   // the grant price belongs to the grant and not to the global parameters
-  near(grantUnits({ ...base, priceAtGrant: 285.76 }), 69.9888, 1e-3);
+  assert.equal(grantUnits({ ...base, priceAtGrant: 285.76 }), 70);
   // with no price we do not divide by zero: zero units, and the field says so
   assert.equal(grantUnits({ ...base, priceAtGrant: 0 }), 0);
 
   // tranches always add up to the grant's units, whatever the price
   const ts = tranches({ ...base, priceAtGrant: 142.88 });
-  near(ts.reduce((s, t) => s + t.units, 0), 139.9776, 1e-3);
+  assert.equal(ts.reduce((s, t) => s + t.units, 0), 140);
 });
 
 test("ESPP: the plan cap cuts before buying", () => {
@@ -374,7 +415,7 @@ test("ESPP: the plan cap cuts before buying", () => {
   near(uncapped.aboveCap, 0);
 });
 
-test("RSU: sell to cover splits the vest in two, and the halves add up", () => {
+test("RSU: net share withholding is flat, and the payslip settles the rest", () => {
   // The withholding on a vest is not paid in cash: the broker sells part of the
   // shares on the day. Whatever is sold plus whatever arrives has to be exactly
   // what vested — if those two ever stop adding up, shares are being invented
@@ -389,19 +430,39 @@ test("RSU: sell to cover splits the vest in two, and the halves add up", () => {
   });
 
   for (const y of p.years) {
-    near(y.netShares + y.sharesSold, y.units, 1e-9);
-    assert.ok(y.sharesSold > 0, `${y.year}: something must be sold to cover the tax`);
-    // At a marginal rate above 50% more than half the vest goes to the taxman,
-    // which is the number that surprises people at their first vest.
-    assert.ok(y.sharesSold > y.netShares, `${y.year}: over half the vest is withheld`);
+    near(y.netShares + y.sharesWithheld, y.units, 1e-9);
+    assert.ok(y.sharesWithheld > 0, `${y.year}: something must be sold to cover the tax`);
+    // The sale covers the tax only up to the ceiling. Above it the shares stop
+    // being sold, so slightly FEWER than half the vest goes this way even at a
+    // 52% marginal rate — and the difference turns up on a payslip instead.
+    assert.equal(y.withholdingRate, Math.min(y.taxRate, WITHHOLDING_RATE), `${y.year}: covered rate`);
+    // Sold is the covered rate of the vest, plus at most the one share the
+    // rounding down of what arrives leaves over. A percentage tolerance is the
+    // wrong shape here: on a small vest a single share is several points.
+    const owed = y.units * y.withholdingRate;
+    assert.ok(
+      y.sharesWithheld >= owed - 1e-9 && y.sharesWithheld < owed + 1,
+      `${y.year}: sold ${y.sharesWithheld} for an owed ${owed}`
+    );
+    assert.ok(y.sharesWithheld < y.netShares, `${y.year}: the sale stops at the ceiling`);
+    assert.ok(y.payslipAdjustmentEur > 0, `${y.year}: at this rate the payslip has to make up the rest`);
   }
 
-  // No tax, nothing sold: the split follows the rate and is not a fixed cut.
+  // The withholding does NOT follow your own rate — that is the point of it
+  // being the supplemental rate. On no salary at all exactly as many shares are
+  // kept back, and what changes is the direction of the settlement: the flat
+  // rate over-withheld, so the payslip gives it back.
   const free = project({
     grants: [grant], price: 100, fxRate: 1.16, salary: 0,
     today: "2026-09-17", horizonYears: 3,
   });
-  assert.ok(free.years[0].sharesSold < p.years[0].sharesSold);
+  assert.equal(free.years[0].sharesWithheld, p.years[0].sharesWithheld, "the rate withheld is the same rate");
+  assert.equal(free.years[0].withholdingRate, WITHHOLDING_RATE);
+  assert.ok(free.years[0].taxRate < WITHHOLDING_RATE, "on no salary the real rate is below the flat one");
+  assert.ok(free.years[0].payslipAdjustmentEur < 0, "so the settlement is a refund, not a deduction");
+  assert.ok(p.years[0].payslipAdjustmentEur > 0, "and at 60k it is a further deduction");
+  // Which is exactly why the total has to be signed rather than a magnitude.
+  assert.ok(free.totalPayslipAdjustmentEur < 0 && p.totalPayslipAdjustmentEur > 0);
 });
 
 test("RSU: grant ids never collide, so editing one grant edits only that one", () => {
@@ -503,7 +564,7 @@ test("RSU: the quarterly rows add up to the year they belong to", () => {
       for (const q of mine) {
         assert.equal(q.netShares, Math.floor(q.netShares), "a share is not divisible");
         assert.ok(q.netShares >= 0 && q.netShares <= q.units, "a quarter cannot hand out more than it vests");
-        near(q.netShares + q.sharesSold, q.units, 1e-9);
+        near(q.netShares + q.sharesWithheld, q.units, 1e-9);
         assert.equal(q.taxRate, y.taxRate, "a quarter carries its year's rate");
       }
       // And the units themselves partition the year, or the split is of the
@@ -513,7 +574,7 @@ test("RSU: the quarterly rows add up to the year they belong to", () => {
     }
     // Empty quarters stay empty rather than inheriting anything.
     for (const q of p.quarters.filter((x) => x.units === 0))
-      assert.equal(q.netShares + q.sharesSold + q.netEur + q.taxRate, 0, "an empty quarter stays empty");
+      assert.equal(q.netShares + q.sharesWithheld + q.netEur + q.taxRate, 0, "an empty quarter stays empty");
   }
 });
 
@@ -588,10 +649,204 @@ test("RSU: the share totals are the sum of the years, not a re-rounding", () => 
     // have to be each other at the projection's rate — they sit side by side.
     near(p.netSharesUsd, p.totalNetShares * 188.71, 1e-9);
     near(p.netSharesEur * 1.148, p.netSharesUsd, 1e-9);
-    // Whole shares are worth no more than the net they came out of: the
-    // rounding is always down, with the fraction paid in cash.
-    assert.ok(p.netSharesEur <= p.totalNet + 1e-9, `salary ${salary}: ${p.netSharesEur} > ${p.totalNet}`);
+    // The shares you keep are worth more than the euro net, and that is not a
+    // bug: the sale stopped at the ceiling, so part of the tax is still owed
+    // and comes off a payslip. Net plus that deduction is the ceiling the
+    // shares cannot exceed.
+    assert.ok(
+      p.netSharesEur <= p.totalNet + p.totalPayslipAdjustmentEur + 1e-6,
+      `salary ${salary}: ${p.netSharesEur} > ${p.totalNet} + ${p.totalPayslipAdjustmentEur}`
+    );
     // Every quarter that vests knows the day it lands on.
     for (const q of p.quarters) assert.equal(q.vestOn !== null, q.units > 0);
   }
+});
+
+test("RSU: the fair market value is the 20-session mean, not the close", () => {
+  // The number the plan prices a grant at. Verified against the real series for
+  // 20 February 2026: the close was 142.88 and the fair market value 146.32 —
+  // a 2.4% difference in how many units a grant buys, which is not a rounding.
+  const row = history.find((p) => p.date === "2026-02-20");
+  assert.ok(row, "the grant date has to be in the stored history");
+  assert.equal(row!.close, 142.88);
+  assert.ok(row!.fmv, "the stored row carries a fair market value");
+  assert.equal(Number(row!.fmv!.toFixed(2)), 146.32);
+  assert.ok(row!.fmv! > row!.close, "on this date the 20-session mean is above the close");
+
+  // Every stored row that has one is a plausible price, and the two are never
+  // the same number by accident.
+  let differing = 0;
+  for (const p of history) {
+    if (!p.fmv) continue;
+    assert.ok(p.fmv > 0 && p.fmv < p.close * 2, `${p.date}: ${p.fmv} against a close of ${p.close}`);
+    if (Math.abs(p.fmv - p.close) > 0.01) differing++;
+  }
+  assert.ok(differing > history.length * 0.9, "the mean of 20 sessions is hardly ever the close of the day");
+
+  // And a grant priced at the fair market value buys fewer units than one
+  // priced at the close, on this date: the whole point of getting it right.
+  const g = (price: number): Grant => ({
+    id: "a", label: "A", date: "2026-02-20", valueUsd: 20000, priceAtGrant: price,
+    schedule: "30-30-40", years: 3, usePlanDates: false,
+  });
+  assert.ok(grantUnits(g(row!.fmv!)) < grantUnits(g(row!.close)));
+});
+
+test("RSU: the performance rating scales the annual awards and nothing else", () => {
+  const grants: Grant[] = [
+    { id: "w", label: "Welcome", date: "2026-02-20", valueUsd: 20000, priceAtGrant: 146.32,
+      schedule: "30-30-40", years: 3, usePlanDates: false, performanceLinked: false },
+    { id: "b", label: "Bonus", date: "2026-11-20", valueUsd: 10000, priceAtGrant: 188.71,
+      schedule: "quarterly", years: 3, usePlanDates: true, performanceLinked: true },
+  ];
+  const base = { grants, price: 188.71, fxRate: 1.148, salary: 50000, today: "2026-09-18", horizonYears: 3 };
+  const target = project(base);
+  const low = project({ ...base, performance: 0.75 });
+  const high = project({ ...base, performance: 1.5 });
+
+  // 100% is the target and has to change nothing at all.
+  assert.equal(project({ ...base, performance: 1 }).totalUnits, target.totalUnits);
+  assert.ok(low.totalUnits < target.totalUnits, "a low rating awards fewer units");
+  assert.ok(high.totalUnits > target.totalUnits, "a high rating awards more");
+
+  // The welcome grant is untouched: only the bonus moves. Its units are the
+  // same in all three runs, so the difference between runs is entirely bonus.
+  const unitsOf = (p: typeof target, grant: string) =>
+    p.upcoming.filter((t) => t.grant === grant).reduce((s, t) => s + t.units, 0);
+  near(unitsOf(low, "w"), unitsOf(target, "w"), 1e-9);
+  near(unitsOf(high, "w"), unitsOf(target, "w"), 1e-9);
+  // Not exact, and the reason is the plan's, not the computer's: `tranches`
+  // rounds every slice to four decimals, so twelve scaled slices are not the
+  // same number as scaling the sum of twelve rounded ones. The drift is bounded
+  // by half a unit of the last decimal per tranche, which is where this
+  // tolerance comes from — a 1e-9 epsilon here would be asserting that the
+  // rounding does not happen.
+  // Close to the multiple, not equal to it, and the reason is the plan's rather
+  // than the computer's: the grant is rounded UP to a whole share before it is
+  // split, so scaling the dollars and scaling the resulting shares are two
+  // different roundings — plus whatever the dividend equivalents added.
+  near(unitsOf(high, "b"), unitsOf(target, "b") * 1.5, 2);
+  near(unitsOf(low, "b"), unitsOf(target, "b") * 0.75, 2);
+
+  // And the band is the one the UI offers.
+  assert.deepEqual(PERFORMANCE_STEPS, [0.75, 1, 1.25, 1.5]);
+});
+
+test("RSU: three years of bonuses are prefilled, and each is dated to its own year", () => {
+  const g = initialGrants("2026-09-18");
+  assert.equal(g.length, 4, "a welcome grant and three annual bonuses");
+  assert.equal(g[0].label, "Welcome grant");
+  assert.equal(g[0].date, "2026-02-20");
+  assert.equal(g[0].performanceLinked, false, "a welcome grant does not depend on a review");
+  for (const [k, year] of [[1, 2026], [2, 2027], [3, 2028]] as const) {
+    assert.equal(g[k].label, `Bonus ${year}`);
+    assert.equal(g[k].date, `${year}-11-20`, "the name and the date come from the same year");
+    assert.equal(g[k].performanceLinked, true);
+  }
+  // Ids are distinct, or editing one row edits another.
+  assert.equal(new Set(g.map((x) => x.id)).size, g.length);
+});
+
+test("RSU: dividend equivalents credit extra units on what has not vested", () => {
+  // The plan credits unvested RSUs with extra units every time a dividend is
+  // paid: (unvested x amount) / close on the day. Nobody's award letter
+  // mentions them and over three years they are not a rounding.
+  const grant: Grant = {
+    id: "a", label: "A", date: "2026-02-20", valueUsd: 20000, priceAtGrant: 146.32,
+    schedule: "quarterly", years: 3, usePlanDates: true,
+  };
+  const base = {
+    grants: [grant], price: 188.71, fxRate: 1.148, salary: 50000,
+    today: "2026-09-18", horizonYears: 3,
+  };
+  const without = project(base);
+  const withDivs = project({ ...base, dividends });
+
+  assert.equal(without.dividendUnits, 0, "no series, no credit");
+  assert.ok(withDivs.dividendUnits > 0, "with the series, units appear");
+  assert.ok(
+    withDivs.totalUnits > without.totalUnits,
+    `${withDivs.totalUnits} should exceed ${without.totalUnits}`
+  );
+  near(withDivs.totalUnits - without.totalUnits, withDivs.dividendUnits, 1e-6);
+
+  // Plausible size: a ~2% yield over an average hold of well under three years
+  // is single-digit percent, not a rounding and not a doubling.
+  const share = withDivs.dividendUnits / without.totalUnits;
+  assert.ok(share > 0.005 && share < 0.12, `dividend equivalents are ${(share * 100).toFixed(2)}% of the grant`);
+
+  // They are credited only to what is still unvested, so a grant whose vests
+  // are all behind us earns nothing more.
+  const done = project({
+    ...base, dividends,
+    grants: [{ ...grant, date: "2016-02-20" }],
+    today: "2026-09-18",
+  });
+  assert.equal(done.dividendUnits, 0, "nothing unvested, nothing credited");
+
+  // A payment made before the grant existed cannot credit it. Comparing two
+  // series that differ ONLY by such a payment is what isolates that: asserting
+  // zero on a single old payment would not, because the series is projected
+  // forward quarterly and those projected payments do land after the grant.
+  const after = project({ ...base, dividends: [{ date: "2026-06-04", amount: 0.92, close: 242.57 }] });
+  const alsoBefore = project({
+    ...base,
+    dividends: [
+      { date: "2020-01-02", amount: 10, close: 100 },
+      { date: "2026-06-04", amount: 0.92, close: 242.57 },
+    ],
+  });
+  near(alsoBefore.dividendUnits, after.dividendUnits, 1e-9);
+});
+
+test("RSU: the stored dividend history is usable and quarterly", () => {
+  assert.ok(dividends.length > 20, "there is a history to work from");
+  for (const d of dividends) {
+    assert.ok(d.amount > 0 && d.amount < 20, `${d.date}: ${d.amount} a share`);
+    assert.ok(d.close > 0, `${d.date}: the close of the day is needed to price the units`);
+    assert.match(d.date, /^\d{4}-\d{2}-\d{2}$/);
+  }
+  // Sorted, and spaced like a quarterly payer: never two in the same month.
+  for (let i = 1; i < dividends.length; i++) {
+    assert.ok(dividends[i].date > dividends[i - 1].date, "sorted");
+    const gap = (Date.parse(dividends[i].date) - Date.parse(dividends[i - 1].date)) / 86400000;
+    assert.ok(gap > 45 && gap < 190, `${dividends[i - 1].date} -> ${dividends[i].date} is ${gap} days`);
+  }
+});
+
+test("RSU: a vest is whole shares even once dividend equivalents are in", () => {
+  // The equivalents accrue as fractions — the plan's example credits 0.227 of
+  // a unit — but nothing vests 39.2534 shares. The invariant is the one that
+  // explained 143/144/192 in the first place: the amount vested TO DATE is a
+  // whole number, so each vest is the difference and the fraction carries.
+  const grant: Grant = {
+    id: "w", label: "W", date: "2026-02-20", valueUsd: 70000, priceAtGrant: 146.32,
+    schedule: "quarterly", years: 3, usePlanDates: true,
+  };
+  const p = project({
+    grants: [grant], price: 188.71, fxRate: 1.147974, salary: 60000,
+    today: "2026-09-18", horizonYears: 3, dividends,
+  });
+
+  for (const t of p.tranches) {
+    assert.equal(t.units, Math.floor(t.units), `${t.date}: ${t.units} is not a whole share`);
+    assert.ok(t.units > 0);
+  }
+  for (const y of p.years) assert.equal(y.units, Math.floor(y.units), `${y.year}: ${y.units}`);
+  for (const q of p.quarters) assert.equal(q.units, Math.floor(q.units), `${q.from}: ${q.units}`);
+
+  // Monotone and never below the grant: a credit can only add.
+  const grantOnly = tranches(grant);
+  p.tranches.forEach((t, k) => {
+    assert.ok(t.units >= grantOnly[k].units, `${t.date}: ${t.units} fell below the granted ${grantOnly[k].units}`);
+  });
+  const delivered = p.tranches.reduce((s, t) => s + t.units, 0);
+  assert.ok(delivered > 479, "dividend equivalents add shares");
+  // The residue left undelivered is under one share, by construction.
+  const withCredits = 479 + p.tranches.reduce((s, t) => s + t.fromDividends, 0);
+  assert.ok(delivered <= withCredits + 1e-9);
+
+  // The early vests are untouched: a credit paid in March cannot make the May
+  // vest fractional, it moves into a later one.
+  assert.equal(p.tranches[0].units, grantOnly[0].units);
 });

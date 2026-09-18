@@ -44,6 +44,16 @@ export interface Grant {
   years: number;
   /** whether vesting snaps to the plan calendar instead of the grant date */
   usePlanDates: boolean;
+  /**
+   * Whether this award is scaled by the performance rating.
+   *
+   * An annual bonus grant is: the dollar figure in the letter is the target,
+   * and what is actually awarded moves with personal and company performance. A
+   * welcome grant is not — it is agreed when you are hired and does not depend
+   * on a review that has not happened. Stored per grant rather than inferred
+   * from the label or the row order, both of which the user can change.
+   */
+  performanceLinked?: boolean;
 }
 
 /**
@@ -83,11 +93,35 @@ export function withUniqueIds<T extends { id: string }>(items: T[]): T[] {
 }
 
 /** The units that grant produced: dollars awarded / price on the day. */
+/**
+ * The units a grant is worth: the dollar value over the fair market value,
+ * **rounded up** to a whole share.
+ *
+ * Up, not to the nearest: the plan document is explicit about it, and it is the
+ * difference between a figure that matches the broker's statement and one that
+ * is plausibly close. $20,000 at a $146.32 fair market value is 136.69, and
+ * what is granted is 137.
+ */
 export const grantUnits = (g: Grant): number =>
-  g.priceAtGrant > 0 ? g.valueUsd / g.priceAtGrant : 0;
+  g.priceAtGrant > 0 ? Math.ceil(g.valueUsd / g.priceAtGrant) : 0;
 
 /** The days the plan vests on, as MM-DD. */
 export const VESTING_CALENDAR = ["02-20", "05-20", "08-20", "11-20"];
+
+/**
+ * The rate the withholding at vesting is computed at.
+ *
+ * Not your tax rate: the plan withholds at a flat **supplemental** rate, the
+ * same one used for a cash bonus, and your real liability is settled later on a
+ * payslip. In Italy the marginal rate on a vest sits above this, so the usual
+ * case is a further deduction — but the settlement runs both ways, and a rate
+ * below this one means a refund.
+ *
+ * The mechanism is what makes the share count surprising: MORE shares reach
+ * your account than your tax rate would suggest, because the withholding is
+ * computed at this rate and not at yours.
+ */
+export const WITHHOLDING_RATE = 0.4633;
 
 /**
  * The day clamps to a short month: a grant made on 31 January vests on 28
@@ -122,6 +156,12 @@ export interface Tranche {
   units: number;
   index: number;
   total: number;
+  /**
+   * The part of `units` that came from dividend equivalents rather than from
+   * the grant itself. Kept separately so the total can be reported: it is
+   * units nobody was promised, and it is not small over three years.
+   */
+  fromDividends: number;
 }
 
 /**
@@ -145,12 +185,32 @@ export function tranches(g: Grant, calendar = VESTING_CALENDAR): Tranche[] {
           : Array.from({ length: years * 12 }, () => 1 / (years * 12));
   const step = g.schedule === "quarterly" ? 3 : g.schedule === "monthly" ? 1 : 12;
 
+  // Whole shares per vest, from the **running total**.
+  //
+  // What has to be a whole number is the amount vested *so far*, so each vest
+  // is the difference between two floored cumulative totals. That is not the
+  // same as rounding each slice on its own, and the difference is visible: 479
+  // units over 30-30-40 comes out 143 / 144 / 192, where rounding each slice
+  // by largest remainder gives 144 / 144 / 191. The first is what the plan
+  // actually awards — checked against a real grant of $70,000.
+  //
+  // It also explains the thing people notice on quarterly plans: 461 over
+  // twelve quarters lands as a mixture of 38s and 39s, never a tidy 38.4167.
+  const cumulative: number[] = [];
+  let running = 0;
+  for (const q of slices) {
+    running += q;
+    cumulative.push(running);
+  }
+  const vested = cumulative.map((f, i) =>
+    // The last one takes the exact total, so nothing is lost to the floor.
+    i === slices.length - 1 ? Math.round(totalUnits) : Math.floor(totalUnits * f)
+  );
+  const perVest = vested.map((v, i) => v - (i ? vested[i - 1] : 0));
+
   let given = 0;
-  return slices.map((q, i) => {
-    const u =
-      i === slices.length - 1
-        ? Math.round((totalUnits - given) * 1e4) / 1e4
-        : Math.round(totalUnits * q * 1e4) / 1e4;
+  return slices.map((_, i) => {
+    const u = perVest[i];
     given += u;
     const natural = addMonths(g.date, step * (i + 1));
     // Fixed dates apply to the schedules they fit: snapping an annual vest to a
@@ -159,7 +219,7 @@ export function tranches(g: Grant, calendar = VESTING_CALENDAR): Tranche[] {
       g.usePlanDates && (g.schedule === "quarterly" || g.schedule === "monthly")
         ? nextPlanDate(natural, calendar)
         : natural;
-    return { grant: g.id, label: g.label, date, units: u, index: i + 1, total: slices.length };
+    return { grant: g.id, label: g.label, date, units: u, index: i + 1, total: slices.length, fromDividends: 0 };
   });
 }
 
@@ -172,15 +232,37 @@ export interface RsuYear {
   /**
    * Shares that actually reach your account.
    *
-   * The withholding on a vest is not paid in cash: the broker **sells part of
-   * the shares the moment they vest** and hands over the tax — "sell to cover".
-   * Nobody asks you for money; fewer shares arrive. It is the single most
-   * surprising thing about a first vest, so both halves are reported: what is
-   * sold and what is left.
+   * The withholding on a vest is not paid in cash: the company **keeps back
+   * part of the shares** the moment they vest and remits the tax itself. Nobody
+   * asks you for money; fewer shares arrive. It is the single most surprising
+   * thing about a first vest, so both halves are reported — what is kept and
+   * what is left.
    */
   netShares: number;
-  /** shares sold on the day to cover the withholding, plus the odd fraction */
-  sharesSold: number;
+  /**
+   * Shares kept back to cover the withholding, rounded **up** to a whole share.
+   *
+   * Nothing is sold. The plan moved from sell to cover to **net share
+   * withholding**: the company simply does not hand over these shares and
+   * remits the tax itself. No market transaction, nothing to report as a sale,
+   * and — the part that matters — the price after the vesting day cannot change
+   * this number, because it is fixed on the vest-date fair market value.
+   */
+  sharesWithheld: number;
+  /**
+   * The flat rate the withholding was computed at — `WITHHOLDING_RATE`, the
+   * supplemental rate, the same for everyone regardless of their own bracket.
+   */
+  withholdingRate: number;
+  /**
+   * The settlement on a later payslip: `grossEur * (taxRate - withholdingRate)`.
+   *
+   * **Signed.** Positive is a further deduction, which is the usual Italian
+   * case; negative is a refund, which is what happens when your own rate is
+   * below the supplemental one. Reporting only the positive half would have
+   * been a tool that tells you when you lose and goes quiet when you win.
+   */
+  payslipAdjustmentEur: number;
   /**
    * Whether this year is only counted from today.
    *
@@ -223,8 +305,11 @@ export interface ChartPeriod {
   netEur: number;
   /** shares that reach the account this quarter — see `netShares` on RsuYear */
   netShares: number;
-  /** sold on the vesting day to cover the withholding */
-  sharesSold: number;
+  /** kept back on the vesting day to cover the withholding */
+  sharesWithheld: number;
+  /** the flat rate withheld, and the signed settlement on a later payslip */
+  withholdingRate: number;
+  payslipAdjustmentEur: number;
 }
 
 export interface Projection {
@@ -247,6 +332,13 @@ export interface Projection {
   netSharesEur: number;
   /** the same, in the currency the shares are actually quoted in */
   netSharesUsd: number;
+  /**
+   * The payslip settlements summed over the horizon, signed: what the flat
+   * withholding got wrong in either direction, and the figure nobody expects.
+   */
+  totalPayslipAdjustmentEur: number;
+  /** units credited as dividend equivalents inside the horizon */
+  dividendUnits: number;
   /** euro per share, the rate every figure here was converted with */
   perUnitEur: number;
   /** quarter by quarter, for the chart */
@@ -265,6 +357,21 @@ export interface RsuInput {
   /** how many years to look ahead */
   horizonYears: number;
   calendar?: string[];
+  /**
+   * The performance rating, as a multiplier: 1 is target, 0.75 and 1.5 the ends
+   * of the band. Applied only to the grants that carry `performanceLinked`.
+   */
+  performance?: number;
+  /**
+   * The dividend payment history: date, dollars per share, and the close of
+   * that day. Unvested RSUs are credited with dividend equivalents at every
+   * payment, so this changes the unit count and not just the colour of a note.
+   *
+   * Payments past the last one given are projected forward at the same amount
+   * and cadence, priced at `price` — an assumption, and the caller is expected
+   * to say so on screen.
+   */
+  dividends?: { date: string; amount: number; close: number }[];
 }
 
 /**
@@ -278,13 +385,81 @@ export interface RsuInput {
  */
 export function project(i: RsuInput, regime?: TaxRegime): Projection {
   const calendar = i.calendar ?? VESTING_CALENDAR;
-  const all = i.grants.flatMap((g) => tranches(g, calendar)).sort((a, b) => a.date.localeCompare(b.date));
-  // The horizon runs to the **end of a calendar year**, not to today's date N
-  // years out. A year closes on 31 December: a window that stopped in
-  // mid-September left the last card holding three quarters instead of four,
-  // which reads as the plan tailing off when it is only the window closing. And
-  // years you cannot compare are not worth putting side by side.
+  // The rating scales the dollar value of the awards that depend on it, before
+  // anything else happens: units, tranches, tax and share counts all follow
+  // from that figure, so scaling it here means nothing downstream has to know
+  // the rating exists.
+  const performance = i.performance ?? 1;
+  const grants =
+    performance === 1
+      ? i.grants
+      : i.grants.map((g) => (g.performanceLinked ? { ...g, valueUsd: g.valueUsd * performance } : g));
+  // The horizon runs to the end of a calendar year; the dividend projection
+  // below needs to know where to stop, so it is worked out first.
   const end = `${Number(i.today.slice(0, 4)) + Math.round(i.horizonYears) + 1}-01-01`;
+  const all = grants.flatMap((g) => tranches(g, calendar)).sort((a, b) => a.date.localeCompare(b.date));
+
+  // Dividend equivalents: the units nobody tells you about.
+  //
+  // Every time a dividend is paid, the **unvested** RSUs are credited with
+  // extra units worth that dividend — (unvested x amount) / close on the day.
+  // Over three years of quarterly vesting and quarterly dividends that is a few
+  // percent more shares than the grant letter says, and it compounds, because
+  // the credited units are themselves unvested and earn the next one.
+  //
+  // Only payments after a grant's own date touch it, and a credit is spread
+  // across that grant's remaining tranches in proportion to their size, since
+  // that is the pool it was credited to.
+  const paid = [...(i.dividends ?? [])].sort((a, b) => a.date.localeCompare(b.date));
+  // Beyond the last known payment the series is projected: same amount, same
+  // quarterly cadence, priced at today's share price. An assumption, and one
+  // the caller is expected to put on screen rather than hide.
+  if (paid.length && i.price > 0) {
+    const last = paid[paid.length - 1];
+    for (let d = addMonths(last.date, 3); d < end; d = addMonths(d, 3)) {
+      paid.push({ date: d, amount: last.amount, close: i.price });
+    }
+  }
+  for (const g of grants) {
+    const mine = all.filter((t) => t.grant === g.id).sort((a, b) => a.date.localeCompare(b.date));
+    // What the grant alone would deliver, kept so the dividend part can be
+    // named afterwards rather than accumulated through the rounding.
+    const granted = mine.map((t) => t.units);
+
+    for (const pay of paid) {
+      if (pay.date < g.date || pay.close <= 0) continue;
+      const ahead = mine.filter((t) => t.date > pay.date);
+      const unvested = ahead.reduce((sum, t) => sum + t.units, 0);
+      if (unvested <= 0) continue;
+      const credit = (unvested * pay.amount) / pay.close;
+      for (const t of ahead) t.units += credit * (t.units / unvested);
+    }
+
+    // A vest is a whole number of shares, dividend equivalents included.
+    //
+    // The equivalents accrue as fractions — the plan's own example credits
+    // 0.227 of a unit — but nothing vests 39.2534 shares. So the same rule as
+    // the grant applies to the total: the amount vested *to date* is floored,
+    // and each vest is the difference. A credit is assigned only to vests that
+    // have not happened yet, so by the time a vest arrives its number is
+    // final and this stays monotone.
+    //
+    // What is left at the end is under one share and is not delivered; plans
+    // settle that residue in cash.
+    let cumulative = 0;
+    let delivered = 0;
+    mine.forEach((t, k) => {
+      cumulative += t.units;
+      const upTo = Math.floor(cumulative + 1e-9);
+      t.units = upTo - delivered;
+      delivered = upTo;
+      t.fromDividends = t.units - granted[k];
+    });
+  }
+  // A year closes on 31 December, so the horizon does too: a window that
+  // stopped in mid-September left the last card holding three quarters instead
+  // of four, which reads as the plan tailing off when it is only the window
+  // closing. Years you cannot compare are not worth putting side by side.
   const upcoming = all.filter((t) => t.date >= i.today && t.date < end);
 
   const perUnitEur = i.fxRate > 0 ? i.price / i.fxRate : 0;
@@ -296,14 +471,23 @@ export function project(i: RsuInput, regime?: TaxRegime): Projection {
       const units = ofYear.reduce((s, t) => s + t.units, 0);
       const grossEur = units * perUnitEur;
       const m = grossEur > 0 ? marginalRate({ salary: i.salary }, grossEur, regime) : { kept: 1, rate: 0 };
+      // The withholding is at the flat supplemental rate, not at yours. That is
+      // what decides how many shares are kept back — and therefore how many
+      // arrive — while your own rate only decides the settlement afterwards.
+      // Flooring what arrives is the same arithmetic as rounding the withheld
+      // shares UP, which is what the plan document specifies.
+      const withholdingRate = WITHHOLDING_RATE;
+      const netShares = Math.floor(units * (1 - withholdingRate));
       return {
         year,
         units,
         grossEur,
         taxRate: m.rate,
         netEur: grossEur * m.kept,
-        netShares: Math.floor(units * m.kept),
-        sharesSold: units - Math.floor(units * m.kept),
+        netShares,
+        sharesWithheld: units - netShares,
+        withholdingRate,
+        payslipAdjustmentEur: grossEur * (m.rate - withholdingRate),
         partial: i.today > `${year}-01-01`,
         tranches: ofYear,
       };
@@ -331,7 +515,7 @@ export function project(i: RsuInput, regime?: TaxRegime): Projection {
     const to = addMonths(start, (k + 1) * 3);
     if (from >= end) break;
     const inside = upcoming.filter((t) => t.date >= from && t.date < to);
-    const byGrant = i.grants
+    const byGrant = grants
       .map((g) => ({
         grant: g.id,
         units: inside.filter((t) => t.grant === g.id).reduce((s, t) => s + t.units, 0),
@@ -350,7 +534,9 @@ export function project(i: RsuInput, regime?: TaxRegime): Projection {
       taxRate: 0,
       netEur: 0,
       netShares: 0,
-      sharesSold: 0,
+      sharesWithheld: 0,
+      withholdingRate: 0,
+      payslipAdjustmentEur: 0,
     });
   }
 
@@ -370,8 +556,10 @@ export function project(i: RsuInput, regime?: TaxRegime): Projection {
   for (const y of years) {
     const mine = quarters.filter((q) => q.year === y.year && q.units > 0);
     if (!mine.length) continue;
-    const kept = 1 - y.taxRate;
-    const ideal = mine.map((q) => q.units * kept);
+    // The share count follows the WITHHELD rate, the euro net follows your own:
+    // two different questions, and the flat rate only touches the first.
+    const arriving = 1 - y.withholdingRate;
+    const ideal = mine.map((q) => q.units * arriving);
     const floors = ideal.map((v) => Math.floor(v));
     const byFraction = ideal
       .map((v, k) => ({ k, frac: v - Math.floor(v) }))
@@ -381,9 +569,11 @@ export function project(i: RsuInput, regime?: TaxRegime): Projection {
     for (let j = 0; left > 0 && j < byFraction.length; j++, left--) spare[byFraction[j].k] = 1;
     mine.forEach((q, k) => {
       q.taxRate = y.taxRate;
-      q.netEur = q.grossEur * kept;
+      q.withholdingRate = y.withholdingRate;
+      q.netEur = q.grossEur * (1 - y.taxRate);
       q.netShares = floors[k] + spare[k];
-      q.sharesSold = q.units - q.netShares;
+      q.sharesWithheld = q.units - q.netShares;
+      q.payslipAdjustmentEur = q.grossEur * (y.taxRate - y.withholdingRate);
     });
   }
 
@@ -399,6 +589,8 @@ export function project(i: RsuInput, regime?: TaxRegime): Projection {
     totalNetShares,
     netSharesEur: totalNetShares * perUnitEur,
     netSharesUsd: totalNetShares * i.price,
+    totalPayslipAdjustmentEur: years.reduce((s2, y) => s2 + y.payslipAdjustmentEur, 0),
+    dividendUnits: upcoming.reduce((s2, t) => s2 + t.fromDividends, 0),
     perUnitEur,
     quarters,
   };
@@ -406,3 +598,64 @@ export function project(i: RsuInput, regime?: TaxRegime): Projection {
 
 /** Salary on its own, to show how much the RSUs change the year. */
 export const salaryOnly = (salary: number, regime?: TaxRegime) => grossToNet({ salary }, regime);
+
+/**
+ * A grant as the form holds it: everything except the price, which is derived
+ * from the date unless the user overrode it.
+ *
+ * It lives here rather than in the component because three views now read the
+ * same grants — the RSU tool, the walkthrough and the total reward — and a type
+ * owned by one of them would make the other two import from a sibling.
+ */
+export type GrantInput = Omit<Grant, "priceAtGrant"> & { typedPrice: number | null };
+
+/**
+ * What the RSU tool opens with: a welcome grant and three years of annual
+ * bonuses.
+ *
+ * One grant is the wrong picture of this kind of package. A welcome grant
+ * vesting 30-30-40 puts its weight at the end, an annual bonus vests in
+ * quarterly slices, and a new bonus lands every year — so in any given year
+ * pieces of three or four different awards vest at once, and it is their total
+ * that sets the tax rate. Starting with three years of bonuses means the first
+ * screen already shows that overlap instead of a single tidy grant that nobody
+ * actually has.
+ *
+ * The bonuses carry `performanceLinked`: their dollar figure is a target that
+ * moves with the review. The welcome grant does not — it was agreed at hire.
+ */
+export function initialGrants(
+  today: string,
+  welcomeUsd = 20000,
+  bonusUsd = 10000,
+  bonusYears = 3
+): GrantInput[] {
+  const year = Number(today.slice(0, 4));
+  return [
+    {
+      id: newGrantId(),
+      label: "Welcome grant",
+      date: `${year}-02-20`,
+      valueUsd: welcomeUsd,
+      schedule: "30-30-40",
+      years: 3,
+      usePlanDates: false,
+      performanceLinked: false,
+      typedPrice: null,
+    },
+    ...Array.from({ length: bonusYears }, (_, k) => ({
+      id: newGrantId(),
+      label: `Bonus ${year + k}`,
+      date: `${year + k}-11-20`,
+      valueUsd: bonusUsd,
+      schedule: "quarterly" as VestingSchedule,
+      years: 3,
+      usePlanDates: true,
+      performanceLinked: true,
+      typedPrice: null,
+    })),
+  ];
+}
+
+/** The performance band: the rating scales the bonus grants between these. */
+export const PERFORMANCE_STEPS = [0.75, 1, 1.25, 1.5];

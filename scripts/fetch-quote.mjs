@@ -43,11 +43,18 @@ function die(message) {
 
 if (!SYMBOL) die("QUOTE_SYMBOL is missing from the environment (set it as a GitHub secret)");
 
-/** Daily closes for a symbol, over a range. */
-async function closes(symbol, fromSec, toSec) {
+/**
+ * Daily closes for a symbol, over a range — and the dividend history with it.
+ *
+ * `events=div` comes from the same request and the same secret, which is the
+ * reason the dividends are taken from here rather than from the company's
+ * investor-relations page: that URL contains the company's name, and no source
+ * file in this repository is allowed to.
+ */
+async function closes(symbol, fromSec, toSec, withEvents = false) {
   const url =
     `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}` +
-    `?interval=1d&period1=${fromSec}&period2=${toSec}`;
+    `?interval=1d&period1=${fromSec}&period2=${toSec}${withEvents ? "&events=div" : ""}`;
   const res = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" } });
   if (!res.ok) throw new Error(`the provider answered ${res.status}`);
   const j = await res.json();
@@ -62,10 +69,33 @@ async function closes(symbol, fromSec, toSec) {
     }
   });
   if (!out.length) throw new Error("the provider returned no closes at all");
+  out.dividends = Object.values(r?.events?.dividends ?? {})
+    .map((d) => ({ date: new Date(d.date * 1000).toISOString().slice(0, 10), amount: d.amount }))
+    .sort((a, b) => a.date.localeCompare(b.date));
   return out;
 }
 
 const round = (v, d) => Number(v.toFixed(d));
+
+/**
+ * The fair market value at a date: the mean of the closes of the 20 trading
+ * sessions BEFORE it, the date itself excluded.
+ *
+ * This is the plan's definition of the price that turns a dollar grant into a
+ * number of units, and it is not the close of the day: on 2026-02-20 the close
+ * was 142.88 and this is 146.32. Getting it wrong by using the close misstates
+ * every unit count by a couple of percent.
+ *
+ * `null` when there are not 20 sessions behind the date, rather than an average
+ * of however many there are — a 12-session mean is a different number wearing
+ * the same name.
+ */
+const FMV_SESSIONS = 20;
+function fmvAt(series, date) {
+  const before = series.filter((x) => x.date < date).slice(-FMV_SESSIONS);
+  if (before.length < FMV_SESSIONS) return null;
+  return round(before.reduce((sum, x) => sum + x.close, 0) / FMV_SESSIONS, 4);
+}
 const at = (series, date) => {
   const before = series.filter((x) => x.date <= date);
   return before.length ? before[before.length - 1] : null;
@@ -78,7 +108,7 @@ const TO = Math.floor(Date.now() / 1000) + 86400;
 
 let equity, fx;
 try {
-  [equity, fx] = await Promise.all([closes(SYMBOL, FROM, TO), closes(FX_SYMBOL, FROM, TO)]);
+  [equity, fx] = await Promise.all([closes(SYMBOL, FROM, TO, true), closes(FX_SYMBOL, FROM, TO)]);
 } catch (e) {
   die(`quotes unavailable: ${e.message}`);
 }
@@ -97,6 +127,10 @@ const nextQuote = {
   close: round(last.close, 4),
   eurusd: round(lastFx.close, 6),
   eurusdOn: lastFx.date,
+  // What a grant dated today would be priced at: the rolling 20-session mean.
+  // The page needs it for a grant date in the future, where the real figure
+  // cannot exist yet.
+  fmv20: round(equity.slice(-FMV_SESSIONS).reduce((sum, x) => sum + x.close, 0) / FMV_SESSIONS, 4),
   currency: "USD",
   generatedAt: new Date().toISOString(),
   // A close from three days ago is not an error (at a weekend it is the norm),
@@ -126,21 +160,54 @@ if (WITH_HISTORY) {
       const e = at(equity, date);
       const f = at(fx, date);
       if (!e || !f) continue;
+      const fmv = fmvAt(equity, date);
       added.push({
         date,
         close: round(e.close, 4),
         closeOn: e.date,
         eurusd: round(f.close, 6),
         eurusdOn: f.date,
+        ...(fmv === null ? {} : { fmv }),
       });
     }
   }
 
-  if (added.length) {
+  // The dividend history: date, dollars per share, and the close of that day,
+  // which is what the equivalent units are priced at. Rewritten whole rather
+  // than appended to, because a restated dividend should correct itself.
+  const closeAt = (date) => {
+    const before = equity.filter((x) => x.date <= date);
+    return before.length ? before[before.length - 1].close : null;
+  };
+  const divRows = (equity.dividends ?? [])
+    .filter((d) => d.date >= "2016-01-01")
+    .map((d) => ({ date: d.date, amount: round(d.amount, 4), close: closeAt(d.date) }))
+    .filter((d) => d.close !== null)
+    .map((d) => ({ ...d, close: round(d.close, 4) }));
+  const divChanged = JSON.stringify(divRows) !== JSON.stringify(file.dividends ?? []);
+  if (divRows.length) file.dividends = divRows;
+
+  // Rows written before the fair market value existed have no `fmv`. Filling
+  // them here rather than in a one-off migration means the file repairs itself
+  // on the next run, from the same series the new rows come from.
+  let backfilled = 0;
+  for (const row of file.prices) {
+    if (typeof row.fmv === "number") continue;
+    const fmv = fmvAt(equity, row.date);
+    if (fmv !== null) {
+      row.fmv = fmv;
+      backfilled++;
+    }
+  }
+
+  if (added.length || backfilled || divChanged) {
     file.prices = [...file.prices, ...added].sort((x, y) => x.date.localeCompare(y.date));
     file.updated = today;
     fs.writeFileSync(HISTORY, `${JSON.stringify(file, null, 2)}\n`);
-    console.log(`fetch-quote: ${added.length} plan dates added to the history`);
+    console.log(
+      `fetch-quote: ${added.length} plan dates added, ${backfilled} fair market values filled in, ` +
+        `${divRows.length} dividend payments stored`
+    );
   } else {
     console.log("fetch-quote: no new dates to add to the history");
   }

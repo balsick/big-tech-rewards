@@ -5,7 +5,7 @@ import { Close } from "./Icons.tsx";
 import { dateShort, eur0, num, pct, todayISO, usd } from "../lib/format.ts";
 import { ESPP_PLAN, defaultWindow, expectedContribution, simulateEspp } from "../lib/espp.ts";
 import { VESTING_CALENDAR, grantUnits, project, type Grant } from "../lib/rsu.ts";
-import { historyAt, loadQuote, type Quote } from "../lib/prices.ts";
+import { dividends, historyAt, loadQuote, type Quote } from "../lib/prices.ts";
 import { markSeen, type Seed } from "../lib/guided.ts";
 import { DEFAULT_SALARY } from "../lib/meta.ts";
 
@@ -185,7 +185,7 @@ export default function Guided({
   const rsu = useMemo(
     () =>
       endPrice > 0 && fx > 0
-        ? project({ grants, price: endPrice, fxRate: fx, salary, today, horizonYears: 3, calendar: VESTING_CALENDAR }, regime)
+        ? project({ grants, price: endPrice, fxRate: fx, salary, today, horizonYears: 3, calendar: VESTING_CALENDAR, dividends }, regime)
         : null,
     [grants, endPrice, fx, salary, today, regime]
   );
@@ -451,8 +451,11 @@ export default function Guided({
                 <h2 style={{ marginBottom: 12 }}>
                   {t.guided.esppHeadline(`${num(percent, lang, 0)}%`, eur0(salary, lang))}
                 </h2>
-                {/* The shares and what they are worth, before the three cards
-                    that explain the money. It is what you are left holding. */}
+                {/* Shares, what they are worth, and the gain — in that order,
+                    because the gain is the consequence of the first two and not
+                    a fourth fact. It used to be the big number on a card of its
+                    own below, which stated the conclusion in larger type than
+                    the figures it comes from. */}
                 <Answer
                   items={[
                     { name: t.espp.answerShares, value: num(espp.shares, lang, 0) },
@@ -466,6 +469,11 @@ export default function Guided({
                       // price made the line contradict its own figure.
                       hint: t.espp.answerValueHint(usd(endPrice, lang)),
                     },
+                    {
+                      name: t.espp.youGain,
+                      value: eur0(espp.gain, lang),
+                      hint: t.espp.gainRoi(pct(espp.roi, lang), eur0(espp.outlay, lang)),
+                    },
                   ]}
                 />
                 <p className="note" style={{ marginTop: 14 }}>
@@ -475,21 +483,13 @@ export default function Guided({
                     usd(espp.purchasePrice, lang)
                   )}
                 </p>
+                {/* Two cards now, not three: the gain moved up into the
+                    answer, and leaving its card behind would have printed the
+                    same figure twice with the copy below the larger of the
+                    two. What is left is the two things the gain does not say —
+                    what the payslip loses, and what it is worth as a raise. */}
                 <div className="guida-carte">
                   <Card className="accent">
-                    <h3>{t.espp.youGain}</h3>
-                    <p className="big">{eur0(espp.gain, lang)}</p>
-                    <p className="note">
-                      {t.espp.gainLine(
-                        pct(espp.roi, lang),
-                        eur0(espp.outlay, lang),
-                        num(espp.shares, lang, 0),
-                        eur0(espp.marketValue, lang),
-                        ESPP_PLAN.months
-                      )}
-                    </p>
-                  </Card>
-                  <Card>
                     <h3>{t.espp.payslipTitle}</h3>
                     <p className="big">{eur0(espp.taxWithheld, lang)}</p>
                     <p className="note">
@@ -551,7 +551,7 @@ export default function Guided({
                         <td className="r optional-phone">{num(q.units, lang, 2)}</td>
                         <td className="r">{eur0(q.grossEur, lang)}</td>
                         <td className="r optional neg">{pct(q.taxRate, lang)}</td>
-                        <td className="r neg optional-phone">&#8722;{num(q.sharesSold, lang, 0)}</td>
+                        <td className="r neg optional-phone">&#8722;{num(q.sharesWithheld, lang, 0)}</td>
                         <td className="r" style={{ fontWeight: 660, fontSize: "var(--t-20)" }}>
                           {num(q.netShares, lang, 0)}
                         </td>

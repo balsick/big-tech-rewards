@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useStore } from "../state/store.tsx";
 import { Answer, Card, Check, Disclosure, Line, NumField, Select } from "./ui.tsx";
 import Info from "./Info.tsx";
@@ -17,8 +17,6 @@ import {
 } from "../lib/espp.ts";
 import { historyAt, liveFxRate, loadQuote, type Quote } from "../lib/prices.ts";
 import { available, clear, read, write } from "../lib/storage.ts";
-import { DEFAULT_SALARY } from "../lib/meta.ts";
-import type { Seed } from "../lib/guided.ts";
 
 // The ESPP: what happens on purchase day, and how much the round trip returns.
 //
@@ -44,8 +42,8 @@ interface EsppState {
   plan: EsppPlan;
 }
 
-export default function EsppTool({ seed }: { seed?: Extract<Seed, { tool: "espp" }> | null }) {
-  const { t, lang, regime } = useStore();
+export default function EsppTool() {
+  const { t, lang, regime, salary, setSalary, esppPct: percent, setEsppPct: setPercent } = useStore();
 
   // The save is read once, in the initialisers: reading it in an effect would
   // mean showing the defaults for one frame and then overwriting them in front
@@ -68,10 +66,15 @@ export default function EsppTool({ seed }: { seed?: Extract<Seed, { tool: "espp"
   });
   const chosen = windows.find((w) => w.purchase === purchase) ?? defaultWindow(today, plan);
   const start = chosen.start;
-  // The walkthrough's answers win over a saved state: they were given a second
-  // ago, and a save is from another day.
-  const [salary, setSalary] = useState(seed?.salary ?? s0?.salary ?? DEFAULT_SALARY);
-  const [percent, setPercent] = useState(seed?.percent ?? s0?.percent ?? 15);
+  // The salary and the percentage are shared with the other tabs, so a save is
+  // restored into them once on mount rather than into local state.
+  const restored = useRef(false);
+  useEffect(() => {
+    if (restored.current || !s0) return;
+    restored.current = true;
+    if (typeof s0.salary === "number") setSalary(s0.salary);
+    if (typeof s0.percent === "number") setPercent(s0.percent);
+  }, [s0, setSalary, setPercent]);
   // The contribution follows the percentage until you overwrite it: two states
   // for one field would be two truths, so the computed one is the floor and the
   // typed one sits on top.
@@ -152,29 +155,32 @@ export default function EsppTool({ seed }: { seed?: Extract<Seed, { tool: "espp"
     </Card>
   ) : (
     <Card>
-      <h2 className="answer" style={{ marginBottom: 0 }} key={Math.round(result.gain)}>
-        {t.espp.youGain} <span className="big">{eur0(result.gain, lang)}</span>
-      </h2>
-      {/* What the money turned into. The gain is the point of the plan, but it
-          is a difference between two numbers — the thing you end up holding is
-          a number of shares, and that was a clause inside the sentence
-          below. */}
-      <div style={{ marginTop: 16 }}>
-        <Answer
-          items={[
-            {
-              name: t.espp.answerShares,
-              value: num(result.shares, lang, plan.fractionalShares ? 4 : 0),
-            },
-            {
-              name: t.espp.answerValue,
-              value: eur0(result.marketValue, lang),
-              alt: usd(result.marketValueUsd, lang, 0),
-              hint: t.espp.answerValueHint(usd(endPrice, lang)),
-            },
-          ]}
-        />
-      </div>
+      {/* The whole round trip, in the order it happens: you pay this, you get
+          these shares, they are worth that, and the gain is what is left over.
+          The gain used to be the headline on its own, which stated the
+          conclusion before any of the three figures it comes from — and left
+          the shares, the thing you actually end up holding, as a clause in a
+          sentence underneath. */}
+      <Answer
+        items={[
+          { name: t.espp.answerCost, value: eur0(result.outlay, lang) },
+          {
+            name: t.espp.answerShares,
+            value: num(result.shares, lang, plan.fractionalShares ? 4 : 0),
+          },
+          {
+            name: t.espp.answerValue,
+            value: eur0(result.marketValue, lang),
+            alt: usd(result.marketValueUsd, lang, 0),
+            hint: t.espp.answerValueHint(usd(endPrice, lang)),
+          },
+          {
+            name: t.espp.youGain,
+            value: eur0(result.gain, lang),
+            hint: t.espp.gainRoi(pct(result.roi, lang), eur0(result.outlay, lang)),
+          },
+        ]}
+      />
       <p className="note" style={{ marginTop: 14 }}>
         {t.espp.gainLine(
           pct(result.roi, lang),

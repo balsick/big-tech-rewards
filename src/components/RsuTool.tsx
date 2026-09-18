@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useStore } from "../state/store.tsx";
 import { Answer, Card, Check, DateField, Disclosure, Line, NumField, Segmented, Select } from "./ui.tsx";
 import Info from "./Info.tsx";
@@ -8,6 +8,8 @@ import VestingChart, { grantColour } from "./VestingChart.tsx";
 import { Close, Plus } from "./Icons.tsx";
 import { dateShort, eur, eur0, num, pct, todayISO, usd } from "../lib/format.ts";
 import {
+  PERFORMANCE_STEPS,
+  WITHHOLDING_RATE,
   VESTING_CALENDAR,
   grantUnits,
   newGrantId,
@@ -15,12 +17,11 @@ import {
   salaryOnly,
   withUniqueIds,
   type Grant,
+  type GrantInput,
   type VestingSchedule,
 } from "../lib/rsu.ts";
-import { historyAt, loadQuote, type Quote } from "../lib/prices.ts";
+import { dividends, fmvAt, historyAt, loadQuote, type Quote } from "../lib/prices.ts";
 import { available, clear, read, write } from "../lib/storage.ts";
-import { DEFAULT_SALARY } from "../lib/meta.ts";
-import type { Seed } from "../lib/guided.ts";
 
 // RSUs, seen from three years away.
 //
@@ -38,8 +39,6 @@ import type { Seed } from "../lib/guided.ts";
  * number, like every other field in these two tools: the looked-up value is the
  * floor, the typed one sits on top.
  */
-type GrantInput = Omit<Grant, "priceAtGrant"> & { typedPrice: number | null };
-
 const KEY = "rsu";
 
 /** What the save button puts in the browser: the form fields, nothing else. */
@@ -47,42 +46,29 @@ interface RsuState {
   grants: GrantInput[];
   salary: number;
   horizonYears: number;
+  performance?: number;
   price: number | null;
   fxRate: number | null;
 }
 
 // The two grants most people hold at once, and which together explain why three
-// years are needed: the welcome grant, which vests 30-30-40 and so has its
-// weight at the end, and the annual bonus, which vests in slices every quarter.
-// They land in the same years, and the taxman adds them up.
-function initialGrants(today: string, welcomeUsd = 20000, bonusUsd = 10000): GrantInput[] {
-  const year = Number(today.slice(0, 4));
-  return [
-    {
-      id: newGrantId(),
-      label: "Welcome grant",
-      date: `${year}-02-20`,
-      valueUsd: welcomeUsd,
-      schedule: "30-30-40",
-      years: 3,
-      usePlanDates: false,
-      typedPrice: null,
-    },
-    {
-      id: newGrantId(),
-      label: `Bonus ${year}`,
-      date: `${year}-11-20`,
-      valueUsd: bonusUsd,
-      schedule: "quarterly",
-      years: 3,
-      usePlanDates: true,
-      typedPrice: null,
-    },
-  ];
-}
-
-export default function RsuTool({ seed }: { seed?: Extract<Seed, { tool: "rsu" }> | null }) {
-  const { t, lang, regime } = useStore();
+export default function RsuTool() {
+  // The grants, the salary, the rating and the horizon are the shared
+  // description of this person's package: the walkthrough fills them in, the
+  // total reward reads them, and this tool is where they get edited.
+  const {
+    t,
+    lang,
+    regime,
+    salary,
+    setSalary,
+    grants,
+    setGrants,
+    performance,
+    setPerformance,
+    horizonYears,
+    setHorizonYears,
+  } = useStore();
   const today = todayISO();
 
   const [saved, setSaved] = useState(() => read<RsuState>(KEY));
@@ -92,15 +78,18 @@ export default function RsuTool({ seed }: { seed?: Extract<Seed, { tool: "rsu" }
   // Whatever comes out of storage goes through `withUniqueIds`: a save written
   // by an earlier version can carry duplicate ids, and those make two rows share
   // one entry in the list.
-  const [grants, setGrants] = useState<GrantInput[]>(() =>
-    seed
-      ? initialGrants(today, seed.welcomeUsd, seed.bonusUsd)
-      : s0?.grants
-        ? withUniqueIds(s0.grants)
-        : initialGrants(today)
-  );
-  const [salary, setSalary] = useState(seed?.salary ?? s0?.salary ?? DEFAULT_SALARY);
-  const [horizonYears, setHorizonYears] = useState(s0?.horizonYears ?? 3);
+  // A save is restored into the shared model, once, on mount. `withUniqueIds`
+  // heals the saves written while the id generator was a counter.
+  const restored = useRef(false);
+  useEffect(() => {
+    if (restored.current || !s0) return;
+    restored.current = true;
+    if (s0.grants) setGrants(withUniqueIds(s0.grants));
+    if (typeof s0.salary === "number") setSalary(s0.salary);
+    if (typeof s0.horizonYears === "number") setHorizonYears(s0.horizonYears);
+    if (typeof s0.performance === "number") setPerformance(s0.performance);
+  }, [s0, setGrants, setSalary, setHorizonYears, setPerformance]);
+
   const [scale, setScale] = useState<"eur" | "units">("eur");
   // Which granularity the table is read at. Not saved: it is how you are
   // looking right now, not part of the plan you described.
@@ -131,24 +120,52 @@ export default function RsuTool({ seed }: { seed?: Extract<Seed, { tool: "rsu" }
   // *before* the date asked for, so for a future date it would return one from
   // months ago — stale, and wrong in the wrong direction. The field always says
   // which day the number comes from.
-  const priceAtGrant = (g: GrantInput): { price: number; on: string; typed: boolean; future: boolean } => {
+  /**
+   * The price that turns a grant's dollars into units.
+   *
+   * Not the close of the grant day — the **fair market value**: the mean of the
+   * closes of the 20 sessions before it. That is how the plan prices a grant,
+   * and the gap is not decorative: on 20 February 2026 the close was 142.88 and
+   * the fair market value 146.32, which is 2.4% fewer units than using the
+   * close would have given.
+   *
+   * For a date still in the future the real figure cannot exist, so the rolling
+   * 20-session mean stands in — and `kind` says which of the three it is, so
+   * the field underneath can be honest about it.
+   */
+  const priceAtGrant = (
+    g: GrantInput
+  ): { price: number; on: string; typed: boolean; future: boolean; kind: "fmv" | "rolling" | "close" } => {
     const future = g.date > today;
-    if (g.typedPrice != null) return { price: g.typedPrice, on: "", typed: true, future };
-    const point = future ? null : historyAt(g.date);
-    if (point) return { price: point.close, on: point.closeOn, typed: false, future };
-    return { price, on: quote?.date ?? today, typed: false, future };
+    if (g.typedPrice != null) return { price: g.typedPrice, on: "", typed: true, future, kind: "fmv" };
+    const f = fmvAt(g.date, quote);
+    if (f) {
+      const point = historyAt(g.date);
+      return {
+        price: f.price,
+        on: f.kind === "rolling" ? (quote?.date ?? today) : (point?.date ?? g.date),
+        typed: false,
+        future,
+        kind: f.kind,
+      };
+    }
+    return { price, on: quote?.date ?? today, typed: false, future, kind: "close" };
   };
 
   const resolved = useMemo<Grant[]>(
     // `priceAtGrant` reads the archive (a pure function), the current price and
     // the quote date: those are the dependencies.
     () => grants.map((g) => ({ ...g, priceAtGrant: priceAtGrant(g).price })),
-    [grants, price, quote?.date, today]
+    [grants, price, quote, today]
   );
 
   const projection = useMemo(
-    () => project({ grants: resolved, price, fxRate: fx, salary, today, horizonYears, calendar: VESTING_CALENDAR }, regime),
-    [resolved, price, fx, salary, today, horizonYears, regime]
+    () =>
+      project(
+        { grants: resolved, price, fxRate: fx, salary, today, horizonYears, calendar: VESTING_CALENDAR, performance, dividends },
+        regime
+      ),
+    [resolved, price, fx, salary, today, horizonYears, regime, performance]
   );
 
   // Only the quarters something vests in. An empty quarter is information in
@@ -156,7 +173,10 @@ export default function RsuTool({ seed }: { seed?: Extract<Seed, { tool: "rsu" }
   // nothing the gap in the dates does not already say.
   const vesting = useMemo(() => projection.quarters.filter((q) => q.units > 0), [projection]);
 
-  const state: RsuState = { grants, salary, horizonYears, price: typedPrice, fxRate: typedFx };
+  /** The payment the future ones are projected from, for the assumption note. */
+  const lastDividend = dividends.length ? dividends[dividends.length - 1] : null;
+
+  const state: RsuState = { grants, salary, horizonYears, performance, price: typedPrice, fxRate: typedFx };
   const dirty = JSON.stringify(state) !== JSON.stringify(saved?.data ?? null);
 
   const salaryNet = salaryOnly(salary, regime);
@@ -188,7 +208,7 @@ export default function RsuTool({ seed }: { seed?: Extract<Seed, { tool: "rsu" }
       {/* Shares first, then what they are worth. The euro net was the headline
           and the share count sat five lines down in a card, which is the wrong
           way round: RSUs pay in shares, and "how many actually turn up" is the
-          question the sell to cover makes hard to answer. */}
+          question the withholding makes hard to answer. */}
       <h2 style={{ marginBottom: 12 }}>
         {t.rsu.horizonSpan(projection.years[projection.years.length - 1]?.year ?? 0)}
       </h2>
@@ -201,6 +221,19 @@ export default function RsuTool({ seed }: { seed?: Extract<Seed, { tool: "rsu" }
             alt: usd(projection.netSharesUsd, lang, 0),
             hint: t.rsu.answerValueHint(usd(price, lang)),
           },
+          // The half nobody expects. It is in the answer rather than a footnote
+          // because it is money leaving your account on a date you were not
+          // thinking about, and the share count above is higher precisely
+          // because of it.
+          ...(projection.totalPayslipAdjustmentEur > 0.5
+            ? [
+                {
+                  name: t.rsu.answerPayslip,
+                  value: `\u2212${eur0(projection.totalPayslipAdjustmentEur, lang)}`,
+                  hint: t.rsu.answerPayslipHint,
+                },
+              ]
+            : []),
         ]}
       />
       <p className="note" style={{ marginTop: 14 }}>
@@ -265,6 +298,7 @@ export default function RsuTool({ seed }: { seed?: Extract<Seed, { tool: "rsu" }
                     info={
                       <Info label={t.common.whatIsThis}>
                         <p>{t.rsu.grantValueWhy}</p>
+                        <p>{t.rsu.fmvWhy}</p>
                       </Info>
                     }
                     hint={
@@ -275,11 +309,16 @@ export default function RsuTool({ seed }: { seed?: Extract<Seed, { tool: "rsu" }
                               num(grantUnits({ ...g, priceAtGrant: p.price }), lang, 2),
                               usd(p.price, lang)
                             )
-                          : t.rsu.grantValueHint(
-                              num(grantUnits({ ...g, priceAtGrant: p.price }), lang, 2),
-                              usd(p.price, lang),
-                              dateShort(p.on, lang)
-                            )
+                          : p.kind === "rolling"
+                            ? t.rsu.grantValueHintRolling(
+                                num(grantUnits({ ...g, priceAtGrant: p.price }), lang, 2),
+                                usd(p.price, lang)
+                              )
+                            : t.rsu.grantValueHint(
+                                num(grantUnits({ ...g, priceAtGrant: p.price }), lang, 2),
+                                usd(p.price, lang),
+                                dateShort(p.on, lang)
+                              )
                     }
                   />
                   <Select<VestingSchedule>
@@ -428,6 +467,23 @@ export default function RsuTool({ seed }: { seed?: Extract<Seed, { tool: "rsu" }
             />
           </div>
 
+          {/* The rating scales the annual awards. A discrete band rather than a
+              free field: 75 to 150 is the range a review can land in, and a
+              number you invent inside it is no more informative than the step. */}
+          <h3>{t.rsu.performance}</h3>
+          <Segmented<string>
+            label={t.rsu.performance}
+            value={String(performance)}
+            onChange={(v) => setPerformance(Number(v))}
+            options={PERFORMANCE_STEPS.map((v) => ({ id: String(v), label: `${Math.round(v * 100)}%` }))}
+          />
+          <div className="hint" style={{ marginTop: 6 }}>
+            {t.rsu.performanceHint} · {t.rsu.performanceOn}
+            <Info label={t.common.whatIsThis}>
+              <p>{t.rsu.performanceWhy}</p>
+            </Info>
+          </div>
+
           <h3>{t.rsu.horizon}</h3>
           <Segmented<"1" | "3" | "5">
             label={t.rsu.horizon}
@@ -495,12 +551,12 @@ export default function RsuTool({ seed }: { seed?: Extract<Seed, { tool: "rsu" }
                   </span>
                 ))}
               </div>
-              <p className="hint">
+              <div className="hint">
                 {t.rsu.chartHint} {t.rsu.chartGross}
                 <Info label={t.common.whatIsThis}>
                   <p>{t.rsu.sellToCover}</p>
                 </Info>
-              </p>
+              </div>
             </Card>
 
             <div className="grid3">
@@ -515,7 +571,7 @@ export default function RsuTool({ seed }: { seed?: Extract<Seed, { tool: "rsu" }
                     <Line name={t.rsu.yearUnits} value={num(y.units, lang, 2)} />
                     <Line name={t.rsu.yearGross} value={eur0(y.grossEur, lang)} />
                     <Line name={t.rsu.yearRate} value={pct(y.taxRate, lang)} tone="neg" />
-                    <Line name={t.rsu.yearSold} value={`\u2212${num(y.sharesSold, lang, 0)}`} tone="neg" />
+                    <Line name={t.rsu.yearSold} value={`\u2212${num(y.sharesWithheld, lang, 0)}`} tone="neg" />
                     <Line name={t.rsu.yearShares} hint={t.rsu.yearSharesHint} value={num(y.netShares, lang, 0)} />
                     {/* The number that makes a year of RSUs comparable to a
                         salary: it is the question people actually ask looking at
@@ -531,6 +587,82 @@ export default function RsuTool({ seed }: { seed?: Extract<Seed, { tool: "rsu" }
                 </Card>
               ))}
             </div>
+
+            {/* Why the share count and the euro net disagree. Without saying
+                it, one of the two looks wrong — and the settlement runs both
+                ways, so a card that only ever announced a further deduction
+                would be telling half the truth. */}
+            <Card>
+              <h2>{t.rsu.payslipTitle}</h2>
+              <p className="note">{t.rsu.withholdingFlat(pct(WITHHOLDING_RATE, lang))}</p>
+              <p className="note">
+                {Math.abs(projection.totalPayslipAdjustmentEur) < 0.5
+                  ? t.rsu.payslipEven
+                  : projection.totalPayslipAdjustmentEur > 0
+                    ? t.rsu.payslipOwed(
+                        pct(projection.years[0]?.taxRate ?? 0, lang),
+                        eur0(projection.totalPayslipAdjustmentEur, lang)
+                      )
+                    : t.rsu.payslipRefund(
+                        pct(projection.years[0]?.taxRate ?? 0, lang),
+                        eur0(-projection.totalPayslipAdjustmentEur, lang)
+                      )}
+              </p>
+              <div className="hint" style={{ marginTop: 10 }}>
+                {t.rsu.netWithholding}
+              </div>
+              <div className="scroll-x" style={{ marginTop: 14 }}>
+                <table className="tbl">
+                  <thead>
+                    <tr>
+                      <th>{t.common.year}</th>
+                      <th className="r optional-phone">{t.rsu.yearRate}</th>
+                      <th className="r">{t.rsu.yearSold}</th>
+                      <th className="r">{t.rsu.yearShares}</th>
+                      <th className="r">{t.rsu.payslipColumn}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {projection.years.map((y) => (
+                      <tr key={y.year}>
+                        <td style={{ fontWeight: 660 }}>{y.year}</td>
+                        <td className="r optional-phone neg">{pct(y.taxRate, lang)}</td>
+                        <td className="r neg">
+                          &#8722;{num(y.sharesWithheld, lang, 0)} ({pct(y.withholdingRate, lang)})
+                        </td>
+                        <td className="r" style={{ fontWeight: 660 }}>
+                          {num(y.netShares, lang, 0)}
+                        </td>
+                        {/* Signed: a refund is not a smaller deduction. */}
+                        <td
+                          className={`r ${y.payslipAdjustmentEur > 0 ? "neg" : "pos"}`}
+                          style={{ fontWeight: 660 }}
+                        >
+                          {y.payslipAdjustmentEur > 0 ? "\u2212" : "+"}
+                          {eur0(Math.abs(y.payslipAdjustmentEur), lang)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+
+            {/* Units nobody was promised. */}
+            {projection.dividendUnits > 0.005 ? (
+              <Card>
+                <h2>{t.rsu.dividendTitle}</h2>
+                <p className="note">
+                  {t.rsu.dividendLine(
+                    num(projection.dividendUnits, lang, 2),
+                    eur0(projection.dividendUnits * projection.perUnitEur, lang)
+                  )}
+                </p>
+                <p className="hint" style={{ marginTop: 10 }}>
+                  {t.rsu.dividendAssumption(usd(lastDividend?.amount ?? 0, lang))}
+                </p>
+              </Card>
+            ) : null}
 
             <Card>
               <div className="row-inline" style={{ justifyContent: "space-between", marginBottom: 10 }}>
@@ -571,7 +703,7 @@ export default function RsuTool({ seed }: { seed?: Extract<Seed, { tool: "rsu" }
                           <td className="r optional-phone">{num(q.units, lang, 2)}</td>
                           <td className="r">{eur0(q.grossEur, lang)}</td>
                           <td className="r optional neg">{pct(q.taxRate, lang)}</td>
-                          <td className="r neg optional-phone">&#8722;{num(q.sharesSold, lang, 0)}</td>
+                          <td className="r neg optional-phone">&#8722;{num(q.sharesWithheld, lang, 0)}</td>
                           <td className="r" style={{ fontWeight: 660, fontSize: "var(--t-20)" }}>
                             {num(q.netShares, lang, 0)}
                           </td>
@@ -625,12 +757,12 @@ export default function RsuTool({ seed }: { seed?: Extract<Seed, { tool: "rsu" }
                 </table>
               </div>
               )}
-              <p className="hint">
+              <div className="hint">
                 {usd(price, lang)} {t.common.perShare} · {t.common.fx} {num(fx, lang, 4)}
                 <Info label={t.common.whatIsThis}>
                   <p>{t.rsu.fractionNote}</p>
                 </Info>
-              </p>
+              </div>
             </Card>
           </>
         ) : null}

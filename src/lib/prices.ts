@@ -20,6 +20,16 @@ export interface HistoricalPoint {
   closeOn: string;
   eurusd: number;
   eurusdOn: string;
+  /**
+   * The fair market value on that date: the mean of the closes of the 20
+   * trading sessions **before** it, the date itself excluded.
+   *
+   * This — not the close of the day — is what prices an RSU grant, and the two
+   * are not close to each other: on 20 February 2026 the close was 142.88 and
+   * the fair market value 146.32, a 2.4% difference in the number of units a
+   * grant buys. Absent on rows old enough to have no 20 sessions behind them.
+   */
+  fmv?: number;
 }
 
 export interface Quote {
@@ -28,11 +38,48 @@ export interface Quote {
   eurusd: number;
   eurusdOn?: string;
   generatedAt?: string;
+  /**
+   * The 20-session mean as of the latest close: the fair market value a grant
+   * dated today would be priced at.
+   *
+   * The best available stand-in for a grant still in the future, where the real
+   * figure cannot exist yet — and a better one than a single day's close, since
+   * that is not how any grant is priced.
+   */
+  fmv20?: number;
+}
+
+export interface DividendPayment {
+  /** payment date, ISO */
+  date: string;
+  /** dollars per share */
+  amount: number;
+  /** the close on that day, which is what the equivalent units are priced at */
+  close: number;
 }
 
 export const history: HistoricalPoint[] = (reference as { prices: HistoricalPoint[] }).prices;
+export const dividends: DividendPayment[] = (reference as { dividends?: DividendPayment[] }).dividends ?? [];
 export const historyUpdated: string = (reference as { updated: string }).updated;
 export const keyDates: string[] = (reference as { keyDates: string[] }).keyDates;
+
+/**
+ * The fair market value to price a grant dated `date`.
+ *
+ * A stored one when the date is a plan date that has passed, the rolling
+ * 20-session mean when it has not, and the plain close only as a last resort —
+ * in which case it is wrong by a couple of percent and the caller should say
+ * where the number came from.
+ */
+export function fmvAt(date: string, quote: Quote | null): { price: number; kind: "fmv" | "rolling" | "close" } | null {
+  const point = historyAt(date);
+  const exact = history.find((p) => p.date === date);
+  if (exact?.fmv) return { price: exact.fmv, kind: "fmv" };
+  if (date > (point?.date ?? "") && quote?.fmv20) return { price: quote.fmv20, kind: "rolling" };
+  if (point?.fmv) return { price: point.fmv, kind: "fmv" };
+  if (quote?.fmv20) return { price: quote.fmv20, kind: "rolling" };
+  return point ? { price: point.close, kind: "close" } : null;
+}
 
 /** The last close stored in the sources at a date, or the first one if earlier than all. */
 export function historyAt(date: string): HistoricalPoint | null {
