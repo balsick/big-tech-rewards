@@ -459,6 +459,7 @@ export default function Guided({
                     {
                       name: t.espp.answerValue,
                       value: eur0(espp.marketValue, lang),
+                      alt: usd(espp.marketValueUsd, lang, 0),
                       // The MARKET price, not the discounted one. What they
                       // are worth is 39 x 188.71; what they cost is 39 x
                       // 108.19, and pairing the market value with the purchase
@@ -520,6 +521,7 @@ export default function Guided({
                   {
                     name: t.rsu.answerValue,
                     value: eur0(rsu.netSharesEur, lang),
+                    alt: usd(rsu.netSharesUsd, lang, 0),
                     hint: t.rsu.answerValueHint(usd(endPrice, lang)),
                   },
                 ]}
@@ -564,7 +566,11 @@ export default function Guided({
                   value={`${num(rsu.totalNetShares, lang, 0)} ${t.common.shares}`}
                   sum
                 />
-                <Line name={t.rsu.answerValue} value={eur0(rsu.netSharesEur, lang)} sum />
+                <Line
+                  name={t.rsu.answerValue}
+                  value={`${eur0(rsu.netSharesEur, lang)} · ${usd(rsu.netSharesUsd, lang, 0)}`}
+                  sum
+                />
               </ul>
               <p className="hint" style={{ marginTop: 12 }}>
                 {t.rsu.sellToCover}

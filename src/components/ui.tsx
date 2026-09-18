@@ -183,14 +183,23 @@ export function Check({
  * `key` on each value is what makes it redraw when it changes: the only motion
  * on the page, spent where something actually moved.
  */
-export function Answer({ items }: { items: { name: string; value: string; hint?: string }[] }) {
+export function Answer({
+  items,
+}: {
+  items: { name: string; value: string; alt?: string; hint?: string }[];
+}) {
   return (
     <div className="answer-pair">
       {items.map((it) => (
         <div className="answer-one" key={it.name}>
           <span className="answer-name">{it.name}</span>
-          <span className="answer-value answer" key={it.value}>
+          {/* Both currencies on one baseline rather than stacked: they are the
+              same quantity twice, and a second line would read as a second
+              fact. The key covers the alternate too, or a figure that only
+              moved because the exchange rate did would not redraw. */}
+          <span className="answer-value answer" key={`${it.value}|${it.alt ?? ""}`}>
             {it.value}
+            {it.alt ? <span className="answer-alt">{it.alt}</span> : null}
           </span>
           {it.hint ? <span className="answer-hint">{it.hint}</span> : null}
         </div>

@@ -584,6 +584,10 @@ test("RSU: the share totals are the sum of the years, not a re-rounding", () => 
     assert.equal(p.totalNetShares, p.years.reduce((s, y) => s + y.netShares, 0));
     assert.equal(p.totalNetShares, p.quarters.reduce((s, q) => s + q.netShares, 0));
     near(p.netSharesEur, p.totalNetShares * p.perUnitEur, 1e-9);
+    // The same holding in the currency the shares are quoted in, and the two
+    // have to be each other at the projection's rate — they sit side by side.
+    near(p.netSharesUsd, p.totalNetShares * 188.71, 1e-9);
+    near(p.netSharesEur * 1.148, p.netSharesUsd, 1e-9);
     // Whole shares are worth no more than the net they came out of: the
     // rounding is always down, with the fraction paid in cash.
     assert.ok(p.netSharesEur <= p.totalNet + 1e-9, `salary ${salary}: ${p.netSharesEur} > ${p.totalNet}`);

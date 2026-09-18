@@ -198,6 +198,7 @@ export default function RsuTool({ seed }: { seed?: Extract<Seed, { tool: "rsu" }
           {
             name: t.rsu.answerValue,
             value: eur0(projection.netSharesEur, lang),
+            alt: usd(projection.netSharesUsd, lang, 0),
             hint: t.rsu.answerValueHint(usd(price, lang)),
           },
         ]}
@@ -344,20 +345,36 @@ export default function RsuTool({ seed }: { seed?: Extract<Seed, { tool: "rsu" }
             type="button"
             style={{ marginTop: 14 }}
             onClick={() => {
-              const year = Number(today.slice(0, 4));
-              setGrants((gs) => [
-                ...gs,
-                {
-                  id: newGrantId(),
-                  label: `Bonus ${year + gs.length - 1}`,
-                  date: `${year}-11-20`,
-                  valueUsd: 10000,
-                  schedule: "quarterly",
-                  years: 3,
-                  usePlanDates: true,
-                  typedPrice: null,
-                },
-              ]);
+              setGrants((gs) => {
+                // The name and the date come from the same year, from the same
+                // expression. They used to be worked out separately — the label
+                // counted the rows and the date took the current year — so the
+                // third grant came out as "Bonus 2027" granted on the day Bonus
+                // 2026 was granted.
+                //
+                // The next award is the year after the latest one you already
+                // have, read off the dates rather than the row count: deleting
+                // the welcome grant changes how many rows there are and does
+                // not change which bonus comes next.
+                const latest = gs.reduce(
+                  (m, g) => (g.date > m ? g.date : m),
+                  `${Number(today.slice(0, 4)) - 1}-11-20`
+                );
+                const year = Number(latest.slice(0, 4)) + 1;
+                return [
+                  ...gs,
+                  {
+                    id: newGrantId(),
+                    label: `Bonus ${year}`,
+                    date: `${year}-11-20`,
+                    valueUsd: 10000,
+                    schedule: "quarterly",
+                    years: 3,
+                    usePlanDates: true,
+                    typedPrice: null,
+                  },
+                ];
+              });
             }}
           >
             <Plus />

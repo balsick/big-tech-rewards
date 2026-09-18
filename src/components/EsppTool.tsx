@@ -169,6 +169,7 @@ export default function EsppTool({ seed }: { seed?: Extract<Seed, { tool: "espp"
             {
               name: t.espp.answerValue,
               value: eur0(result.marketValue, lang),
+              alt: usd(result.marketValueUsd, lang, 0),
               hint: t.espp.answerValueHint(usd(endPrice, lang)),
             },
           ]}

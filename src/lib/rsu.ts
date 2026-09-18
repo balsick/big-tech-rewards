@@ -245,6 +245,8 @@ export interface Projection {
   totalNetShares: number;
   /** what those shares are worth at the projection's price */
   netSharesEur: number;
+  /** the same, in the currency the shares are actually quoted in */
+  netSharesUsd: number;
   /** euro per share, the rate every figure here was converted with */
   perUnitEur: number;
   /** quarter by quarter, for the chart */
@@ -396,6 +398,7 @@ export function project(i: RsuInput, regime?: TaxRegime): Projection {
     totalNet: years.reduce((s, y) => s + y.netEur, 0),
     totalNetShares,
     netSharesEur: totalNetShares * perUnitEur,
+    netSharesUsd: totalNetShares * i.price,
     perUnitEur,
     quarters,
   };

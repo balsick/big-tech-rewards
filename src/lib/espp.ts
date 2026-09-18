@@ -79,6 +79,14 @@ export interface EsppResult {
   spent: number; // EUR actually converted into shares
   refunded: number; // EUR that did not buy a whole share and comes back
   marketValue: number; // EUR at the market price on purchase day
+  /**
+   * The same value in dollars.
+   *
+   * The shares are quoted in dollars and the euro figure is a conversion at a
+   * rate that moves, so both belong on screen: one is what you hold, the other
+   * is what it is worth here today.
+   */
+  marketValueUsd: number;
   /** the discount: taxable pay in the month of the purchase */
   discountValue: number;
   taxRate: number; // how much the taxman takes, at the margin of your salary
@@ -150,6 +158,7 @@ export function simulateEspp(i: EsppInput, regime?: TaxRegime): EsppResult {
     spent,
     refunded,
     marketValue,
+    marketValueUsd: shares * i.priceAtPurchase,
     discountValue,
     taxRate: m.rate,
     taxWithheld,
