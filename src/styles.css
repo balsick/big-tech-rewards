@@ -893,6 +893,15 @@ dialog.guida {
   color: var(--text);
   box-shadow: 0 2px 6px rgb(20 23 26 / 0.08), 0 28px 60px -30px rgb(20 23 26 / 0.55);
   overflow: hidden;
+}
+
+/* The `[open]` is load-bearing. A closed <dialog> is hidden by the user agent's
+   `dialog:not([open]) { display: none }` — and any author rule setting `display`
+   on the element itself beats it, whatever the specificity. Ungated, `close()`
+   still emptied the top layer, so the scrim went and the panel stayed: sitting
+   in the page flow with nothing behind it, which reads as a modal that refused
+   to close. Gating it means the user agent keeps the closed state. */
+dialog.guida[open] {
   display: flex;
   flex-direction: column;
 }
