@@ -1312,6 +1312,68 @@ table.tbl.cal tr.has-shares td { background: var(--accent-soft); }
 
 :root[data-theme="dark"] table.tbl.cal tr.has-shares td { background: transparent; }
 
+/* On a phone the calendar stops being a table.
+ *
+ * Four columns, one of them a strip of pills, do not fit in 390px and no
+ * column here is droppable: the month, what happens, what reaches the bank and
+ * what reaches the brokerage account are the whole content. A table would
+ * scroll sideways, which hides the very column the row exists for — the one on
+ * the right. So the row stacks: month and net on one line, then what happened,
+ * then the shares. Nothing is lost and nothing moves off screen. */
+@media (max-width: 720px) {
+  table.tbl.cal,
+  table.tbl.cal tbody,
+  table.tbl.cal tr,
+  table.tbl.cal td {
+    display: block;
+    min-width: 0;
+  }
+
+  table.tbl.cal thead { display: none; }
+
+  table.tbl.cal tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 4px 12px;
+    padding: 11px 0;
+    border-top: 1px solid var(--border);
+    align-items: baseline;
+  }
+
+  table.tbl.cal tr.year-break { border-top-color: var(--border-strong); }
+
+  table.tbl.cal td { border-top: 0; padding: 0; white-space: normal; }
+
+  /* month left, net right, on the same line */
+  table.tbl.cal td:nth-child(1) { grid-column: 1; grid-row: 1; }
+  table.tbl.cal td:nth-child(3) { grid-column: 2; grid-row: 1; }
+  /* then the pills, then the shares, each across the full width */
+  table.tbl.cal td:nth-child(2) { grid-column: 1 / -1; }
+  table.tbl.cal td:nth-child(4) { grid-column: 1 / -1; padding-left: 0; }
+
+  /* the bar sat under a right-aligned figure; on one line it is in the way */
+  table.tbl.cal .cal-bar { display: none; }
+
+  table.tbl.cal td:nth-child(4):empty { display: none; }
+
+  .cal-shares { width: 100%; }
+
+  /* The highlight belongs to the ROW here, not to its cells. Tinting the cells
+     leaves the grid's 4px gaps untinted, so a month with shares came out as
+     three green bands with white stripes between them. A stacked row is one
+     card and should read as one. */
+  table.tbl.cal tr.has-shares {
+    background: var(--accent-soft);
+    border-radius: 10px;
+  }
+  /* No negative margin to bleed it to the card's edge: that is 10px wider than
+     the wrapper and brings back the sideways scroll this whole block exists to
+     remove. The tint stops at the text, which is where the other rows stop
+     too. */
+
+  table.tbl.cal tr.has-shares td { background: transparent; }
+}
+
 .cal-legend {
   display: flex;
   flex-wrap: wrap;
