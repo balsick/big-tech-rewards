@@ -99,6 +99,14 @@ export const en: Dict = {
     guaranteed: (r: string) => `With a flat stock you still keep ${r} gross.`,
     windowStart: "Start of period",
     windowPick: "Which window",
+    enrolled: "In the plan since",
+    enrolledHint: (price: string, date: string) => `reference price ${price}, close of ${date}`,
+    enrolledFirst: "first time in this window",
+    enrolledWhy:
+      "The lookback does not reach back to the start of the period you are in now, but to the day you joined the plan. Someone already in from 1 April carries April’s price into the window that starts in October, and only loses it if the purchase day closes lower. Someone joining in October for the first time starts from October’s price. Two colleagues buying on the same day at the same percentage can end up with very different numbers of shares, and this is why.",
+    enrolledSameAsWindow: "You joined with this window, so the reference is the price at the start of the period.",
+    enrolledCarried: (date: string) =>
+      `You carry the price of ${date}: it holds unless the purchase day closes lower.`,
     windowOpen: "running",
     windowClosed: "closed",
     windowLabel: (from: string, to: string) => `${from} – ${to}`,
@@ -130,7 +138,9 @@ export const en: Dict = {
       `Annualised that is roughly ${r}: your money is tied up for about half the period, not all of it.`,
     payslipTitle: "Withheld on the purchase-month payslip",
     payslipLine: (discount: string, rate: string) =>
-      `The discount is worth ${discount} and it is taxable pay: it is taxed on your payslip at ${rate}, your marginal rate.`,
+      `The discount is worth ${discount} and it is taxable pay: that payslip loses ${rate} of it, between income tax and social security.`,
+    payslipSurtax: (amount: string, total: string, rate: string) =>
+      `The regional and municipal surtaxes — another ${amount} — do not come out that month: they are worked out on the year’s income and settled later, in instalments. All in, the discount costs you ${total}, which is ${rate} at your full marginal rate.`,
     payslipRest: (refund: string, delta: string, direction: string) =>
       `${refund} that did not buy a whole share comes back to you, so your take-home that month is ${delta} ${direction} than usual.`,
     lower: "lower",

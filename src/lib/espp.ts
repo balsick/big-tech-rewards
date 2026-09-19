@@ -91,7 +91,18 @@ export interface EsppResult {
   discountValue: number;
   taxRate: number; // how much the taxman takes, at the margin of your salary
   taxWithheld: number;
-  /** net effect on that payslip: the refund minus the withholding */
+  /**
+   * The part of it that actually leaves the purchase-month payslip: income tax
+   * and social security. The surtaxes are not in here.
+   */
+  withheldOnPayslip: number;
+  /**
+   * Regional and municipal surtaxes on the discount — due, but not that month.
+   * They are settled the following year, so putting them in the payslip figure
+   * overstated it by about four points.
+   */
+  surtaxLater: number;
+  /** net effect on that payslip: the refund minus what is withheld there */
   payslipEffect: number;
   outlay: number; // your own money: shares plus tax on the discount
   gain: number;
@@ -139,8 +150,13 @@ export function simulateEspp(i: EsppInput, regime?: TaxRegime): EsppResult {
   // margin the bracket, the fading credit and the surtaxes pile up. It is the
   // same question as "how much is left of a raise", so it is the same function.
   const base: GrossPay = { salary: i.salary };
-  const m = discountValue > 0 ? marginalRate(base, discountValue, regime) : { kept: 0, rate: 0 };
+  const m =
+    discountValue > 0
+      ? marginalRate(base, discountValue, regime)
+      : { kept: 0, rate: 0, surtaxRate: 0, payrollRate: 0 };
   const taxWithheld = discountValue * m.rate;
+  const surtaxLater = discountValue * m.surtaxRate;
+  const withheldOnPayslip = taxWithheld - surtaxLater;
 
   const outlay = spent + taxWithheld;
   const gain = marketValue - outlay;
@@ -162,7 +178,9 @@ export function simulateEspp(i: EsppInput, regime?: TaxRegime): EsppResult {
     discountValue,
     taxRate: m.rate,
     taxWithheld,
-    payslipEffect: refunded - taxWithheld,
+    withheldOnPayslip,
+    surtaxLater,
+    payslipEffect: refunded - withheldOnPayslip,
     outlay,
     gain,
     roi,
@@ -242,6 +260,29 @@ export function esppWindows(
     }
   }
   return out.sort((a, b) => a.purchase.localeCompare(b.purchase));
+}
+
+/**
+ * The days you could have joined the plan on, oldest first.
+ *
+ * The lookback does not reach back to the start of the purchase period you
+ * happen to be in — it reaches back to the day you **enrolled**. Someone who
+ * joined last April keeps April's price as the reference for the window that
+ * starts in October, and only loses it if October-to-April closes lower.
+ * Someone joining in October for the first time gets October's price, which is
+ * a different plan for the same six months.
+ *
+ * That is the single input this tool had no way to express, and it is worth
+ * more than any other: two colleagues buying on the same day at the same
+ * percentage can end up with very different numbers of shares.
+ */
+export function enrolmentDates(windowStart: string, plan: EsppPlan, count = 5): string[] {
+  const out: string[] = [windowStart];
+  for (let k = 1; k < Math.max(1, count); k++) {
+    const [y, m, d] = out[0].split("-").map(Number);
+    out.unshift(new Date(Date.UTC(y, m - 1 - plan.months, d)).toISOString().slice(0, 10));
+  }
+  return out;
 }
 
 /**

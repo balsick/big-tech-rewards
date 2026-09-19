@@ -277,11 +277,21 @@ export function marginalRate(
   base: GrossPay,
   extra: number,
   r: TaxRegime = DEFAULT_REGIME
-): { net: number; kept: number; rate: number } {
-  if (extra === 0) return { net: 0, kept: 0, rate: 0 };
-  const before = grossToNet(base, r).net;
-  const after = grossToNet({ ...base, equity: (base.equity ?? 0) + extra }, r).net;
-  const net = after - before;
+): { net: number; kept: number; rate: number; surtaxRate: number; payrollRate: number } {
+  if (extra === 0) return { net: 0, kept: 0, rate: 0, surtaxRate: 0, payrollRate: 0 };
+  const b = grossToNet(base, r);
+  const a = grossToNet({ ...base, equity: (base.equity ?? 0) + extra }, r);
+  const net = a.net - b.net;
   const kept = net / extra;
-  return { net, kept, rate: 1 - kept };
+  const rate = 1 - kept;
+  // The surtaxes are part of the cost and NOT part of that month's payslip:
+  // they are worked out on the year's income and settled afterwards, in
+  // instalments the following year. Splitting them out is the difference
+  // between "this is what it costs you" and "this is what disappears from the
+  // payslip you are about to read", which are four points apart and were being
+  // printed as the same sentence.
+  const surtax =
+    a.regionalSurtax - b.regionalSurtax + (a.municipalSurtax - b.municipalSurtax);
+  const surtaxRate = surtax / extra;
+  return { net, kept, rate, surtaxRate, payrollRate: rate - surtaxRate };
 }

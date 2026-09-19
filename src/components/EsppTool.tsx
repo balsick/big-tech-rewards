@@ -9,6 +9,7 @@ import { dateShort, eur, eur0, num, pct, todayISO, usd } from "../lib/format.ts"
 import {
   ESPP_PLAN,
   defaultWindow,
+  enrolmentDates,
   esppWindows,
   expectedContribution,
   guaranteedFloor,
@@ -65,7 +66,18 @@ export default function EsppTool() {
     return s0?.purchase && windows.some((w) => w.purchase === s0.purchase) ? s0.purchase : fallback;
   });
   const chosen = windows.find((w) => w.purchase === purchase) ?? defaultWindow(today, plan);
-  const start = chosen.start;
+
+  // When you joined the plan, which is NOT the same as which window you are
+  // buying in. The lookback reaches back to the enrolment, so someone already
+  // in since April carries April's price into the October window — and that
+  // single fact can be worth more than the percentage they contribute.
+  const joinable = useMemo(() => enrolmentDates(chosen.start, plan), [chosen.start, plan]);
+  const [enrolled, setEnrolled] = useState<string | null>(null);
+  // A choice from an older window is meaningless once you move to a window that
+  // starts before it, so it falls back rather than sitting there as a date the
+  // plan could not have.
+  const start = enrolled && enrolled <= chosen.start ? enrolled : chosen.start;
+  const joinedWithWindow = start === chosen.start;
   // The salary and the percentage are shared with the other tabs, so a save is
   // restored into them once on mount rather than into local state.
   const restored = useRef(false);
@@ -226,6 +238,29 @@ export default function EsppTool() {
                 ? t.espp.windowClosedHint
                 : t.espp.windowOpenHint}
           </p>
+
+          <div style={{ marginTop: 14 }}>
+            <Select<string>
+              label={t.espp.enrolled}
+              value={start}
+              onChange={setEnrolled}
+              options={joinable.map((d) => ({
+                id: d,
+                label:
+                  d === chosen.start
+                    ? `${dateShort(d, lang)} · ${t.espp.enrolledFirst}`
+                    : dateShort(d, lang),
+              }))}
+            />
+            {/* A div and not a <p>: the popover Info renders a block, which a
+                paragraph cannot contain. */}
+            <div className="hint" style={{ marginTop: 6 }}>
+              {joinedWithWindow ? t.espp.enrolledSameAsWindow : t.espp.enrolledCarried(dateShort(start, lang))}
+              <Info label={t.common.whatIsThis}>
+                <p>{t.espp.enrolledWhy}</p>
+              </Info>
+            </div>
+          </div>
 
           <h3>{t.espp.contribution}</h3>
           <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
@@ -463,9 +498,22 @@ export default function EsppTool() {
           <>
             <Card>
               <h2>{t.espp.payslipTitle}</h2>
-              <p className="mid">{eur0(result.taxWithheld, lang)}</p>
+              {/* What leaves THAT payslip, not the total cost: the surtaxes are
+                  due but settled the following year, and printing them here
+                  overstated the month by about four points. */}
+              <p className="mid">{eur0(result.withheldOnPayslip, lang)}</p>
               <p className="note">
-                {t.espp.payslipLine(eur0(result.discountValue, lang), pct(result.taxRate, lang))}
+                {t.espp.payslipLine(
+                  eur0(result.discountValue, lang),
+                  pct(result.taxRate - result.surtaxLater / Math.max(1, result.discountValue), lang)
+                )}
+              </p>
+              <p className="note">
+                {t.espp.payslipSurtax(
+                  eur0(result.surtaxLater, lang),
+                  eur0(result.taxWithheld, lang),
+                  pct(result.taxRate, lang)
+                )}
               </p>
               <p className="note">
                 {t.espp.payslipRest(

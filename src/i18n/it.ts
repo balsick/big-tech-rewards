@@ -97,6 +97,14 @@ export const it = {
     guaranteed: (r: string) => `Con il titolo fermo resta comunque ${r} lordo.`,
     windowStart: "Inizio periodo",
     windowPick: "Quale finestra",
+    enrolled: "Da quando sei nel piano",
+    enrolledHint: (price: string, date: string) => `prezzo di riferimento ${price}, chiusura del ${date}`,
+    enrolledFirst: "prima volta in questa finestra",
+    enrolledWhy:
+      "Il lookback non guarda all’inizio del periodo in cui ti trovi ora, ma al giorno in cui sei entrato nel piano. Chi era già dentro dal 1º aprile si porta dietro il prezzo di aprile anche per la finestra che parte a ottobre, e lo perde solo se l’acquisto chiude più in basso. Chi entra a ottobre per la prima volta parte dal prezzo di ottobre. Due colleghi che comprano lo stesso giorno, con la stessa percentuale, possono ritrovarsi con un numero di azioni molto diverso: è questa la ragione.",
+    enrolledSameAsWindow: "Sei entrato con questa finestra, quindi il riferimento è il prezzo di inizio periodo.",
+    enrolledCarried: (date: string) =>
+      `Ti porti dietro il prezzo del ${date}: vale finché il giorno dell’acquisto non chiude più in basso.`,
     windowOpen: "in corso",
     windowClosed: "conclusa",
     windowLabel: (from: string, to: string) => `${from} – ${to}`,
@@ -128,7 +136,9 @@ export const it = {
       `Su base annua fa circa ${r}: i soldi restano immobilizzati in media metà del periodo, non tutto.`,
     payslipTitle: "Sul cedolino dell’acquisto trattengono",
     payslipLine: (discount: string, rate: string) =>
-      `Lo sconto vale ${discount} ed è imponibile: te lo tassano in busta al ${rate}, la tua aliquota marginale.`,
+      `Lo sconto vale ${discount} ed è imponibile: su quel cedolino te ne trattengono il ${rate}, fra IRPEF e contributi.`,
+    payslipSurtax: (amount: string, total: string, rate: string) =>
+      `Le addizionali regionale e comunale — altri ${amount} — non escono quel mese: si calcolano sul reddito dell’anno e si liquidano dopo, in acconto e saldo. In tutto lo sconto ti costa ${total}, il ${rate} della tua aliquota marginale piena.`,
     payslipRest: (refund: string, delta: string, direction: string) =>
       `Tornano indietro ${refund} che non hanno comprato un’azione intera, quindi il netto di quel mese è ${delta} ${direction} del solito.`,
     lower: "più basso",

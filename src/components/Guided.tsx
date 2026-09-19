@@ -491,9 +491,19 @@ export default function Guided({
                 <div className="guida-carte">
                   <Card className="accent">
                     <h3>{t.espp.payslipTitle}</h3>
-                    <p className="big">{eur0(espp.taxWithheld, lang)}</p>
+                    <p className="big">{eur0(espp.withheldOnPayslip, lang)}</p>
                     <p className="note">
-                      {t.espp.payslipLine(eur0(espp.discountValue, lang), pct(espp.taxRate, lang))}
+                      {t.espp.payslipLine(
+                        eur0(espp.discountValue, lang),
+                        pct(espp.taxRate - espp.surtaxLater / Math.max(1, espp.discountValue), lang)
+                      )}
+                    </p>
+                    <p className="note">
+                      {t.espp.payslipSurtax(
+                        eur0(espp.surtaxLater, lang),
+                        eur0(espp.taxWithheld, lang),
+                        pct(espp.taxRate, lang)
+                      )}
                     </p>
                   </Card>
                   <Card>

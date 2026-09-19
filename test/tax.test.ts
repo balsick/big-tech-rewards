@@ -13,6 +13,7 @@ import {
   marginalRate,
   extraCredit,
   SOCIAL_SECURITY_2026,
+  type TaxRegime,
 } from "../src/lib/tax.ts";
 import { dividends, history } from "../src/lib/prices.ts";
 import {
@@ -22,6 +23,7 @@ import {
   expectedContribution,
   esppWindows,
   defaultWindow,
+  enrolmentDates,
   CLOSED_WINDOW_GRACE_DAYS,
 } from "../src/lib/espp.ts";
 import {
@@ -849,4 +851,74 @@ test("RSU: a vest is whole shares even once dividend equivalents are in", () => 
   // The early vests are untouched: a credit paid in March cannot make the May
   // vest fractional, it moves into a later one.
   assert.equal(p.tranches[0].units, grantOnly[0].units);
+});
+
+test("ESPP: the lookback reaches back to enrolment, not to the window start", () => {
+  // Two people buying on the same day at the same percentage, differing only in
+  // when they joined. This is the input the tool had no way to express, and it
+  // is worth more than the contribution rate.
+  const plan = ESPP_PLAN;
+  const win = { start: "2026-10-01", purchase: "2027-04-01" };
+  assert.deepEqual(enrolmentDates(win.start, plan, 3), ["2025-10-01", "2026-04-01", "2026-10-01"]);
+
+  const common = { salary: 50000, contributed: 3000, priceAtPurchase: 200, fxRate: 1.15, plan };
+  // Joined in April, when the share was at 120: that price is carried over.
+  const veteran = simulateEspp({ ...common, priceAtStart: 120 });
+  // Joined in October, when it was at 180.
+  const newcomer = simulateEspp({ ...common, priceAtStart: 180 });
+
+  assert.equal(veteran.referencePrice, 120, "the lookback takes the lower of enrolment and purchase");
+  assert.equal(newcomer.referencePrice, 180);
+  assert.ok(veteran.shares > newcomer.shares, "the older reference buys more shares");
+  assert.ok(veteran.gain > newcomer.gain);
+
+  // And the carried price is lost when the purchase day closes lower: then both
+  // land on the same reference, which is the purchase price itself.
+  const fallen = { ...common, priceAtPurchase: 90 };
+  assert.equal(simulateEspp({ ...fallen, priceAtStart: 120 }).referencePrice, 90);
+  assert.equal(simulateEspp({ ...fallen, priceAtStart: 180 }).referencePrice, 90);
+  assert.equal(
+    simulateEspp({ ...fallen, priceAtStart: 120 }).shares,
+    simulateEspp({ ...fallen, priceAtStart: 180 }).shares,
+    "a fall wipes out the advantage of having joined earlier"
+  );
+
+  // The enrolment list always ends on the window's own start — the first-timer
+  // case — and steps back by whole periods.
+  const dates = enrolmentDates("2026-04-01", plan, 4);
+  assert.equal(dates[dates.length - 1], "2026-04-01");
+  assert.deepEqual(dates, ["2024-10-01", "2025-04-01", "2025-10-01", "2026-04-01"]);
+});
+
+test("the marginal rate separates what the payslip loses from what comes later", () => {
+  // Regional and municipal surtaxes are part of the cost and not part of that
+  // month's payslip: they are worked out on the year's income and settled the
+  // following year. Printing the two as one number overstated the month by
+  // about four points, on a card whose title is literally "on that payslip".
+  const m = marginalRate({ salary: 34914 }, 1683);
+  near(m.surtaxRate + m.payrollRate, m.rate, 1e-12);
+  assert.ok(m.surtaxRate > 0.03 && m.surtaxRate < 0.05, `surtaxes are ${(m.surtaxRate * 100).toFixed(2)}%`);
+  assert.ok(m.payrollRate < m.rate, "the payslip loses less than the full rate");
+
+  // And the split reaches the ESPP result, where the two figures have to add up
+  // to the tax on the discount.
+  const r = simulateEspp({
+    salary: 34914, contributed: 2334, priceAtStart: 127.28, priceAtPurchase: 188.71,
+    fxRate: 1.147974, plan: ESPP_PLAN,
+  });
+  near(r.withheldOnPayslip + r.surtaxLater, r.taxWithheld, 1e-9);
+  assert.ok(r.withheldOnPayslip > 0 && r.surtaxLater > 0);
+  // The month's net effect follows the payslip figure, not the total.
+  near(r.payslipEffect, r.refunded - r.withheldOnPayslip, 1e-9);
+
+  // With no surtaxes in the regime the two collapse into one, which is the
+  // check that nothing is being double-counted.
+  const flat: TaxRegime = {
+    ...DEFAULT_REGIME,
+    regional: { brackets: [{ upTo: null, rate: 0 }], exemption: 0 },
+    municipal: { brackets: [{ upTo: null, rate: 0 }], exemption: 0 },
+  };
+  const m2 = marginalRate({ salary: 34914 }, 1683, flat);
+  assert.equal(m2.surtaxRate, 0);
+  near(m2.payrollRate, m2.rate, 1e-12);
 });
