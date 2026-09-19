@@ -1,4 +1,4 @@
-import { useId, useState, type ReactNode } from "react";
+import { useId, useState, type CSSProperties, type ReactNode } from "react";
 import { parseNum, toField, type Lang } from "../lib/format.ts";
 import { Chevron } from "./Icons.tsx";
 
@@ -102,14 +102,18 @@ export function Segmented<T extends string>({
   options,
   onChange,
   label,
+  style,
 }: {
   value: T;
   options: { id: T; label: ReactNode; title?: string }[];
   onChange: (v: T) => void;
   label: string;
+  /** only for placement — the header uses it to name the group for a view
+   *  transition, never to restyle the control */
+  style?: CSSProperties;
 }) {
   return (
-    <div className="seg" role="group" aria-label={label}>
+    <div className="seg" role="group" aria-label={label} style={style}>
       {options.map((o) => (
         <button key={o.id} type="button" title={o.title} aria-pressed={value === o.id} onClick={() => onChange(o.id)}>
           {o.label}

@@ -213,10 +213,10 @@ export interface EsppWindow {
  * questions about: the shares were bought, the discount is taxable pay, and the
  * withholding lands on the payslip of that same month. The window that opened
  * the same morning has one price and five months of nothing — it can only be a
- * projection. So for three weeks, long enough for the payslip to arrive, the
- * tool keeps showing the purchase that happened.
+ * projection. So for a month, which is past the payslip that carries the
+ * withholding, the tool keeps showing the purchase that happened.
  */
-export const CLOSED_WINDOW_GRACE_DAYS = 21;
+export const CLOSED_WINDOW_GRACE_DAYS = 30;
 
 const shiftDays = (iso: string, days: number): string => {
   const [y, m, d] = iso.split("-").map(Number);

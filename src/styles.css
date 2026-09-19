@@ -298,15 +298,41 @@ button.btn.primary.guidami {
 
   .tabs-bar nav.tabs button { padding-bottom: 6px; }
 
-  /* The strip scrolls, so a label gets cut at its left edge. Fading it says
-     "there is more this way"; a hard cut through the middle of a word reads
-     as a rendering fault. */
-  .tabs-bar nav.tabs {
+  /* Only once the bar is compact, which is when the strip is narrow enough to
+     scroll: a label gets cut at its left edge, and fading it says "there is
+     more this way" where a hard cut through a word reads as a rendering
+     fault. Expanded, nothing is scrolled and the fade would just dim the
+     first tab for no reason. */
+  .tabs-bar.compact nav.tabs {
     -webkit-mask-image: linear-gradient(to right, transparent 0, #000 18px);
     mask-image: linear-gradient(to right, transparent 0, #000 18px);
   }
 
   .quick { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; }
+}
+
+/* The two header forms, animated as a move.
+ *
+ * Only the four named controls travel. The page itself must not cross-fade:
+ * the default root transition would dissolve the whole document on every
+ * collapse, which is a page-sized effect for a header-sized change — and it
+ * fires while you are scrolling, which is the worst possible moment to blur
+ * what someone is reading. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+::view-transition-group(vt-guide),
+::view-transition-group(vt-repo),
+::view-transition-group(vt-theme),
+::view-transition-group(vt-lang) {
+  /* Short: the page is frozen under a snapshot for the duration, and this is
+     triggered by scrolling. Long enough to read as travel, over before it can
+     get in the way. */
+  animation-duration: 220ms;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 /* One state of a segmented control, standing in for the whole of it. */

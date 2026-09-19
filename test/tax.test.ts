@@ -613,8 +613,8 @@ test("ESPP: the windows on offer, and which one the tool opens on", () => {
   ]);
 
   // The closed one drops off once it is past the grace period.
-  const afterGrace = "2026-10-30"; // 29 days after the purchase
-  assert.ok(29 > CLOSED_WINDOW_GRACE_DAYS, "the fixture has to be outside the grace period");
+  const afterGrace = "2026-11-05"; // 35 days after the purchase
+  assert.ok(35 > CLOSED_WINDOW_GRACE_DAYS, "the fixture has to be outside the grace period");
   assert.deepEqual(w(afterGrace), ["2026-10-01->2027-04-01"]);
 
   // The default: the window that just closed while it is still on offer,

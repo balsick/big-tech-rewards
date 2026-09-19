@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useStore } from "../state/store.tsx";
-import { Answer, Card, Segmented } from "./ui.tsx";
+import { Card, Segmented } from "./ui.tsx";
 import { ArrowDownToLine } from "./Icons.tsx";
 import { eur0, monthShort, num, todayISO, usd } from "../lib/format.ts";
 import { ESPP_PLAN, defaultWindow, enrolmentDates } from "../lib/espp.ts";
@@ -145,48 +145,14 @@ export default function CalendarTool() {
     );
   }
 
-  const light = calendar.lightest;
 
   return (
     <div className="tool wide">
       <div className="results">
-        <div className="summary">
-          <Card>
-            <h2 style={{ marginBottom: 12 }}>{t.calendar.title}</h2>
-            <Answer
-              items={[
-                {
-                  name: t.calendar.lightest,
-                  value: light ? eur0(light.net, lang) : "—",
-                  hint: light
-                    ? `${label(light)} · ${t.calendar.lightestHint(
-                        eur0(ordinary - light.net, lang),
-                        eur0(ordinary, lang)
-                      )}`
-                    : undefined,
-                },
-                {
-                  name: t.calendar.shares,
-                  value: num(calendar.totalRsuShares + calendar.totalEsppShares, lang, 0),
-                  alt: usd(calendar.totalSharesUsd, lang, 0),
-                  hint: t.calendar.sharesHint(
-                    num(calendar.totalRsuShares, lang, 0),
-                    num(calendar.totalEsppShares, lang, 0)
-                  ),
-                },
-              ]}
-            />
-            <p className="note" style={{ marginTop: 14 }}>
-              {t.calendar.intro}
-            </p>
-            {esppPct > 0 ? null : <p className="hint">{t.calendar.noEspp}</p>}
-          </Card>
-        </div>
-
         <div className="detail">
           <Card>
-            <div className="row-inline" style={{ justifyContent: "space-between", marginBottom: 12 }}>
-              <h2 style={{ margin: 0 }}>{t.calendar.horizon}</h2>
+            <div className="row-inline" style={{ justifyContent: "space-between", marginBottom: 6 }}>
+              <h2 style={{ margin: 0 }}>{t.calendar.title}</h2>
               <Segmented<"12" | "24" | "36">
                 label={t.calendar.horizon}
                 value={String(months) as "12" | "24" | "36"}
@@ -198,6 +164,18 @@ export default function CalendarTool() {
                 ]}
               />
             </div>
+
+            {/* The two-ledger idea is the one thing worth saying before the
+                table; the headline figures above it were restating what the
+                rows already show, one row at a time and better. */}
+            <p className="note" style={{ marginTop: 0, marginBottom: 14 }}>
+              {t.calendar.intro}
+            </p>
+            {esppPct > 0 ? null : (
+              <p className="hint" style={{ marginTop: -8, marginBottom: 14 }}>
+                {t.calendar.noEspp}
+              </p>
+            )}
 
             <div className="scroll-x">
               <table className="tbl cal">
