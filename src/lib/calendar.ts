@@ -143,7 +143,6 @@ export function buildCalendar(i: CalendarInput): Calendar {
   if (i.espp && i.espp.pct > 0 && i.price > 0 && i.fxRate > 0) {
     const plan = i.espp.plan;
     const contributed = expectedContribution(i.salary, i.espp.pct, plan.months);
-    const perMonth = plan.months > 0 ? contributed / plan.months : 0;
     const result = simulateEspp(
       {
         salary: i.salary,
@@ -171,11 +170,33 @@ export function buildCalendar(i: CalendarInput): Calendar {
         }
         // The deductions of the period that ENDS on this purchase day: the
         // `plan.months` months before it, the purchase month excluded.
+        //
+        // The percentage is taken from every PAYSLIP, not spread evenly over
+        // the months — so a month carrying a thirteenth pays it twice. On
+        // 60,000 at 7% that is 300 in an ordinary month and 600 in December,
+        // where dividing the window's total by six gave a flat 350 that
+        // matches no payslip anyone receives.
+        //
+        // The window's total is unchanged, and not by luck: the percentage is
+        // of the annual salary either way, and a six-month window happens to
+        // contain exactly one of the two extra payments.
+        const window: string[] = [];
         let back = key;
         for (let k = 0; k < plan.months; k++) {
           back = previousMonth(back);
-          const d = months.get(back);
-          if (d) d.esppContribution += perMonth;
+          window.unshift(back);
+        }
+        // Counted over the WHOLE window, including months the calendar does
+        // not show: otherwise the visible ones would each carry more than the
+        // payslip does.
+        const payslipsInWindow = window.reduce(
+          (sum, w) => sum + (extras.includes(Number(w.slice(5, 7))) ? 2 : 1),
+          0
+        );
+        const perPayslip = payslipsInWindow > 0 ? contributed / payslipsInWindow : 0;
+        for (const w of window) {
+          const d = months.get(w);
+          if (d) d.esppContribution += perPayslip * d.payslips;
         }
       }
     }

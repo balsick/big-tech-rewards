@@ -1026,3 +1026,44 @@ test("calendario: i due conti restano separati, e i conti del mese tornano", () 
   assert.ok(noEspp.totalRsuShares > 0);
   for (const m of noEspp.months) assert.equal(m.esppContribution + m.esppTax, 0);
 });
+
+test("calendario: l'ESPP trattiene da ogni CEDOLINO, non un dodicesimo al mese", () => {
+  // The percentage comes off every payslip, so a month carrying a thirteenth
+  // pays it twice. Dividing the window's total by six gave a flat figure that
+  // matches no payslip anyone actually receives: on 60,000 at 7% it showed 350
+  // everywhere, where the payslip says 300 — and 600 in December.
+  const projection = project({
+    grants: [], price: 188.71, fxRate: 1.148, salary: 60000,
+    today: "2026-09-19", horizonYears: 3, calendar: VESTING_CALENDAR,
+  });
+  const cal = buildCalendar({
+    salary: 60000, today: "2026-09-19", months: 12,
+    espp: { pct: 7, plan: ESPP_PLAN, priceAtStart: 127.28 },
+    projection, price: 188.71, fxRate: 1.148,
+  });
+  const at = (k: string) => cal.months.find((m) => m.ym === k)!;
+
+  const perPayslip = (60000 / 14) * 0.07;
+  near(perPayslip, 300, 1e-9);
+  near(at("2026-11").esppContribution, perPayslip, 1e-9);
+  near(at("2026-12").esppContribution, perPayslip * 2, 1e-9, "December carries two payslips");
+  near(at("2027-06").esppContribution, perPayslip * 2, 1e-9, "and so does June");
+  assert.equal(at("2026-12").payslips, 2);
+
+  // The window's total is untouched by the fix — the percentage is of the
+  // annual salary either way, and a six-month window holds exactly one of the
+  // two extra payments. It has to keep matching what the ESPP tab shows.
+  const window = ["2026-10", "2026-11", "2026-12", "2027-01", "2027-02", "2027-03"];
+  near(
+    window.reduce((s, k) => s + at(k).esppContribution, 0),
+    expectedContribution(60000, 7, ESPP_PLAN.months),
+    1e-9
+  );
+
+  // And no month is ever charged the flat sixth that was wrong.
+  for (const m of cal.months)
+    assert.ok(
+      Math.abs(m.esppContribution - expectedContribution(60000, 7, ESPP_PLAN.months) / 6) > 1e-6,
+      `${m.ym} is still using a flat sixth`
+    );
+});
