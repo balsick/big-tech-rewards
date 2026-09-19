@@ -370,7 +370,8 @@ export const it = {
     socialSecurity: "Contributi INPS",
     ssRate: "Aliquota base",
     ssMinor: "Contributi minori",
-    ssMinorHint: "CIGS, fondo di garanzia: cambiano per settore e dimensione aziendale",
+    ssMinorHint:
+      "0,26667 FIS + 0,30 CIGS + 0,05 ente bilaterale. Guarda la tua busta paga: l\u2019ente bilaterale dipende dal contratto e a volte dalla provincia.",
     ssFirstBand: "Prima fascia pensionabile",
     ssFirstBandHint: "oltre questa quota si aggiunge l’aliquota dell’1%",
     ssCeiling: "Massimale annuo",

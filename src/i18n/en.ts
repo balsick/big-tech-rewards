@@ -372,7 +372,8 @@ export const en: Dict = {
     socialSecurity: "Social security contributions",
     ssRate: "Base rate",
     ssMinor: "Minor contributions",
-    ssMinorHint: "short-time work and guarantee funds: they vary by sector and company size",
+    ssMinorHint:
+      "0.26667 FIS + 0.30 CIGS + 0.05 bilateral body. Check your own payslip: the bilateral body depends on the national agreement and sometimes on the province.",
     ssFirstBand: "First pensionable band",
     ssFirstBandHint: "above this amount an extra 1% applies",
     ssCeiling: "Annual ceiling",
