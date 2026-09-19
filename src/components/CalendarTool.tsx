@@ -97,6 +97,9 @@ export default function CalendarTool() {
   /** The pills that say what this month is. */
   const what = (m: CalendarMonth) => {
     const out: { key: string; text: string; tone: "flat" | "blue" | "bad" | "warn" }[] = [];
+    // The legend names four things by colour; a pill the legend promises in
+    // blue has to BE blue. The contribution one was falling through to the
+    // neutral branch, so the legend swatch and the pill disagreed.
     if (m.esppTax > 0.5) out.push({ key: "tax", text: t.calendar.esppTax(`−${eur0(m.esppTax, lang)}`), tone: "bad" });
     if (m.esppContribution > 0.5)
       out.push({
@@ -120,6 +123,17 @@ export default function CalendarTool() {
       : k === "warn"
         ? { color: "var(--warn)", background: "var(--warn-soft)" }
         : { color: "var(--text)", background: "var(--surface-2)" };
+
+  /**
+   * The dot the legend matches on.
+   *
+   * The tax and extra-pay pills carry their colour as a tint, so the legend's
+   * swatch and the pill agree on sight. The contribution pill is deliberately
+   * neutral — six months out of six it would be a wall of blue — so it carries
+   * the colour as a dot instead, which is exactly the shape the legend uses.
+   */
+  const dotOf = (k: "flat" | "blue" | "bad" | "warn") =>
+    k === "blue" ? "var(--chart-2)" : null;
 
   if (!(salary > 0) || !calendar.months.length) {
     return (
@@ -212,6 +226,9 @@ export default function CalendarTool() {
                             <span className="pills">
                               {pills.map((p) => (
                                 <span key={p.key} className="pill" style={tone(p.tone)}>
+                                  {dotOf(p.tone) ? (
+                                    <i className="pill-dot" style={{ background: dotOf(p.tone)! }} />
+                                  ) : null}
                                   {p.text}
                                 </span>
                               ))}

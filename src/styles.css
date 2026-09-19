@@ -1262,6 +1262,13 @@ button.guida-completa span { flex: 1 1 auto; min-width: 0; }
   white-space: nowrap;
 }
 
+.pill-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: var(--r-pill);
+  flex: 0 0 auto;
+}
+
 .pill-plain { font-size: var(--t-12); color: var(--text-2); }
 
 /* The net, with the bar under it rather than beside it: the column stays
