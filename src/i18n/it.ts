@@ -5,7 +5,7 @@ export const it = {
     intro:
       "Quanto ti arriva davvero dei compensi in azioni, e quanto se ne prende il fisco. Ogni conto avviene nel tuo browser.",
   },
-  nav: { espp: "ESPP", rsu: "RSU", total: "Total reward" },
+  nav: { espp: "ESPP", rsu: "RSU", total: "Total reward", calendar: "Calendario" },
   header: {
     repo: "Codice su GitHub",
     theme: "Tema",
@@ -42,6 +42,42 @@ export const it = {
     variableShare: (p: string) => `${p} del totale è variabile`,
     variableHint:
       "Bonus, RSU e sconto ESPP insieme, sul lordo. È la parte che dipende da performance, da quando vestono le azioni e dalla borsa.",
+  },
+  calendar: {
+    title: "Calendario",
+    intro:
+      "Che busta paga ti aspetta, mese per mese. Due conti separati: quello in banca, dove il netto cambia, e quello del broker, dove ogni tanto arrivano azioni. Stanno sulla stessa riga perch\u00e9 succedono lo stesso mese.",
+    lightest: "Mese pi\u00f9 leggero in banca",
+    lightestHint: (delta: string, normal: string) => `${delta} sotto un mese normale da ${normal}`,
+    shares: "Azioni sul conto titoli",
+    sharesHint: (rsu: string, espp: string) => `${rsu} dalle RSU, ${espp} comprate`,
+    colMonth: "Mese",
+    colWhat: "Cosa succede",
+    colBank: "In banca",
+    colShares: "Sul conto titoli",
+    ordinary: "busta paga normale",
+    contribution: (amount: string) => `accantoni per l\u2019ESPP ${amount}`,
+    contributionShort: (amount: string) => `accantoni ${amount}`,
+    esppTax: (amount: string) => `tassa sullo sconto ${amount}`,
+    esppRestart: (amount: string) => `riparte la finestra ${amount}`,
+    settlement: (amount: string) => `conguaglio RSU ${amount}`,
+    settlementBack: (amount: string) => `rimborso RSU ${amount}`,
+    extraPay: "mensilit\u00e0 aggiuntiva",
+    vested: (units: string, withheld: string) => `vestono ${units} RSU, ${withheld} trattenute per le tasse`,
+    bought: (shares: string) => `compri ${shares} azioni`,
+    arriving: (shares: string) => `+${shares} azioni`,
+    legendContribution: "accantoni: soldi tuoi che aspettano l\u2019acquisto",
+    legendTax: "tasse: sconto ESPP e conguaglio RSU",
+    legendExtra: "mensilit\u00e0 aggiuntiva",
+    legendShares: "azioni sul conto titoli: non passano dalla busta paga",
+    timing:
+      "Il conguaglio RSU arriva sul cedolino del mese dopo la vestizione: al vesting trattengono azioni a un\u2019aliquota forfettaria e la differenza con la tua aliquota vera si chiude in busta il mese successivo. La tassa sullo sconto ESPP invece esce sul cedolino dello stesso mese dell\u2019acquisto.",
+    assumptions:
+      "Il netto per mensilit\u00e0 \u00e8 il netto annuo diviso per le mensilit\u00e0 del contratto, quindi sull\u2019anno i conti tornano ma una tredicesima non \u00e8 esattamente uguale a un mese qualsiasi. Si assume che tu resti iscritto all\u2019ESPP: per questo il mese dell\u2019acquisto porta anche la prima trattenuta della finestra nuova. Le addizionali non sono in nessuna riga: si liquidano l\u2019anno successivo.",
+    noEspp: "Non sei nel piano ESPP, quindi nel calendario ci sono solo le RSU.",
+    empty: "Non c\u2019\u00e8 niente da mettere in calendario: servono una RAL e almeno un\u2019assegnazione o una percentuale ESPP.",
+    horizon: "Quanti mesi",
+    monthCount: (n: number) => `${n} mesi`,
   },
   footer: {
     privacyTitle: "Nessuna raccolta di dati",

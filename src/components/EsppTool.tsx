@@ -44,7 +44,19 @@ interface EsppState {
 }
 
 export default function EsppTool() {
-  const { t, lang, regime, salary, setSalary, esppPct: percent, setEsppPct: setPercent } = useStore();
+  const {
+    t,
+    lang,
+    regime,
+    salary,
+    setSalary,
+    esppPct: percent,
+    setEsppPct: setPercent,
+    esppPurchase,
+    setEsppPurchase,
+    esppEnrolled: enrolled,
+    setEsppEnrolled: setEnrolled,
+  } = useStore();
 
   // The save is read once, in the initialisers: reading it in an effect would
   // mean showing the defaults for one frame and then overwriting them in front
@@ -61,10 +73,8 @@ export default function EsppTool() {
   // pass through the list: a state saved last spring names a window that is no
   // longer on offer, and selecting it would put the tool on dates nothing can
   // price.
-  const [purchase, setPurchase] = useState(() => {
-    const fallback = defaultWindow(today, plan).purchase;
-    return s0?.purchase && windows.some((w) => w.purchase === s0.purchase) ? s0.purchase : fallback;
-  });
+  const purchase = esppPurchase ?? defaultWindow(today, plan).purchase;
+  const setPurchase = setEsppPurchase;
   const chosen = windows.find((w) => w.purchase === purchase) ?? defaultWindow(today, plan);
 
   // When you joined the plan, which is NOT the same as which window you are
@@ -72,7 +82,6 @@ export default function EsppTool() {
   // in since April carries April's price into the October window — and that
   // single fact can be worth more than the percentage they contribute.
   const joinable = useMemo(() => enrolmentDates(chosen.start, plan), [chosen.start, plan]);
-  const [enrolled, setEnrolled] = useState<string | null>(null);
   // A choice from an older window is meaningless once you move to a window that
   // starts before it, so it falls back rather than sitting there as a date the
   // plan could not have.
@@ -86,7 +95,9 @@ export default function EsppTool() {
     restored.current = true;
     if (typeof s0.salary === "number") setSalary(s0.salary);
     if (typeof s0.percent === "number") setPercent(s0.percent);
-  }, [s0, setSalary, setPercent]);
+    // A window from an old save only counts if the plan still offers it.
+    if (s0.purchase && windows.some((w) => w.purchase === s0.purchase)) setEsppPurchase(s0.purchase);
+  }, [s0, setSalary, setPercent, setEsppPurchase, windows]);
   // The contribution follows the percentage until you overwrite it: two states
   // for one field would be two truths, so the computed one is the floor and the
   // typed one sits on top.

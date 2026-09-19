@@ -5,15 +5,24 @@ import Disclaimer from "./components/Disclaimer.tsx";
 import EsppTool from "./components/EsppTool.tsx";
 import RsuTool from "./components/RsuTool.tsx";
 import TotalReward from "./components/TotalReward.tsx";
+import CalendarTool from "./components/CalendarTool.tsx";
 import Guided from "./components/Guided.tsx";
 import { alreadySeen, type Seed } from "./lib/guided.ts";
 import { useStore } from "./state/store.tsx";
 import { initialGrants } from "./lib/rsu.ts";
 import { todayISO } from "./lib/format.ts";
+import { flag } from "./lib/flags.ts";
 
 export default function App() {
   const { t, setSalary, setEsppPct, setGrants } = useStore();
   const [tab, setTab] = useState<Tab>("espp");
+  // The calendar is still being built: it exists for whoever puts
+  // `?calendar=true` in the address and for nobody else. Read once — a flag
+  // that could change under the app would be a second kind of state to reason
+  // about, for no benefit.
+  const [tabs] = useState<Tab[]>(() =>
+    flag("calendar") ? ["espp", "rsu", "total", "calendar"] : ["espp", "rsu", "total"]
+  );
   // Open on a first landing, and only then. Read once in the initialiser: in an
   // effect it would flash the page and then cover it.
   const [guided, setGuided] = useState(() => !alreadySeen());
@@ -36,13 +45,21 @@ export default function App() {
 
   return (
     <>
-      <Header tab={tab} setTab={setTab} onGuide={() => setGuided(true)} />
+      <Header tab={tab} setTab={setTab} tabs={tabs} onGuide={() => setGuided(true)} />
       <main className="wrap">
         <Disclaimer />
         <p className="note" style={{ maxWidth: "62ch" }}>
           {t.app.intro}
         </p>
-        {tab === "espp" ? <EsppTool /> : tab === "rsu" ? <RsuTool /> : <TotalReward />}
+        {tab === "espp" ? (
+          <EsppTool />
+        ) : tab === "rsu" ? (
+          <RsuTool />
+        ) : tab === "calendar" ? (
+          <CalendarTool />
+        ) : (
+          <TotalReward />
+        )}
       </main>
       <Footer />
       <Guided open={guided} onClose={() => setGuided(false)} onFinish={finish} />

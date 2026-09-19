@@ -5,15 +5,18 @@ import { REPO } from "../lib/meta.ts";
 import type { Lang } from "../i18n/index.ts";
 import type { Theme } from "../state/store.tsx";
 
-export type Tab = "espp" | "rsu" | "total";
+export type Tab = "espp" | "rsu" | "total" | "calendar";
 
 export default function Header({
   tab,
   setTab,
+  tabs,
   onGuide,
 }: {
   tab: Tab;
   setTab: (t: Tab) => void;
+  /** which tabs exist — a feature still behind a flag is simply not in here */
+  tabs: Tab[];
   onGuide: () => void;
 }) {
   const { t, lang, setLang, theme, setTheme } = useStore();
@@ -57,7 +60,7 @@ export default function Header({
           />
         </div>
         <nav className="tabs" aria-label={t.app.title}>
-          {(["espp", "rsu", "total"] as Tab[]).map((k) => (
+          {tabs.map((k) => (
             <button key={k} type="button" aria-current={tab === k ? "page" : undefined} onClick={() => setTab(k)}>
               {t.nav[k]}
             </button>

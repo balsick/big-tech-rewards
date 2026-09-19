@@ -68,6 +68,16 @@ interface Store {
   /** the share of pay put into the ESPP */
   esppPct: number;
   setEsppPct: (v: number) => void;
+  /**
+   * Which window you are buying in (its purchase day) and when you joined the
+   * plan. Shared because the calendar has to read the same two answers: a
+   * calendar whose ESPP numbers disagreed with the ESPP tab would be worse
+   * than no calendar. `null` means "whatever the plan says by default".
+   */
+  esppPurchase: string | null;
+  setEsppPurchase: (v: string | null) => void;
+  esppEnrolled: string | null;
+  setEsppEnrolled: (v: string | null) => void;
   /** the awards, as the RSU form holds them */
   grants: GrantInput[];
   setGrants: Dispatch<SetStateAction<GrantInput[]>>;
@@ -104,6 +114,8 @@ export function Provider({ children }: { children: ReactNode }) {
   const [salary, setSalary] = useState(DEFAULT_SALARY);
   const [bonusPct, setBonusPct] = useState(DEFAULT_BONUS_PCT);
   const [esppPct, setEsppPct] = useState(DEFAULT_ESPP_PCT);
+  const [esppPurchase, setEsppPurchase] = useState<string | null>(null);
+  const [esppEnrolled, setEsppEnrolled] = useState<string | null>(null);
   const [grants, setGrants] = useState<GrantInput[]>(() => initialGrants(todayISO()));
   const [performance, setPerformance] = useState(1);
   const [horizonYears, setHorizonYears] = useState(3);
@@ -158,6 +170,10 @@ export function Provider({ children }: { children: ReactNode }) {
       setBonusPct,
       esppPct,
       setEsppPct,
+      esppPurchase,
+      setEsppPurchase,
+      esppEnrolled,
+      setEsppEnrolled,
       grants,
       setGrants,
       performance,
@@ -176,6 +192,8 @@ export function Provider({ children }: { children: ReactNode }) {
       salary,
       bonusPct,
       esppPct,
+      esppPurchase,
+      esppEnrolled,
       grants,
       performance,
       horizonYears,

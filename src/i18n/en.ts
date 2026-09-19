@@ -7,7 +7,7 @@ export const en: Dict = {
     intro:
       "How much of your equity compensation actually reaches you, and how much the taxman takes. Every calculation runs in your browser.",
   },
-  nav: { espp: "ESPP", rsu: "RSU", total: "Total reward" },
+  nav: { espp: "ESPP", rsu: "RSU", total: "Total reward", calendar: "Calendar" },
   header: {
     repo: "Code on GitHub",
     theme: "Theme",
@@ -44,6 +44,42 @@ export const en: Dict = {
     variableShare: (p: string) => `${p} of the total is variable`,
     variableHint:
       "Bonus, RSUs and the ESPP discount together, on the gross. It is the part that depends on performance, on when shares vest, and on the market.",
+  },
+  calendar: {
+    title: "Calendar",
+    intro:
+      "What each payslip will look like, month by month. Two separate accounts: the bank one, where the net moves, and the brokerage one, where shares turn up now and then. They share a row because they happen in the same month.",
+    lightest: "Lightest month in the bank",
+    lightestHint: (delta: string, normal: string) => `${delta} below an ordinary ${normal} month`,
+    shares: "Shares in the brokerage account",
+    sharesHint: (rsu: string, espp: string) => `${rsu} from RSUs, ${espp} bought`,
+    colMonth: "Month",
+    colWhat: "What happens",
+    colBank: "In the bank",
+    colShares: "In the brokerage account",
+    ordinary: "ordinary payslip",
+    contribution: (amount: string) => `set aside for the ESPP ${amount}`,
+    contributionShort: (amount: string) => `set aside ${amount}`,
+    esppTax: (amount: string) => `tax on the discount ${amount}`,
+    esppRestart: (amount: string) => `the window restarts ${amount}`,
+    settlement: (amount: string) => `RSU settlement ${amount}`,
+    settlementBack: (amount: string) => `RSU refund ${amount}`,
+    extraPay: "extra monthly payment",
+    vested: (units: string, withheld: string) => `${units} RSUs vest, ${withheld} kept back for tax`,
+    bought: (shares: string) => `you buy ${shares} shares`,
+    arriving: (shares: string) => `+${shares} shares`,
+    legendContribution: "set aside: your own money, waiting for the purchase",
+    legendTax: "tax: the ESPP discount and the RSU settlement",
+    legendExtra: "extra monthly payment",
+    legendShares: "shares in the brokerage account: they never touch the payslip",
+    timing:
+      "The RSU settlement lands on the payslip of the month AFTER the vest: at vesting shares are kept back at a flat rate, and the difference with your own rate is settled the following month. The tax on the ESPP discount comes out of the payslip of the purchase month itself.",
+    assumptions:
+      "The net per payslip is the annual net over the number of payslips in the contract, so the year adds up while a thirteenth month is not exactly an ordinary one. It assumes you stay enrolled in the ESPP, which is why the month of a purchase also carries the first deduction of the new window. Surtaxes are in none of these rows: they are settled the following year.",
+    noEspp: "You are not in the ESPP, so the calendar shows the RSUs alone.",
+    empty: "There is nothing to lay out: this needs a salary and either a grant or an ESPP percentage.",
+    horizon: "How many months",
+    monthCount: (n: number) => `${n} months`,
   },
   footer: {
     privacyTitle: "No data collection whatsoever",

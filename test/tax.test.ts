@@ -16,6 +16,7 @@ import {
   type TaxRegime,
 } from "../src/lib/tax.ts";
 import { dividends, history } from "../src/lib/prices.ts";
+import { buildCalendar, extraPayMonths } from "../src/lib/calendar.ts";
 import {
   guaranteedFloor,
   simulateEspp,
@@ -31,6 +32,7 @@ import {
   WITHHOLDING_RATE,
   PERFORMANCE_STEPS,
   initialGrants,
+  VESTING_CALENDAR,
   tranches,
   addMonths,
   grantUnits,
@@ -929,4 +931,98 @@ test("the marginal rate separates what the payslip loses from what comes later",
   const m2 = marginalRate({ salary: 34914 }, 1683, flat);
   assert.equal(m2.surtaxRate, 0);
   near(m2.payrollRate, m2.rate, 1e-12);
+});
+
+test("calendario: la tassa ESPP cade nel mese dell'acquisto, il conguaglio RSU il mese dopo", () => {
+  // The two timings, confirmed against real payslips: an October purchase is
+  // taxed on the October payslip; a November vest settles in December. Getting
+  // either wrong would put a deduction on a payslip that does not carry it.
+  const grant: Grant = {
+    id: "w", label: "W", date: "2026-02-20", valueUsd: 70000, priceAtGrant: 146.32,
+    schedule: "quarterly", years: 3, usePlanDates: true,
+  };
+  const projection = project({
+    grants: [grant], price: 188.71, fxRate: 1.147974, salary: 50000,
+    today: "2026-09-19", horizonYears: 3, calendar: VESTING_CALENDAR,
+  });
+  const cal = buildCalendar({
+    salary: 50000, today: "2026-09-19", months: 14,
+    espp: { pct: 15, plan: ESPP_PLAN, priceAtStart: 127.28 },
+    projection, price: 188.71, fxRate: 1.147974,
+  });
+  const at = (key: string) => cal.months.find((m) => m.ym === key)!;
+
+  // October: the purchase is on the 1st, so the tax is on THAT payslip.
+  assert.ok(at("2026-10").esppTax > 0, "the October purchase is taxed in October");
+  assert.ok(at("2026-10").esppShares > 0, "and the shares arrive in October");
+  assert.equal(at("2026-09").esppTax, 0, "not the month before");
+  assert.equal(at("2026-11").esppTax, 0, "and not the month after");
+
+  // November vest, December settlement — never the same month.
+  const vest = at("2026-11");
+  assert.ok(vest.rsuShares > 0, "the November vest releases shares in November");
+  assert.equal(vest.rsuSettlement, 0, "and moves that month's payslip by nothing");
+  assert.ok(at("2026-12").rsuSettlement > 0, "the settlement is on the December payslip");
+
+  // Staying enrolled means the purchase month also carries the first deduction
+  // of the window that opens the same day.
+  assert.ok(at("2026-10").esppContribution > 0, "the new window starts deducting at once");
+  // And the six months before a purchase each carry one.
+  for (const k of ["2026-04", "2026-05", "2026-06", "2026-07", "2026-08", "2026-09"])
+    assert.ok(at(k) === undefined || at(k).esppContribution > 0, `${k} is inside a window`);
+});
+
+test("calendario: i due conti restano separati, e i conti del mese tornano", () => {
+  const grant: Grant = {
+    id: "w", label: "W", date: "2026-02-20", valueUsd: 70000, priceAtGrant: 146.32,
+    schedule: "quarterly", years: 3, usePlanDates: true,
+  };
+  const projection = project({
+    grants: [grant], price: 188.71, fxRate: 1.147974, salary: 50000,
+    today: "2026-09-19", horizonYears: 3, calendar: VESTING_CALENDAR,
+  });
+  const cal = buildCalendar({
+    salary: 50000, today: "2026-09-19", months: 12,
+    espp: { pct: 15, plan: ESPP_PLAN, priceAtStart: 127.28 },
+    projection, price: 188.71, fxRate: 1.147974,
+  });
+
+  assert.equal(cal.months.length, 12);
+  assert.equal(cal.months[0].ym, "2026-09", "the calendar starts with this month");
+
+  for (const m of cal.months) {
+    // Every month's net is its own arithmetic, with nothing left over.
+    near(
+      m.net,
+      m.baseNet * m.payslips - m.esppContribution - m.esppTax + m.esppRefund - m.rsuSettlement,
+      1e-9
+    );
+    // Shares never touch the payslip: a month can have both, and the two
+    // figures are independent.
+    near(m.sharesUsd, (m.rsuShares + m.esppShares) * 188.71, 1e-9);
+    assert.ok(m.rsuShares === Math.floor(m.rsuShares), "shares are whole");
+  }
+
+  // The extra monthly payments land where the contract says: June and December
+  // on fourteen payslips.
+  assert.deepEqual(extraPayMonths(14), [6, 12]);
+  assert.deepEqual(extraPayMonths(13), [12]);
+  assert.deepEqual(extraPayMonths(12), []);
+  assert.equal(cal.months.find((m) => m.ym === "2026-12")!.payslips, 2);
+  assert.equal(cal.months.find((m) => m.ym === "2026-11")!.payslips, 1);
+
+  // The lightest month is the one with the purchase in it, which is the whole
+  // reason this view exists.
+  assert.ok(cal.lightest);
+  assert.ok(cal.lightest!.net < cal.ordinaryNet, "the lightest month is below an ordinary one");
+  assert.ok(cal.lightest!.esppTax > 0, "and it is a purchase month");
+
+  // No ESPP: the calendar still works and shows the RSUs alone.
+  const noEspp = buildCalendar({
+    salary: 50000, today: "2026-09-19", months: 12, espp: null,
+    projection, price: 188.71, fxRate: 1.147974,
+  });
+  assert.equal(noEspp.totalEsppShares, 0);
+  assert.ok(noEspp.totalRsuShares > 0);
+  for (const m of noEspp.months) assert.equal(m.esppContribution + m.esppTax, 0);
 });

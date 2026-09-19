@@ -21,7 +21,9 @@
   --accent-soft: #e3efe8;
   --good: #2b7a53;
   --bad: #ad3a32;
+  --bad-soft: #f7e7e5;
   --warn: #8f5d12;
+  --warn-soft: #f7efdf;
   --chart-1: #2c6b4c;
   --chart-2: #38699e;
   --chart-3: #8d6224;
@@ -67,7 +69,9 @@
     --accent-soft: #1a2a22;
     --good: #66bd90;
     --bad: #e08278;
+    --bad-soft: #2e1d1b;
     --warn: #d3a65c;
+    --warn-soft: #2c2314;
     --chart-1: #66bd90;
     --chart-2: #77a6da;
     --chart-3: #cfa065;
@@ -92,7 +96,9 @@
   --accent-soft: #1a2a22;
   --good: #66bd90;
   --bad: #e08278;
+  --bad-soft: #2e1d1b;
   --warn: #d3a65c;
+  --warn-soft: #2c2314;
   --chart-1: #66bd90;
   --chart-2: #77a6da;
   --chart-3: #cfa065;
@@ -453,6 +459,12 @@ nav.tabs button[aria-current="page"] { color: var(--text); border-bottom-color: 
     min-width: 0;
     order: 0;
   }
+
+  /* A tool with no form beside it takes the whole width. The two-column rule
+     above reserves 22rem for a panel, and a tool that has none was getting its
+     table squeezed into that first track — a four-column calendar in 512px,
+     scrolling sideways with the width of the page unused next to it. */
+  .tool.wide { grid-template-columns: minmax(0, 1fr); }
 }
 
 .grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
@@ -1232,6 +1244,89 @@ button.guida-completa span { flex: 1 1 auto; min-width: 0; }
   font-size: var(--t-12);
   color: var(--text-2);
 }
+
+/* ----------------------------------------------------------------- calendar */
+
+/* The pills that say what a month is. Small, quiet, and never more than three
+   in a row — a month with four things in it is rare and the row wraps. */
+.pills { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--t-12);
+  font-weight: 600;
+  border-radius: var(--r-pill);
+  padding: 3px 10px;
+  white-space: nowrap;
+}
+
+.pill-plain { font-size: var(--t-12); color: var(--text-2); }
+
+/* The net, with the bar under it rather than beside it: the column stays
+   narrow and the comparison still reads down the page. */
+.cal-net { display: inline-flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+
+.cal-bar { display: block; height: 5px; border-radius: 3px; }
+
+/* Shares arriving. A bordered block and an arrow, because this is the one
+   thing in the table that is NOT money leaving a payslip, and it should not
+   read as one more deduction. */
+.cal-shares {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent);
+  border-radius: 10px;
+  padding: 6px 11px;
+  color: var(--accent-ink);
+}
+
+.cal-shares-t { display: flex; flex-direction: column; min-width: 0; line-height: 1.25; }
+
+.cal-shares-t strong {
+  font-size: var(--t-15);
+  font-weight: 660;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.cal-shares-t span { font-size: var(--t-12); font-variant-numeric: tabular-nums; }
+
+table.tbl.cal td { vertical-align: middle; white-space: normal; }
+
+/* The shares column follows a right-aligned one, so it needs the gap on ITS
+   left: with the padding only ever removed from the right, "In banca" and
+   "Sul conto titoli" ran into each other in the header. Space goes on the side
+   opposite the alignment. */
+table.tbl.cal th:last-child,
+table.tbl.cal td:last-child { padding-left: 18px; }
+
+table.tbl.cal tr.has-shares td { background: var(--accent-soft); }
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) table.tbl.cal tr.has-shares td { background: transparent; }
+}
+
+:root[data-theme="dark"] table.tbl.cal tr.has-shares td { background: transparent; }
+
+.cal-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  align-items: center;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.cal-legend span { display: inline-flex; align-items: center; gap: 7px; font-size: var(--t-12); color: var(--text-2); }
+
+.cal-legend i { width: 9px; height: 9px; border-radius: var(--r-pill); }
+
+.cal-legend svg { color: var(--accent-ink); }
 
 /* --------------------------------------------------------------- disclaimer */
 
