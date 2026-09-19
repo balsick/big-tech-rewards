@@ -11,6 +11,8 @@ export const en: Dict = {
   header: {
     repo: "Code on GitHub",
     theme: "Theme",
+    themeNext: (current: string, next: string) => `Theme: ${current}. Tap for ${next}.`,
+    langNext: (next: string) => `Switch to ${next}`,
     lang: "Language",
     themeLight: "Light",
     themeDark: "Dark",

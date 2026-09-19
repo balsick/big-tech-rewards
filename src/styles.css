@@ -245,6 +245,95 @@ button.btn.primary.guidami {
   box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 16%, transparent);
 }
 
+/* The header in two pieces, and the split is structural, not cosmetic.
+ *
+ * The masthead — name, tagline, the labelled controls — and a bar that holds
+ * the tabs. They are SIBLINGS: a sticky element only sticks inside its own
+ * containing block, so a sticky bar nested in a masthead that scrolls away
+ * stops sticking the moment the masthead leaves. Measured: it held for 190px
+ * and then went with it.
+ *
+ * The bar's height never changes, which is the other half of the point. The
+ * first attempt resized one sticky header on scroll; that changes the
+ * document's height, the browser's scroll anchoring moves the scroll position
+ * to compensate, and the new position crosses the threshold back. Measured at
+ * thirteen state changes in a single downward scroll, with scrollY bouncing
+ * between 0 and 152. No hysteresis fixes that, because the feedback is the
+ * size of the header, not of the jitter. */
+.tabs-bar {
+  position: sticky;
+  /* Under the masthead where the masthead stays put; at the top where it does
+     not. The length is written by the header from its own measured height. */
+  top: var(--masthead-h, 0px);
+  z-index: 19;
+  background: color-mix(in srgb, var(--bg) 96%, transparent);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border);
+}
+
+.tabs-bar .wrap { display: flex; align-items: center; gap: 10px; }
+
+.tabs-bar nav.tabs { flex: 1 1 auto; min-width: 0; padding: 8px 0 0; }
+
+.quick { display: none; }
+
+@media (max-width: 899px) {
+  /* The masthead scrolls away like any other content; only the bar stays. */
+  header.top {
+    position: static;
+    background: var(--bg);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    border-bottom: 0;
+  }
+
+  .tabs-bar { top: 0; }
+
+  /* Fixed, so the icons appearing inside cannot change the bar's height and
+     start the feedback over. */
+  .tabs-bar .wrap { min-height: 46px; }
+
+  .tabs-bar nav.tabs { padding: 0; }
+
+  .tabs-bar nav.tabs button { padding-bottom: 6px; }
+
+  /* The strip scrolls, so a label gets cut at its left edge. Fading it says
+     "there is more this way"; a hard cut through the middle of a word reads
+     as a rendering fault. */
+  .tabs-bar nav.tabs {
+    -webkit-mask-image: linear-gradient(to right, transparent 0, #000 18px);
+    mask-image: linear-gradient(to right, transparent 0, #000 18px);
+  }
+
+  .quick { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; }
+}
+
+/* One state of a segmented control, standing in for the whole of it. */
+.seg-one {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.1rem;
+  min-height: 1.95rem;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-pill);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--t-12);
+  font-weight: 620;
+  text-decoration: none;
+  cursor: pointer;
+  transition: border-color 150ms ease, color 150ms ease;
+}
+
+.seg-one:hover { border-color: var(--border-strong); color: var(--accent-ink); }
+
+.seg-one:active { transform: translateY(1px); }
+
 /* ----------------------------------------------------------------- controls */
 
 .seg {

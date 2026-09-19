@@ -9,6 +9,8 @@ export const it = {
   header: {
     repo: "Codice su GitHub",
     theme: "Tema",
+    themeNext: (current: string, next: string) => `Tema: ${current}. Tocca per ${next}.`,
+    langNext: (next: string) => `Passa a ${next}`,
     lang: "Lingua",
     themeLight: "Chiaro",
     themeDark: "Scuro",
