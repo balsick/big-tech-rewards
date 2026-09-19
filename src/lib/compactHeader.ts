@@ -1,30 +1,29 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type RefObject } from "react";
 import { flushSync } from "react-dom";
 
 /**
  * Whether the header should be in its compact form.
  *
- * Two conditions, and both matter. It only applies on a narrow screen — on a
- * desktop the header is already one row and shrinking it on scroll would be
- * churn for nothing — and it only applies once you have actually started
- * reading.
+ * The answer is not "have you scrolled far enough" but "have the labelled
+ * controls left the screen". A fixed threshold got that wrong by construction:
+ * collapsing at 72px while the masthead is 135px tall leaves a band of scroll
+ * where the labelled controls are still half on screen AND the icons are
+ * already in the bar — the same four controls, twice, at the same time.
  *
- * **It expands only at the very top, and that is not fussiness.** Expanding
- * makes the header 140px taller, which makes the document taller, and the
- * browser's scroll anchoring then moves `scrollY` to keep the visible content
- * where it was — straight back past the collapse threshold, which collapses it
- * again. Measured: asking for scrollY 20 landed at 160 and the header flipped
- * back. A wider hysteresis does not help, because the feedback is the size of
- * the header, not of the jitter.
+ * So the masthead itself is the trigger. An observer reports when it stops
+ * intersecting the viewport at all, which is exactly the moment the icons
+ * become a replacement rather than a duplicate, and it stays right when the
+ * masthead's height changes with the type scale or the language.
  *
- * At scrollY 0 there is no content above the viewport for anchoring to hold on
- * to, so the header simply grows downwards and nothing moves. Collapsing at 72
- * and expanding only at the top also reads as a rule rather than a threshold:
- * it comes back when you go back.
+ * It only applies on a narrow screen: a desktop header is already one row.
  */
-const COLLAPSE_AT = 72;
-const EXPAND_BELOW = 0;
 const NARROW = "(max-width: 899px)";
+
+interface Transition {
+  finished?: Promise<unknown>;
+  ready?: Promise<unknown>;
+  updateCallbackDone?: Promise<unknown>;
+}
 
 /**
  * Swaps the state inside a view transition when the browser has one.
@@ -41,12 +40,6 @@ const NARROW = "(max-width: 899px)";
  * `prefers-reduced-motion` is about. Both fall back to setting the state, and
  * the result is the same header without the travel.
  */
-interface Transition {
-  finished?: Promise<unknown>;
-  ready?: Promise<unknown>;
-  updateCallbackDone?: Promise<unknown>;
-}
-
 function swap(apply: () => void) {
   const doc = document as Document & { startViewTransition?: (cb: () => void) => Transition };
   const still = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
@@ -68,52 +61,44 @@ function swap(apply: () => void) {
   run?.updateCallbackDone?.catch(() => {});
 }
 
-export function useCompactHeader(): boolean {
+export function useCompactHeader(masthead: RefObject<HTMLElement | null>): boolean {
   const [compact, setCompact] = useState(false);
 
   useEffect(() => {
-    if (typeof window === "undefined" || !window.matchMedia) return;
+    const el = masthead.current;
+    if (!el || typeof window === "undefined" || !window.matchMedia) return;
     const narrow = window.matchMedia(NARROW);
-    let frame = 0;
 
-    const read = () => {
-      frame = 0;
-      if (!narrow.matches) {
-        setCompact(false);
-        return;
-      }
-      const y = window.scrollY;
-      // Which threshold applies depends on where we already are. Read outside
-      // the updater: a view transition has to be started from the decision,
-      // not from inside React's state update.
+    const set = (next: boolean) => {
       setCompact((was) => {
-        const next = was ? y > EXPAND_BELOW : y > COLLAPSE_AT;
-        if (next !== was) {
-          // Re-enter through the transition rather than returning the new
-          // value here, so the DOM change happens inside the snapshot.
-          queueMicrotask(() => swap(() => setCompact(next)));
-        }
+        if (next !== was) queueMicrotask(() => swap(() => setCompact(next)));
         return was;
       });
     };
 
-    // Coalesced into a frame: scroll fires far more often than the header can
-    // usefully change, and reading `scrollY` in the handler itself is what
-    // makes these sticky headers stutter.
-    const onScroll = () => {
-      if (!frame) frame = requestAnimationFrame(read);
-    };
+    if (typeof IntersectionObserver === "undefined") {
+      set(false);
+      return;
+    }
 
-    window.addEventListener("scroll", onScroll, { passive: true });
-    narrow.addEventListener("change", read);
-    read();
+    const io = new IntersectionObserver(
+      ([entry]) => set(narrow.matches && !entry.isIntersecting),
+      { threshold: 0 }
+    );
+    io.observe(el);
+
+    // A change of width can make the question moot: on a desktop the header is
+    // one row and never compacts, whatever the masthead is doing.
+    const onWidth = () => {
+      if (!narrow.matches) set(false);
+    };
+    narrow.addEventListener("change", onWidth);
 
     return () => {
-      window.removeEventListener("scroll", onScroll);
-      narrow.removeEventListener("change", read);
-      if (frame) cancelAnimationFrame(frame);
+      io.disconnect();
+      narrow.removeEventListener("change", onWidth);
     };
-  }, []);
+  }, [masthead]);
 
   return compact;
 }

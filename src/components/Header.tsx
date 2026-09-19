@@ -33,9 +33,11 @@ export default function Header({
   onGuide: () => void;
 }) {
   const { t, lang, setLang, theme, setTheme } = useStore();
-  const compact = useCompactHeader();
   const nav = useRef<HTMLElement>(null);
   const masthead = useRef<HTMLElement>(null);
+  // The masthead decides: the icons appear when the labelled controls have
+  // left the screen, never while both are on it.
+  const compact = useCompactHeader(masthead);
 
   // The bar sticks BELOW the masthead on a desktop, and a sticky element needs
   // that offset as a length. Measured rather than guessed: the masthead's
