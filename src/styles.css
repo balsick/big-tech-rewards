@@ -1340,9 +1340,28 @@ table.tbl.cal tr.has-shares td { background: var(--accent-soft); }
     align-items: baseline;
   }
 
-  table.tbl.cal tr.year-break { border-top-color: var(--border-strong); }
+  /* ONE rule per row, drawn once.
+     `table.tbl tr.year-break td` still applied here and out-specified the
+     reset, so at a year boundary the row drew its line AND each cell drew its
+     own — and since the cells are grid items of different widths with gaps
+     between them, the result was a full-width rule with two shorter,
+     offset ones stacked on it. A separator is one line or it is a defect. */
+  table.tbl.cal td,
+  table.tbl.cal tr.year-break td {
+    border-top: 0;
+    padding: 0;
+    white-space: normal;
+  }
 
-  table.tbl.cal td { border-top: 0; padding: 0; white-space: normal; }
+  /* A year boundary is a group boundary, and a 1px change of grey does not
+     carry one — at this size the darker rule is indistinguishable from the
+     others. Groups separate with space. The rule stays, stronger, as the
+     marker; the air is what makes the years read as years. */
+  table.tbl.cal tr.year-break {
+    border-top-color: var(--border-strong);
+    margin-top: 14px;
+    padding-top: 18px;
+  }
 
   /* month left, net right, on the same line */
   table.tbl.cal td:nth-child(1) { grid-column: 1; grid-row: 1; }
@@ -1358,18 +1377,13 @@ table.tbl.cal tr.has-shares td { background: var(--accent-soft); }
 
   .cal-shares { width: 100%; }
 
-  /* The highlight belongs to the ROW here, not to its cells. Tinting the cells
-     leaves the grid's 4px gaps untinted, so a month with shares came out as
-     three green bands with white stripes between them. A stacked row is one
-     card and should read as one. */
-  table.tbl.cal tr.has-shares {
-    background: var(--accent-soft);
-    border-radius: 10px;
-  }
-  /* No negative margin to bleed it to the card's edge: that is 10px wider than
-     the wrapper and brings back the sideways scroll this whole block exists to
-     remove. The tint stops at the text, which is where the other rows stop
-     too. */
+  /* No tint behind the shares block.
+     The block already has a fill, a border and a radius; putting it on a
+     tinted, rounded row makes a filled box inside a filled box — a card in a
+     card — and leaves the row's rule cutting across the top of a rounded
+     corner. One filled element per row, and it is the one that carries the
+     news. */
+  table.tbl.cal tr.has-shares { background: transparent; }
 
   table.tbl.cal tr.has-shares td { background: transparent; }
 }
