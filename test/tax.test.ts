@@ -84,18 +84,26 @@ test("employment income tax credit, art. 13", () => {
 
 test("socialSecurity INPS: 1% sopra la prima fascia, stop al massimale", () => {
   const p = SOCIAL_SECURITY_2026;
-  near(socialSecurity(50000, p), 50000 * 0.097566);
-  near(socialSecurity(60000, p), 60000 * 0.097566 + (60000 - 56224) * 0.01);
+  // Derived from the parameters, not repeated as a literal: this test is about
+  // the 1% band and the ceiling, and hard-coding the rate made it fail every
+  // time a contribution line was corrected — which is the opposite of useful.
+  const r = (p.rate + p.minorRates) / 100;
+  near(socialSecurity(50000, p), 50000 * r);
+  near(socialSecurity(60000, p), 60000 * r + (60000 - p.firstBandCap) * 0.01);
   // above the ceiling nothing more is due: contributions stop
   assert.equal(socialSecurity(200000, p), socialSecurity(122295, p));
 });
 
 test("gross to net: 60,000 in Turin", () => {
+  // The anchor figures moved by about 30 euro of contributions when the
+  // employee rate was corrected from 9.75667% to 9.80667% — the bilateral-body
+  // line the payslip carries and this file did not. Everything else about the
+  // calculation is unchanged, which is what these numbers are here to pin.
   const n = grossToNet({ salary: 60000 });
-  near(n.socialSecurity, 5891.72, 0.5);
-  near(n.taxableIncome, 54108.28, 0.5);
+  near(n.socialSecurity, 5921.76, 0.5);
+  near(n.taxableIncome, 54078.24, 0.5);
   near(n.credits, 0);
-  near(n.net, 36670, 5);
+  near(n.net, 36654, 5);
   assert.ok(n.keptShare > 0.6 && n.keptShare < 0.62);
 });
 

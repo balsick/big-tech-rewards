@@ -17,10 +17,14 @@ export const TAX_YEAR = 2026;
 /**
  * Employee-side social security (INPS).
  *
- * `rate` is the 9.19% of the employee pension fund; `minorRates` collects the
- * smaller contributions most payslips always add (short-time work funds, wage
- * guarantee funds), which vary by sector and company size — hence a field and
- * not a constant.
+ * `rate` is the 9.19% of the employee pension fund (FPLD).
+ *
+ * `minorRates` is the short-time-work fund the payslip adds on top. For an
+ * employer above fifteen employees that is the **FIS** — Fondo di Integrazione
+ * Salariale, D.Lgs. 148/2015 — whose ordinary contribution is 0.80% with a
+ * **third charged to the employee**: 0.80/3 = 0.26667%, which is the figure
+ * that appears on the payslip under that name. It varies with sector and
+ * company size, hence a field and not a constant.
  *
  * Above the first pensionable band an extra 1% applies, and above the annual
  * ceiling contributions stop altogether. The ceiling applies to anyone enrolled
@@ -29,7 +33,10 @@ export const TAX_YEAR = 2026;
 export interface SocialSecurityParams {
   /** base employee rate, in percent */
   rate: number;
-  /** additional minor contributions, in percent */
+  /**
+   * Short-time-work fund charged to the employee, in percent. Default: the
+   * FIS at 0.26667% (a third of 0.80%), read off a real payslip.
+   */
   minorRates: number;
   /** above this amount the extra 1% kicks in */
   firstBandCap: number;
@@ -40,7 +47,21 @@ export interface SocialSecurityParams {
 
 export const SOCIAL_SECURITY_2026: SocialSecurityParams = {
   rate: 9.19,
-  minorRates: 0.5666,
+  // Three lines, all three read off a real payslip under these names:
+  //
+  //   0.26667  "FIS D.Lgs.148/2015 oltre 15dip" — the employee's third of the
+  //            0.80% ordinary Fondo di Integrazione Salariale contribution.
+  //   0.30     "Contributo CIGS" — the employee's third of 0.90%. The FIS line
+  //            does not rule this out: the 2022 reform extended the CIGS to
+  //            employers above fifteen employees whatever their sector, so a
+  //            payslip carries both.
+  //   0.05     "Ente Bilaterale" — the sector's bilateral body, here the one
+  //            for commerce. This is the line that travels least: it depends on
+  //            the national agreement and even on the province, which is the
+  //            reason this is a field and not a constant.
+  //
+  // Together with the 9.19% pension contribution that is 9.80667% of gross.
+  minorRates: 0.26667 + 0.3 + 0.05,
   firstBandCap: 56224,
   ceiling: 122295,
   applyCeiling: true,
