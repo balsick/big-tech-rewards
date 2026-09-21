@@ -213,7 +213,17 @@ export default function EsppTool() {
           plan.months
         )}
       </p>
+      {/* Quanto esce dalla busta ogni mese: il numero più concreto di tutta la
+          scheda, e non c'era da nessuna parte. «Quanto ti costa» non è quello
+          — comprende la tassa sullo sconto, che arriva su un cedolino solo —
+          quindi sta qui, davanti alla riga che il costo lo scompone, e non
+          come sottotitolo di una cifra che non decompone. */}
       <p className="hint">
+        {t.espp.setAside(
+          eur0(contribution / Math.max(1, plan.months), lang),
+          plan.months,
+          eur0(contribution, lang)
+        )}{" "}
         {t.espp.costBreak(
           eur0(result.spent, lang),
           eur0(Math.round(result.outlay) - Math.round(result.spent), lang)
