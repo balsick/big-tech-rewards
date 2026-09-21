@@ -609,33 +609,126 @@ export const salaryOnly = (salary: number, regime?: TaxRegime) => grossToNet({ s
  */
 export type GrantInput = Omit<Grant, "priceAtGrant"> & { typedPrice: number | null };
 
+/** The performance band: the rating scales the bonus grants between these. */
+export const PERFORMANCE_STEPS = [0.75, 1, 1.25, 1.5];
+
+// ------------------------------------------------- the annual refresh, as a rule
+
 /**
- * What the RSU tool opens with: a welcome grant and three years of annual
- * bonuses.
+ * A change to the annual award, from a year on.
  *
- * One grant is the wrong picture of this kind of package. A welcome grant
- * vesting 30-30-40 puts its weight at the end, an annual bonus vests in
- * quarterly slices, and a new bonus lands every year — so in any given year
- * pieces of three or four different awards vest at once, and it is their total
- * that sets the tax rate. Starting with three years of bonuses means the first
- * screen already shows that overlap instead of a single tidy grant that nobody
- * actually has.
- *
- * The bonuses carry `performanceLinked`: their dollar figure is a target that
- * moves with the review. The welcome grant does not — it was agreed at hire.
+ * Not "the 2028 grant is worth X" but "**from** 2028 the annual grant is worth
+ * X": a refresh that goes up stays up, and the year it changed is the thing
+ * worth writing down. Saying it year by year would mean retyping the same
+ * figure for every year that did not change, which is exactly the work this
+ * replaces.
  */
-export function initialGrants(
-  today: string,
-  welcomeUsd = 20000,
-  bonusUsd = 10000,
-  bonusYears = 3
-): GrantInput[] {
-  const year = Number(today.slice(0, 4));
+export interface AnnualStep {
+  fromYear: number;
+  valueUsd: number;
+}
+
+/**
+ * The annual refresh: one rule instead of one row per year.
+ *
+ * Before this, every year of the annual grant was a row of its own, added by
+ * hand, with the same dollar figure retyped and the same schedule re-picked.
+ * Five years meant five rows that differed only in the date — and if the
+ * horizon moved from three years to five, the last two simply were not there,
+ * so the chart quietly showed a package that stopped.
+ *
+ * What is actually true is a rule: an award every year, on roughly the same
+ * day, of roughly the same size, vesting the same way. The exceptions are the
+ * years it changed, and those are `steps`.
+ *
+ * One-off awards — a welcome grant, a retention — are **not** this, and stay
+ * rows of their own: they happened once, on a date, and no rule describes them.
+ */
+export interface AnnualPlan {
+  enabled: boolean;
+  /** the day of the award, as `MM-DD`: the rule repeats it every year */
+  monthDay: string;
+  /** the first year it is awarded */
+  fromYear: number;
+  /** the award when no step says otherwise */
+  valueUsd: number;
+  schedule: VestingSchedule;
+  years: number;
+  usePlanDates: boolean;
+  /** the years it changed, in any order: `annualValueFor` sorts them */
+  steps: AnnualStep[];
+}
+
+/**
+ * What the annual award is worth in a given year: the last step that has
+ * already begun, or the base if none has.
+ */
+export function annualValueFor(p: AnnualPlan, year: number): number {
+  const valido = p.steps
+    .filter((s) => s.fromYear <= year)
+    .sort((a, b) => a.fromYear - b.fromYear)
+    .at(-1);
+  return valido ? valido.valueUsd : p.valueUsd;
+}
+
+/**
+ * The rule, written out as the grants it stands for.
+ *
+ * The ids are **stable** (`annual-2027`), and that is not a detail: the chart
+ * takes a grant's colour from its position and React takes a row's identity
+ * from its key, so ids that changed on every render would repaint the chart
+ * and lose the focus in a field on every keystroke.
+ *
+ * It stops at `untilYear` because a grant awarded after the window cannot vest
+ * inside it — and starts at `fromYear`, which can be in the past: someone who
+ * joined four years ago has four awards still vesting, and typing them one by
+ * one was the work this is here to remove.
+ */
+export function expandAnnual(p: AnnualPlan, untilYear: number): GrantInput[] {
+  if (!p.enabled) return [];
+  const out: GrantInput[] = [];
+  for (let year = p.fromYear; year <= untilYear; year++) {
+    out.push({
+      id: `annual-${year}`,
+      label: `Bonus ${year}`,
+      date: `${year}-${p.monthDay}`,
+      valueUsd: annualValueFor(p, year),
+      schedule: p.schedule,
+      years: p.years,
+      usePlanDates: p.usePlanDates,
+      performanceLinked: true,
+      typedPrice: null,
+    });
+  }
+  return out;
+}
+
+/** The annual rule the tool opens with: this year on, ten thousand a year. */
+export function initialAnnual(today: string, valueUsd = 10000): AnnualPlan {
+  return {
+    enabled: true,
+    monthDay: "11-20",
+    fromYear: Number(today.slice(0, 4)),
+    valueUsd,
+    schedule: "quarterly",
+    years: 3,
+    usePlanDates: true,
+    steps: [],
+  };
+}
+
+/**
+ * The one-off awards the tool opens with: the welcome grant, and nothing else.
+ *
+ * It does not carry `performanceLinked`: a welcome grant is agreed when you are
+ * hired and does not move with a review that has not happened.
+ */
+export function initialOneOff(today: string, welcomeUsd = 20000): GrantInput[] {
   return [
     {
       id: newGrantId(),
       label: "Welcome grant",
-      date: `${year}-02-20`,
+      date: `${today.slice(0, 4)}-02-20`,
       valueUsd: welcomeUsd,
       schedule: "30-30-40",
       years: 3,
@@ -643,19 +736,5 @@ export function initialGrants(
       performanceLinked: false,
       typedPrice: null,
     },
-    ...Array.from({ length: bonusYears }, (_, k) => ({
-      id: newGrantId(),
-      label: `Bonus ${year + k}`,
-      date: `${year + k}-11-20`,
-      valueUsd: bonusUsd,
-      schedule: "quarterly" as VestingSchedule,
-      years: 3,
-      usePlanDates: true,
-      performanceLinked: true,
-      typedPrice: null,
-    })),
   ];
 }
-
-/** The performance band: the rating scales the bonus grants between these. */
-export const PERFORMANCE_STEPS = [0.75, 1, 1.25, 1.5];

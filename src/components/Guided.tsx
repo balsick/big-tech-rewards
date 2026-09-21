@@ -2,10 +2,21 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useStore } from "../state/store.tsx";
 import { Answer, Card, Line, NumField } from "./ui.tsx";
 import { Close } from "./Icons.tsx";
-import { dateShort, eur0, num, pct, todayISO, usd } from "../lib/format.ts";
+import { dateShort, dayMonth, eur0, num, pct, todayISO, usd } from "../lib/format.ts";
 import { ESPP_PLAN, defaultWindow, expectedContribution, simulateEspp } from "../lib/espp.ts";
-import { VESTING_CALENDAR, grantUnits, project, type Grant } from "../lib/rsu.ts";
-import { dividends, historyAt, loadQuote, type Quote } from "../lib/prices.ts";
+import {
+  VESTING_CALENDAR,
+  expandAnnual,
+  grantUnits,
+  initialAnnual,
+  initialOneOff,
+  project,
+  type Grant,
+} from "../lib/rsu.ts";
+
+/** L'orizzonte su cui la procedura fa vedere il conto: lo stesso dello strumento. */
+const ORIZZONTE = 3;
+import { dividends, fmvAt, historyAt, loadQuote, type Quote } from "../lib/prices.ts";
 import { markSeen, type Seed } from "../lib/guided.ts";
 import { DEFAULT_SALARY } from "../lib/meta.ts";
 
@@ -151,41 +162,48 @@ export default function Guided({
     [salary, contributed, startPrice, endPrice, fx, regime]
   );
 
-  const welcomeDate = `${year}-02-20`;
-  const bonusDate = `${year}-11-20`;
-  const priceAt = (date: string) => (date <= today ? (historyAt(date)?.close ?? quote?.close ?? 0) : (quote?.close ?? 0));
+  /**
+   * Il prezzo con cui un'assegnazione diventa unità: il **fair market value**,
+   * non la chiusura del giorno.
+   *
+   * Qui c'era la chiusura, e sulla stessa assegnazione la procedura diceva 140
+   * unità dove lo strumento ne dice 137: il piano non usa il prezzo di quel
+   * giorno ma la media delle venti sedute prima, e il 20 febbraio 2026 sono
+   * 142,88 contro 146,32. Due regole per lo stesso numero, a due schermate di
+   * distanza, con la seconda che contraddice la prima appena la apri.
+   */
+  const priceAt = (date: string) =>
+    fmvAt(date, quote)?.price ?? (date <= today ? (historyAt(date)?.close ?? 0) : (quote?.close ?? 0));
 
+  // Le assegnazioni dell'anteprima sono **le stesse** che la procedura
+  // consegna: `initialOneOff` più la regola annuale srotolata.
+  //
+  // Erano scritte a mano qui, una tantum più un bonus per l'anno in corso, e
+  // finché il default era quello combaciavano. Da quando l'assegnazione
+  // annuale è una regola non più: la procedura mostrava il conto di **un**
+  // anno di bonus e poi apriva uno strumento che ne ha uno per ogni anno
+  // dell'orizzonte. Due numeri diversi per la stessa domanda, a due schermate
+  // di distanza.
   const grants: Grant[] = useMemo(
-    () => [
-      {
-        id: "w",
-        label: "Welcome grant",
-        date: welcomeDate,
-        valueUsd: welcomeUsd,
-        priceAtGrant: priceAt(welcomeDate),
-        schedule: "30-30-40",
-        years: 3,
-        usePlanDates: false,
-      },
-      {
-        id: "b",
-        label: `Bonus ${year}`,
-        date: bonusDate,
-        valueUsd: bonusUsd,
-        priceAtGrant: priceAt(bonusDate),
-        schedule: "quarterly",
-        years: 3,
-        usePlanDates: true,
-      },
-    ],
+    () =>
+      [
+        ...initialOneOff(today, welcomeUsd),
+        ...expandAnnual(initialAnnual(today, bonusUsd), year + ORIZZONTE),
+      ].map((g) => ({ ...g, priceAtGrant: priceAt(g.date) })),
     // eslint-disable-next-line
-    [welcomeUsd, bonusUsd, quote?.close, welcomeDate, bonusDate]
+    [welcomeUsd, bonusUsd, quote?.close, today, year]
   );
+
+  // Le date che la procedura nomina («precompilato al 20 febbraio») sono
+  // quelle delle assegnazioni che ha appena costruito, non due stringhe
+  // riscritte qui: erano una terza copia dei default, e una copia si stacca.
+  const welcomeDate = grants[0]?.date ?? today;
+  const bonusDate = grants[1]?.date ?? today;
 
   const rsu = useMemo(
     () =>
       endPrice > 0 && fx > 0
-        ? project({ grants, price: endPrice, fxRate: fx, salary, today, horizonYears: 3, calendar: VESTING_CALENDAR, dividends }, regime)
+        ? project({ grants, price: endPrice, fxRate: fx, salary, today, horizonYears: ORIZZONTE, calendar: VESTING_CALENDAR, dividends }, regime)
         : null,
     [grants, endPrice, fx, salary, today, regime]
   );
@@ -408,7 +426,7 @@ export default function Guided({
             />
           </div>
           <p className="hint" style={{ marginTop: 16 }}>
-            {t.guided.bonusPrefilled(dateShort(bonusDate, lang))}
+            {t.guided.bonusPrefilled(dayMonth(bonusDate, lang))}
           </p>
         </div>
         <div className="guida-piede">

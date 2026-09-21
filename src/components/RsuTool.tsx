@@ -11,11 +11,14 @@ import {
   PERFORMANCE_STEPS,
   WITHHOLDING_RATE,
   VESTING_CALENDAR,
+  annualValueFor,
+  expandAnnual,
   grantUnits,
   newGrantId,
   project,
   salaryOnly,
   withUniqueIds,
+  type AnnualPlan,
   type Grant,
   type GrantInput,
   type VestingSchedule,
@@ -43,12 +46,24 @@ const KEY = "rsu";
 
 /** What the save button puts in the browser: the form fields, nothing else. */
 interface RsuState {
-  grants: GrantInput[];
+  oneOff: GrantInput[];
+  annual: AnnualPlan;
   salary: number;
   horizonYears: number;
   performance?: number;
   price: number | null;
   fxRate: number | null;
+  /**
+   * Come si salvava prima: un elenco piatto, una riga per anno.
+   *
+   * Resta letto e non scritto. Un salvataggio vecchio si rimette **tutto fra
+   * le una tantum**, e la regola annuale parte spenta: le righe che ci sono
+   * sono quelle che l'utente ha scritto, e accenderla vorrebbe dire
+   * aggiungerci sopra le stesse assegnazioni una seconda volta. Indovinare
+   * quali di quelle righe *erano* la regola si può fare, e sarebbe indovinare
+   * su dati di qualcuno.
+   */
+  grants?: GrantInput[];
 }
 
 // The two grants most people hold at once, and which together explain why three
@@ -63,7 +78,10 @@ export default function RsuTool() {
     salary,
     setSalary,
     grants,
-    setGrants,
+    oneOff,
+    setOneOff,
+    annual,
+    setAnnual,
     performance,
     setPerformance,
     horizonYears,
@@ -84,11 +102,17 @@ export default function RsuTool() {
   useEffect(() => {
     if (restored.current || !s0) return;
     restored.current = true;
-    if (s0.grants) setGrants(withUniqueIds(s0.grants));
+    if (s0.oneOff) setOneOff(withUniqueIds(s0.oneOff));
+    if (s0.annual) setAnnual(s0.annual);
+    // Il formato vecchio: tutto fra le una tantum, e la regola spenta.
+    if (!s0.oneOff && s0.grants) {
+      setOneOff(withUniqueIds(s0.grants));
+      setAnnual((a) => ({ ...a, enabled: false }));
+    }
     if (typeof s0.salary === "number") setSalary(s0.salary);
     if (typeof s0.horizonYears === "number") setHorizonYears(s0.horizonYears);
     if (typeof s0.performance === "number") setPerformance(s0.performance);
-  }, [s0, setGrants, setSalary, setHorizonYears, setPerformance]);
+  }, [s0, setOneOff, setAnnual, setSalary, setHorizonYears, setPerformance]);
 
   const [scale, setScale] = useState<"eur" | "units">("eur");
   // Which granularity the table is read at. Not saved: it is how you are
@@ -176,12 +200,20 @@ export default function RsuTool() {
   /** The payment the future ones are projected from, for the assumption note. */
   const lastDividend = dividends.length ? dividends[dividends.length - 1] : null;
 
-  const state: RsuState = { grants, salary, horizonYears, performance, price: typedPrice, fxRate: typedFx };
+  const state: RsuState = {
+    oneOff,
+    annual,
+    salary,
+    horizonYears,
+    performance,
+    price: typedPrice,
+    fxRate: typedFx,
+  };
   const dirty = JSON.stringify(state) !== JSON.stringify(saved?.data ?? null);
 
   const salaryNet = salaryOnly(salary, regime);
   const patch = (id: string, q: Partial<GrantInput>) =>
-    setGrants((gs) => gs.map((g) => (g.id === id ? { ...g, ...q } : g)));
+    setOneOff((gs) => gs.map((g) => (g.id === id ? { ...g, ...q } : g)));
 
   const schedules: { id: VestingSchedule; label: string }[] = [
     { id: "quarterly", label: t.rsu.schedule.quarterly },
@@ -209,9 +241,28 @@ export default function RsuTool() {
           and the share count sat five lines down in a card, which is the wrong
           way round: RSUs pay in shares, and "how many actually turn up" is the
           question the withholding makes hard to answer. */}
-      <h2 style={{ marginBottom: 12 }}>
-        {t.rsu.horizonSpan(projection.years[projection.years.length - 1]?.year ?? 0)}
-      </h2>
+      {/* L'orizzonte sta qui e non in fondo al pannello a sinistra: è il
+          comando della frase che gli sta accanto — «nei prossimi tre anni, fino
+          al 2029» — e in fondo alla colonna dei campi, sotto la performance,
+          non lo trovava nessuno. */}
+      <div
+        className="row-inline"
+        style={{ justifyContent: "space-between", alignItems: "baseline", gap: 12, marginBottom: 12 }}
+      >
+        <h2 style={{ margin: 0 }}>
+          {t.rsu.horizonSpan(projection.years[projection.years.length - 1]?.year ?? 0)}
+        </h2>
+        <Segmented<"1" | "3" | "5">
+          label={t.rsu.horizon}
+          value={String(horizonYears) as "1" | "3" | "5"}
+          onChange={(v) => setHorizonYears(Number(v))}
+          options={[
+            { id: "1", label: t.rsu.yearCount(1) },
+            { id: "3", label: t.rsu.yearCount(3) },
+            { id: "5", label: t.rsu.yearCount(5) },
+          ]}
+        />
+      </div>
       <Answer
         items={[
           { name: t.rsu.answerShares, value: num(projection.totalNetShares, lang, 0) },
@@ -253,8 +304,11 @@ export default function RsuTool() {
     <div className="tool">
       <div className="panel">
         <Card>
-          <h2>{t.rsu.grants}</h2>
-          {grants.map((g, i) => {
+          <h2>{t.rsu.oneOffTitle}</h2>
+          {/* Solo le una tantum: quelle annuali le descrive la regola qui
+              sotto, e l'indice del colore combacia lo stesso perché nella
+              lista completa le una tantum vengono prima. */}
+          {oneOff.map((g, i) => {
             const p = priceAtGrant(g);
             return (
               <div
@@ -274,11 +328,11 @@ export default function RsuTool() {
                     onChange={(ev) => patch(g.id, { label: ev.target.value })}
                     style={{ fontWeight: 620 }}
                   />
-                  {grants.length > 1 ? (
+                  {oneOff.length > 1 ? (
                     <button
                       className="icon-btn"
                       type="button"
-                      onClick={() => setGrants((gs) => gs.filter((x) => x.id !== g.id))}
+                      onClick={() => setOneOff((gs) => gs.filter((x) => x.id !== g.id))}
                       aria-label={`${t.rsu.removeGrant}: ${g.label}`}
                     >
                       <Close />
@@ -380,45 +434,206 @@ export default function RsuTool() {
           })}
 
           <button
-            className="btn primary"
+            className="btn"
             type="button"
             style={{ marginTop: 14 }}
-            onClick={() => {
-              setGrants((gs) => {
-                // The name and the date come from the same year, from the same
-                // expression. They used to be worked out separately — the label
-                // counted the rows and the date took the current year — so the
-                // third grant came out as "Bonus 2027" granted on the day Bonus
-                // 2026 was granted.
-                //
-                // The next award is the year after the latest one you already
-                // have, read off the dates rather than the row count: deleting
-                // the welcome grant changes how many rows there are and does
-                // not change which bonus comes next.
-                const latest = gs.reduce(
-                  (m, g) => (g.date > m ? g.date : m),
-                  `${Number(today.slice(0, 4)) - 1}-11-20`
-                );
-                const year = Number(latest.slice(0, 4)) + 1;
-                return [
-                  ...gs,
-                  {
-                    id: newGrantId(),
-                    label: `Bonus ${year}`,
-                    date: `${year}-11-20`,
-                    valueUsd: 10000,
-                    schedule: "quarterly",
-                    years: 3,
-                    usePlanDates: true,
-                    typedPrice: null,
-                  },
-                ];
-              });
-            }}
+            onClick={() =>
+              // Una tantum, non un altro anno di bonus: gli anni li fa la
+              // regola qui sotto. Il tasto serve a una retention o a un
+              // secondo welcome, che una regola non la descrive.
+              setOneOff((gs) => [
+                ...gs,
+                {
+                  id: newGrantId(),
+                  label: t.rsu.oneOffNew,
+                  date: `${today.slice(0, 4)}-${today.slice(5, 7)}-01`,
+                  valueUsd: 10000,
+                  schedule: "30-30-40",
+                  years: 3,
+                  usePlanDates: false,
+                  performanceLinked: false,
+                  typedPrice: null,
+                },
+              ])
+            }
           >
             <Plus />
-            {t.rsu.addGrant}
+            {t.rsu.addOneOff}
           </button>
+
+          {/* La regola dell'assegnazione annuale.
+              Prima era una riga per anno, aggiunta a mano, con la stessa cifra
+              riscritta e lo stesso schema riscelto ogni volta — e allungando
+              l'orizzonte da tre a cinque anni gli ultimi due semplicemente non
+              c'erano. Qui è una cosa sola: quanto, da che anno, e gli anni in
+              cui è cambiata. */}
+          <div style={{ marginTop: 18, borderTop: "1px solid var(--border)", paddingTop: 14 }}>
+            <div className="row-inline" style={{ justifyContent: "space-between" }}>
+              <h3 style={{ margin: 0 }}>{t.rsu.annualTitle}</h3>
+              <Check
+                label={t.rsu.annualOn}
+                checked={annual.enabled}
+                onChange={(v) => setAnnual((a) => ({ ...a, enabled: v }))}
+              />
+            </div>
+            {/* `div` e non `p`: `Info` apre un popover, che è un `div`, e un
+                `div` dentro un `p` il browser lo chiude prima. */}
+            <div className="hint" style={{ marginTop: 4 }}>
+              {t.rsu.annualIntro}
+              <Info label={t.common.whatIsThis}>
+                <p>{t.rsu.annualWhy}</p>
+              </Info>
+            </div>
+
+            {annual.enabled ? (
+              <>
+                <div className="grid2 has-date aligned" style={{ marginTop: 10 }}>
+                  <NumField
+                    lang={lang}
+                    label={t.rsu.annualValue}
+                    suffix="$"
+                    dec={0}
+                    value={annual.valueUsd}
+                    onChange={(v) => setAnnual((a) => ({ ...a, valueUsd: Math.max(0, v) }))}
+                    hint={t.rsu.annualValueHint}
+                  />
+                  <NumField
+                    lang={lang}
+                    label={t.rsu.annualFrom}
+                    dec={0}
+                    value={annual.fromYear}
+                    onChange={(v) =>
+                      setAnnual((a) => ({
+                        ...a,
+                        fromYear: Math.max(2000, Math.min(2100, Math.round(v))),
+                      }))
+                    }
+                    hint={t.rsu.annualFromHint}
+                  />
+                  <Select<VestingSchedule>
+                    label={t.rsu.grantSchedule}
+                    value={annual.schedule}
+                    options={schedules}
+                    onChange={(v) => setAnnual((a) => ({ ...a, schedule: v }))}
+                    hint={scheduleHint(annual.schedule)}
+                  />
+                  {annual.schedule === "30-30-40" ? null : (
+                    <NumField
+                      lang={lang}
+                      label={t.rsu.grantYears}
+                      suffix={t.rsu.years}
+                      dec={0}
+                      value={annual.years}
+                      onChange={(v) =>
+                        setAnnual((a) => ({ ...a, years: Math.max(1, Math.round(v)) }))
+                      }
+                    />
+                  )}
+                </div>
+
+                <div style={{ marginTop: 10 }}>
+                  <DateField
+                    label={t.rsu.annualDay}
+                    value={`${annual.fromYear}-${annual.monthDay}`}
+                    onChange={(v) => setAnnual((a) => ({ ...a, monthDay: v.slice(5) }))}
+                  />
+                  <p className="hint" style={{ marginTop: 4 }}>
+                    {t.rsu.annualDayHint}
+                  </p>
+                </div>
+
+                {annual.schedule === "quarterly" || annual.schedule === "monthly" ? (
+                  <div style={{ marginTop: 10 }}>
+                    <Check
+                      label={t.rsu.fixedDates}
+                      checked={annual.usePlanDates}
+                      onChange={(v) => setAnnual((a) => ({ ...a, usePlanDates: v }))}
+                      hint={t.rsu.fixedDatesHint(VESTING_CALENDAR.join(", "))}
+                    />
+                  </div>
+                ) : null}
+
+                {/* I cambi. Non «il 2028 vale X» ma «dal 2028 vale X»: un
+                    aumento resta, e l'anno in cui è arrivato è la cosa da
+                    scrivere. */}
+                <h4 style={{ margin: "16px 0 6px", fontSize: "var(--t-13)" }}>{t.rsu.stepsTitle}</h4>
+                {annual.steps.length === 0 ? (
+                  <p className="hint">{t.rsu.stepsEmpty}</p>
+                ) : (
+                  <ul className="lines">
+                    {[...annual.steps]
+                      .sort((a, b) => a.fromYear - b.fromYear)
+                      .map((st) => (
+                        <li key={st.fromYear} className="row-inline" style={{ gap: 8 }}>
+                          <span style={{ minWidth: 0, flex: 1 }}>{t.rsu.stepFrom(st.fromYear)}</span>
+                          <NumField
+                            lang={lang}
+                            label={t.rsu.stepValue}
+                            suffix="$"
+                            dec={0}
+                            value={st.valueUsd}
+                            onChange={(v) =>
+                              setAnnual((a) => ({
+                                ...a,
+                                steps: a.steps.map((x) =>
+                                  x.fromYear === st.fromYear ? { ...x, valueUsd: Math.max(0, v) } : x
+                                ),
+                              }))
+                            }
+                          />
+                          <button
+                            className="icon-btn"
+                            type="button"
+                            aria-label={`${t.rsu.stepRemove}: ${st.fromYear}`}
+                            onClick={() =>
+                              setAnnual((a) => ({
+                                ...a,
+                                steps: a.steps.filter((x) => x.fromYear !== st.fromYear),
+                              }))
+                            }
+                          >
+                            <Close />
+                          </button>
+                        </li>
+                      ))}
+                  </ul>
+                )}
+                <button
+                  className="btn link"
+                  type="button"
+                  onClick={() =>
+                    setAnnual((a) => {
+                      // Il cambio nuovo parte dall'anno dopo l'ultimo che c'è,
+                      // e dal valore che quell'anno avrebbe avuto: così si
+                      // ritocca un numero invece di scriverne due.
+                      const ultimo = a.steps.reduce(
+                        (m, x) => Math.max(m, x.fromYear),
+                        Math.max(a.fromYear, Number(today.slice(0, 4)))
+                      );
+                      const anno = ultimo + 1;
+                      if (a.steps.some((x) => x.fromYear === anno)) return a;
+                      return {
+                        ...a,
+                        steps: [...a.steps, { fromYear: anno, valueUsd: annualValueFor(a, anno) }],
+                      };
+                    })
+                  }
+                >
+                  <Plus />
+                  {t.rsu.stepAdd}
+                </button>
+
+                {/* La regola srotolata: è quello che finisce nel grafico e nel
+                    calendario, e vederlo qui evita di doverlo dedurre. */}
+                <p className="hint" style={{ marginTop: 12 }}>
+                  {t.rsu.annualPreview}{" "}
+                  {expandAnnual(annual, Number(today.slice(0, 4)) + horizonYears)
+                    .map((g) => `${g.date.slice(0, 4)} ${usd(g.valueUsd, lang, 0)}`)
+                    .join(" · ")}
+                </p>
+              </>
+            ) : null}
+          </div>
 
           <NumField
             lang={lang}
@@ -484,18 +699,6 @@ export default function RsuTool() {
             </Info>
           </div>
 
-          <h3>{t.rsu.horizon}</h3>
-          <Segmented<"1" | "3" | "5">
-            label={t.rsu.horizon}
-            value={String(horizonYears) as "1" | "3" | "5"}
-            onChange={(v) => setHorizonYears(Number(v))}
-            options={[
-              { id: "1", label: t.rsu.yearCount(1) },
-              { id: "3", label: t.rsu.yearCount(3) },
-              { id: "5", label: t.rsu.yearCount(5) },
-            ]}
-          />
-
           <div style={{ marginTop: 18, borderTop: "1px solid var(--border)", paddingTop: 14 }}>
             <Disclosure label={t.tax.title}>
               <RegimeEditor salary={salary} />
@@ -523,6 +726,39 @@ export default function RsuTool() {
         <div className="detail">
         {projection.upcoming.length ? (
           <>
+            {/* Gli anni prima del grafico: sono la risposta in numeri, e il
+                grafico è la sua forma. Stavano sotto, e per leggere quanto fa
+                il 2027 bisognava scorrere oltre un grafico che quella cifra
+                non la scrive da nessuna parte. */}
+            <div className="grid3">
+              {projection.years.map((y) => (
+                <Card key={y.year}>
+                  <h3 style={{ margin: 0, fontSize: "var(--t-15)", color: "var(--text)" }}>{y.year}</h3>
+                  <p className="mid">{eur0(y.netEur, lang)}</p>
+                  {/* Without this the last card looks like the plan tailing
+                      off, when it is only the window ending mid-year. */}
+                  {y.partial ? <p className="hint">{t.rsu.yearPartial}</p> : null}
+                  <ul className="lines">
+                    <Line name={t.rsu.yearUnits} value={num(y.units, lang, 2)} />
+                    <Line name={t.rsu.yearGross} value={eur0(y.grossEur, lang)} />
+                    <Line name={t.rsu.yearRate} value={pct(y.taxRate, lang)} tone="neg" />
+                    <Line name={t.rsu.yearSold} value={`\u2212${num(y.sharesWithheld, lang, 0)}`} tone="neg" />
+                    <Line name={t.rsu.yearShares} hint={t.rsu.yearSharesHint} value={num(y.netShares, lang, 0)} />
+                    {/* The number that makes a year of RSUs comparable to a
+                        salary: it is the question people actually ask looking at
+                        these cards, and with salary and gross kept apart they
+                        have to do it in their head. */}
+                    <Line
+                      name={t.rsu.yearSalaryEquiv}
+                      hint={t.rsu.yearSalaryEquivHint}
+                      value={eur0(salary + y.grossEur, lang)}
+                      sum
+                    />
+                  </ul>
+                </Card>
+              ))}
+            </div>
+
             <Card>
               <div className="row-inline" style={{ justifyContent: "space-between", marginBottom: 10 }}>
                 <h2 style={{ margin: 0 }}>{t.rsu.chartTitle}</h2>
@@ -559,34 +795,6 @@ export default function RsuTool() {
               </div>
             </Card>
 
-            <div className="grid3">
-              {projection.years.map((y) => (
-                <Card key={y.year}>
-                  <h3 style={{ margin: 0, fontSize: "var(--t-15)", color: "var(--text)" }}>{y.year}</h3>
-                  <p className="mid">{eur0(y.netEur, lang)}</p>
-                  {/* Without this the last card looks like the plan tailing
-                      off, when it is only the window ending mid-year. */}
-                  {y.partial ? <p className="hint">{t.rsu.yearPartial}</p> : null}
-                  <ul className="lines">
-                    <Line name={t.rsu.yearUnits} value={num(y.units, lang, 2)} />
-                    <Line name={t.rsu.yearGross} value={eur0(y.grossEur, lang)} />
-                    <Line name={t.rsu.yearRate} value={pct(y.taxRate, lang)} tone="neg" />
-                    <Line name={t.rsu.yearSold} value={`\u2212${num(y.sharesWithheld, lang, 0)}`} tone="neg" />
-                    <Line name={t.rsu.yearShares} hint={t.rsu.yearSharesHint} value={num(y.netShares, lang, 0)} />
-                    {/* The number that makes a year of RSUs comparable to a
-                        salary: it is the question people actually ask looking at
-                        these cards, and with salary and gross kept apart they
-                        have to do it in their head. */}
-                    <Line
-                      name={t.rsu.yearSalaryEquiv}
-                      hint={t.rsu.yearSalaryEquivHint}
-                      value={eur0(salary + y.grossEur, lang)}
-                      sum
-                    />
-                  </ul>
-                </Card>
-              ))}
-            </div>
 
             {/* Why the share count and the euro net disagree. Without saying
                 it, one of the two looks wrong — and the settlement runs both

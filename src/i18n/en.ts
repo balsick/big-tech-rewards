@@ -171,7 +171,10 @@ export const en: Dict = {
     answerValueHint: (price: string) => `at ${price} a share`,
     gainLine: (roi: string, outlay: string, shares: string, value: string, months: number) =>
       `${roi} of the ${outlay} it costs you, over ${months} months: ${shares} shares worth ${value}.`,
-    costBreak: (shares: string, tax: string) => `${shares} of shares plus ${tax} of tax on the discount.`,
+    setAside: (perMonth: string, months: number, total: string) =>
+      `You set aside ${perMonth} a month for ${months} months, ${total} in all: that is what leaves your payslip.`,
+    costBreak: (shares: string, tax: string) =>
+      `It turns into ${shares} of shares, plus ${tax} of tax on the discount.`,
     annualised: (r: string) =>
       `Annualised that is roughly ${r}: your money is tied up for about half the period, not all of it.`,
     payslipTitle: "Withheld on the purchase-month payslip",
@@ -226,7 +229,27 @@ export const en: Dict = {
     whyProspect:
       "With a new grant every year and quarterly vesting, in any given year slices of three or four different grants vest. The taxman adds up everything that vests in the same year, so it is the year’s total that sets the rate — not the individual tranche. Looking at them one at a time is the wrong way round.",
     grants: "Grants",
-    addGrant: "Add a grant",
+    oneOffTitle: "One-off grants",
+    addOneOff: "Add a one-off grant",
+    oneOffNew: "Grant",
+    annualTitle: "Annual grant",
+    annualOn: "There is one",
+    annualIntro: "A rule instead of one row a year: how much, from when, and the years it changed.",
+    annualWhy:
+      "The annual refresh is the same thing happening again: same figure, same time of year, same vesting plan. Writing it once means that stretching the horizon brings the new years with it instead of quietly leaving them out — and that past years still vesting are a matter of changing one number.",
+    annualValue: "How much, each year",
+    annualValueHint: "the dollar figure the letter states",
+    annualFrom: "From",
+    annualFromHint: "the first year it was awarded; it can be in the past",
+    annualDay: "The day",
+    annualDayHint: "the day and the month are what count: the rule supplies the year",
+    annualPreview: "That works out as:",
+    stepsTitle: "The years it changed",
+    stepsEmpty: "None: the figure above holds for every year.",
+    stepAdd: "Add a change",
+    stepValue: "How much",
+    stepRemove: "Remove the change",
+    stepFrom: (y: number) => `From ${y}`,
     removeGrant: "Remove",
     grantLabel: "Name",
     grantDate: "Grant date",

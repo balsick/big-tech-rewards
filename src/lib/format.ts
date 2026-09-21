@@ -55,6 +55,15 @@ export const dateLong = (iso: string, l: Lang) =>
 export const dateShort = (iso: string, l: Lang) =>
   new Date(`${iso}T12:00:00Z`).toLocaleDateString(loc(l), { day: "numeric", month: "short", year: "2-digit", timeZone: "UTC" });
 
+/**
+ * Giorno e mese, senza l'anno.
+ *
+ * Serve a quello che si ripete: «assegnato ogni anno il 20 nov 26» nomina un
+ * anno che la regola non ha, e chi legge si chiede cosa succede negli altri.
+ */
+export const dayMonth = (iso: string, l: Lang) =>
+  new Date(`${iso}T12:00:00Z`).toLocaleDateString(loc(l), { day: "numeric", month: "long", timeZone: "UTC" });
+
 export const monthShort = (ym: string, l: Lang) =>
   new Date(`${ym}-15T12:00:00Z`).toLocaleDateString(loc(l), { month: "short", timeZone: "UTC" });
 

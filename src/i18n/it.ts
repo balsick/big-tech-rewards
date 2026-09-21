@@ -169,7 +169,9 @@ export const it = {
     answerValueHint: (price: string) => `al prezzo di ${price}`,
     gainLine: (roi: string, outlay: string, shares: string, value: string, months: number) =>
       `Il ${roi} dei ${outlay} che ti costa, in ${months} mesi: ${shares} azioni che ne valgono ${value}.`,
-    costBreak: (shares: string, tax: string) => `${shares} di azioni più ${tax} di tasse sullo sconto.`,
+    setAside: (perMonth: string, months: number, total: string) =>
+      `Accantoni ${perMonth} al mese per ${months} mesi, ${total} in tutto: è quello che esce dalla busta.`,
+    costBreak: (shares: string, tax: string) => `Ne diventano ${shares} di azioni, più ${tax} di tasse sullo sconto.`,
     annualised: (r: string) =>
       `Su base annua fa circa ${r}: i soldi restano immobilizzati in media metà del periodo, non tutto.`,
     payslipTitle: "Sul cedolino dell’acquisto trattengono",
@@ -224,7 +226,28 @@ export const it = {
     whyProspect:
       "Con un’assegnazione nuova ogni anno e vestizioni trimestrali, in un anno qualsiasi vestono pezzi di tre o quattro grant diversi. Il fisco somma tutto quello che vesta nello stesso anno, quindi è il totale dell’anno a decidere l’aliquota — non la singola tranche. Guardarli uno per volta è il modo sbagliato.",
     grants: "Assegnazioni",
-    addGrant: "Aggiungi assegnazione",
+    oneOffTitle: "Assegnazioni una tantum",
+    addOneOff: "Aggiungi una tantum",
+    oneOffNew: "Assegnazione",
+    annualTitle: "Assegnazione annuale",
+    annualOn: "C'è",
+    annualIntro:
+      "Una regola invece di una riga per anno: quanto, da quando, e gli anni in cui è cambiata.",
+    annualWhy:
+      "Il rinnovo annuale è la stessa cosa che si ripete: stessa cifra, stesso periodo dell'anno, stesso piano di vestizione. Scriverlo una volta vuol dire che allungando l'orizzonte gli anni nuovi ci sono già, invece di mancare in silenzio — e che gli anni passati, quelli che stanno ancora vestendo, si mettono cambiando un numero.",
+    annualValue: "Quanto, ogni anno",
+    annualValueHint: "il valore in dollari dichiarato nella lettera",
+    annualFrom: "Dal",
+    annualFromHint: "il primo anno in cui è arrivata; può essere passato",
+    annualDay: "Il giorno",
+    annualDayHint: "conta il giorno e il mese: l'anno lo mette la regola",
+    annualPreview: "Viene fuori:",
+    stepsTitle: "Gli anni in cui è cambiata",
+    stepsEmpty: "Nessuno: la cifra qui sopra vale per tutti gli anni.",
+    stepAdd: "Aggiungi un cambio",
+    stepValue: "Quanto",
+    stepRemove: "Togli il cambio",
+    stepFrom: (y: number) => `Dal ${y}`,
     removeGrant: "Rimuovi",
     grantLabel: "Nome",
     grantDate: "Data del grant",

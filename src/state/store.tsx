@@ -12,7 +12,13 @@ import {
 import { DICTIONARIES, initialLang, type Dict, type Lang } from "../i18n/index.ts";
 import { DEFAULT_REGIME, type TaxRegime } from "../lib/tax.ts";
 import { DEFAULT_BONUS_PCT, DEFAULT_ESPP_PCT, DEFAULT_SALARY } from "../lib/meta.ts";
-import { initialGrants, type GrantInput } from "../lib/rsu.ts";
+import {
+  expandAnnual,
+  initialAnnual,
+  initialOneOff,
+  type AnnualPlan,
+  type GrantInput,
+} from "../lib/rsu.ts";
 import { todayISO } from "../lib/format.ts";
 
 export type Theme = "light" | "dark" | "auto";
@@ -78,9 +84,24 @@ interface Store {
   setEsppPurchase: (v: string | null) => void;
   esppEnrolled: string | null;
   setEsppEnrolled: (v: string | null) => void;
-  /** the awards, as the RSU form holds them */
+  /**
+   * Le assegnazioni una tantum: il welcome grant, una retention. Sono successe
+   * una volta, in una data, e nessuna regola le descrive.
+   */
+  oneOff: GrantInput[];
+  setOneOff: Dispatch<SetStateAction<GrantInput[]>>;
+  /** La regola dell'assegnazione annuale, con gli anni in cui è cambiata. */
+  annual: AnnualPlan;
+  setAnnual: Dispatch<SetStateAction<AnnualPlan>>;
+  /**
+   * Tutte le assegnazioni, la regola srotolata negli anni che tocca.
+   *
+   * È **derivata**, e per questo non ha un setter: chi la modificasse
+   * scriverebbe una cosa che il prossimo render ricalcola e butta via. È
+   * quello che leggono il grafico, il total reward e il calendario, che della
+   * regola non hanno bisogno di sapere niente.
+   */
   grants: GrantInput[];
-  setGrants: Dispatch<SetStateAction<GrantInput[]>>;
   /** the performance rating as a multiplier: 1 is target */
   performance: number;
   setPerformance: (v: number) => void;
@@ -116,9 +137,19 @@ export function Provider({ children }: { children: ReactNode }) {
   const [esppPct, setEsppPct] = useState(DEFAULT_ESPP_PCT);
   const [esppPurchase, setEsppPurchase] = useState<string | null>(null);
   const [esppEnrolled, setEsppEnrolled] = useState<string | null>(null);
-  const [grants, setGrants] = useState<GrantInput[]>(() => initialGrants(todayISO()));
+  const [oneOff, setOneOff] = useState<GrantInput[]>(() => initialOneOff(todayISO()));
+  const [annual, setAnnual] = useState<AnnualPlan>(() => initialAnnual(todayISO()));
   const [performance, setPerformance] = useState(1);
   const [horizonYears, setHorizonYears] = useState(3);
+
+  // La regola si srotola fino in fondo alla finestra: un'assegnazione fatta
+  // dopo non può vestire dentro, e una fatta prima vesta ancora. Spostando
+  // l'orizzonte da tre a cinque anni gli ultimi due anni compaiono da soli —
+  // prima non c'erano, e il grafico mostrava un pacchetto che si ferma.
+  const grants = useMemo(
+    () => [...oneOff, ...expandAnnual(annual, Number(todayISO().slice(0, 4)) + horizonYears)],
+    [oneOff, annual, horizonYears]
+  );
 
   const setLang = useCallback((l: Lang) => {
     setLangState(l);
@@ -174,8 +205,11 @@ export function Provider({ children }: { children: ReactNode }) {
       setEsppPurchase,
       esppEnrolled,
       setEsppEnrolled,
+      oneOff,
+      setOneOff,
+      annual,
+      setAnnual,
       grants,
-      setGrants,
       performance,
       setPerformance,
       horizonYears,
@@ -194,6 +228,8 @@ export function Provider({ children }: { children: ReactNode }) {
       esppPct,
       esppPurchase,
       esppEnrolled,
+      oneOff,
+      annual,
       grants,
       performance,
       horizonYears,

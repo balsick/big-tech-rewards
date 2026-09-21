@@ -9,12 +9,12 @@ import CalendarTool from "./components/CalendarTool.tsx";
 import Guided from "./components/Guided.tsx";
 import { alreadySeen, type Seed } from "./lib/guided.ts";
 import { useStore } from "./state/store.tsx";
-import { initialGrants } from "./lib/rsu.ts";
+import { initialAnnual, initialOneOff } from "./lib/rsu.ts";
 import { todayISO } from "./lib/format.ts";
 import { flag } from "./lib/flags.ts";
 
 export default function App() {
-  const { t, setSalary, setEsppPct, setGrants } = useStore();
+  const { t, setSalary, setEsppPct, setOneOff, setAnnual } = useStore();
   const [tab, setTab] = useState<Tab>("espp");
   // The calendar is still being built: it exists for whoever puts
   // `?calendar=true` in the address and for nobody else. Read once — a flag
@@ -38,7 +38,12 @@ export default function App() {
   const finish = (s: Seed) => {
     setSalary(s.salary);
     if (s.tool === "espp") setEsppPct(s.percent);
-    else setGrants(initialGrants(todayISO(), s.welcomeUsd, s.bonusUsd));
+    else {
+      // Il welcome è una cosa sola, con la sua data; il bonus è una regola che
+      // si ripete. Prima erano tutti e due righe, e il secondo ne era tre.
+      setOneOff(initialOneOff(todayISO(), s.welcomeUsd));
+      setAnnual(initialAnnual(todayISO(), s.bonusUsd));
+    }
     setTab(s.tool);
     setGuided(false);
   };
