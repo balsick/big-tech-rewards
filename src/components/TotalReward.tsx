@@ -1,7 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useStore } from "../state/store.tsx";
 import { Answer, Card, Line, NumField } from "./ui.tsx";
 import Info from "./Info.tsx";
+import SaveToBrowser from "./SaveToBrowser.tsx";
+import { available, clear, read, write } from "../lib/storage.ts";
 import { eur0, num, pct, todayISO } from "../lib/format.ts";
 import { grossToNet, type TaxRegime } from "../lib/tax.ts";
 import { ESPP_PLAN, expectedContribution, simulateEspp } from "../lib/espp.ts";
@@ -24,6 +26,25 @@ import { dividends, fmvAt, historyAt, loadQuote, type Quote } from "../lib/price
 // market decides, and putting it in a pay figure would be counting a hope as a
 // salary.
 
+const KEY = "total";
+
+/**
+ * Quello che il tasto mette nel browser: il campo di questa scheda, e basta.
+ *
+ * È uno solo — la percentuale del bonus — e per un po' non l'ha salvato
+ * nessuno: le altre due schede salvano i campi che mostrano, e questa era
+ * l'unica delle tre senza il tasto. Chi scriveva il suo 12% se lo ritrovava a
+ * zero al ricaricamento, senza che niente lo dicesse.
+ *
+ * Lo stipendio e le altre righe qui sotto non ci stanno apposta: questa scheda
+ * le **legge**, non le modifica, e le salva la scheda che le possiede. Salvare
+ * anche loro vorrebbe dire due sorgenti per lo stesso numero, e quella che
+ * vince dipenderebbe dall'ordine in cui le schede si montano.
+ */
+interface TotalState {
+  bonusPct: number;
+}
+
 interface Row {
   year: number;
   salary: number;
@@ -40,6 +61,19 @@ export default function TotalReward() {
     useStore();
   const today = todayISO();
   const [quote, setQuote] = useState<Quote | null>(null);
+
+  const [saved, setSaved] = useState(() => read<TotalState>(KEY));
+  const s0 = saved?.data;
+  const canSave = useMemo(() => available(), []);
+
+  // Il salvataggio si rimette nel modello condiviso una volta sola, al
+  // montaggio: dopo comanda quello che scrivi.
+  const restored = useRef(false);
+  useEffect(() => {
+    if (restored.current || !s0) return;
+    restored.current = true;
+    if (typeof s0.bonusPct === "number") setBonusPct(s0.bonusPct);
+  }, [s0, setBonusPct]);
 
   useEffect(() => {
     let alive = true;
@@ -112,6 +146,9 @@ export default function TotalReward() {
     { gross: 0, net: 0, variable: 0 }
   );
 
+  const state: TotalState = { bonusPct };
+  const dirty = JSON.stringify(state) !== JSON.stringify(saved?.data ?? null);
+
   return (
     <div className="tool">
       <div className="panel">
@@ -141,6 +178,19 @@ export default function TotalReward() {
           <p className="hint" style={{ marginTop: 12 }}>
             {t.total.rsuNote}
           </p>
+
+          <div style={{ marginTop: 14, borderTop: "1px solid var(--border)", paddingTop: 14 }}>
+            <SaveToBrowser
+              savedAt={saved?.at ?? null}
+              dirty={dirty}
+              available={canSave}
+              onSave={() => setSaved(write(KEY, state))}
+              onForget={() => {
+                clear(KEY);
+                setSaved(null);
+              }}
+            />
+          </div>
         </Card>
       </div>
 
