@@ -31,7 +31,10 @@ import {
   project,
   WITHHOLDING_RATE,
   PERFORMANCE_STEPS,
-  initialGrants,
+  initialOneOff,
+  initialAnnual,
+  annualValueFor,
+  expandAnnual,
   VESTING_CALENDAR,
   tranches,
   addMonths,
@@ -744,19 +747,58 @@ test("RSU: the performance rating scales the annual awards and nothing else", ()
   assert.deepEqual(PERFORMANCE_STEPS, [0.75, 1, 1.25, 1.5]);
 });
 
-test("RSU: three years of bonuses are prefilled, and each is dated to its own year", () => {
-  const g = initialGrants("2026-09-18");
-  assert.equal(g.length, 4, "a welcome grant and three annual bonuses");
+test("RSU: the tool opens on a welcome grant, which no rule describes", () => {
+  const g = initialOneOff("2026-09-18");
+  assert.equal(g.length, 1, "one-off awards are rows; the annual one is a rule");
   assert.equal(g[0].label, "Welcome grant");
   assert.equal(g[0].date, "2026-02-20");
   assert.equal(g[0].performanceLinked, false, "a welcome grant does not depend on a review");
-  for (const [k, year] of [[1, 2026], [2, 2027], [3, 2028]] as const) {
+});
+
+test("RSU: the annual rule writes itself out, one award a year", () => {
+  const plan = initialAnnual("2026-09-18");
+  const g = expandAnnual(plan, 2029);
+  assert.equal(g.length, 4, "2026 through 2029, inclusive");
+  for (const [k, year] of [[0, 2026], [1, 2027], [2, 2028], [3, 2029]] as const) {
     assert.equal(g[k].label, `Bonus ${year}`);
     assert.equal(g[k].date, `${year}-11-20`, "the name and the date come from the same year");
+    assert.equal(g[k].valueUsd, 10000, "the same figure every year, until a step says otherwise");
     assert.equal(g[k].performanceLinked, true);
   }
-  // Ids are distinct, or editing one row edits another.
+  // Stable, and distinct: the chart colours a grant by its position and React
+  // keys a row by its id, so ids that move repaint and lose focus.
+  assert.deepEqual(g.map((x) => x.id), ["annual-2026", "annual-2027", "annual-2028", "annual-2029"]);
   assert.equal(new Set(g.map((x) => x.id)).size, g.length);
+  // Switched off, the rule stands for nothing at all.
+  assert.deepEqual(expandAnnual({ ...plan, enabled: false }, 2029), []);
+});
+
+test("RSU: a step changes the annual award from its year on, and stays", () => {
+  const plan = {
+    ...initialAnnual("2026-09-18"),
+    steps: [
+      { fromYear: 2028, valueUsd: 16000 },
+      // Out of order on purpose: the rule sorts them, so the file can be
+      // written in whatever order the raises were remembered in.
+      { fromYear: 2027, valueUsd: 12000 },
+    ],
+  };
+  assert.equal(annualValueFor(plan, 2026), 10000, "before any step, the base");
+  assert.equal(annualValueFor(plan, 2027), 12000);
+  assert.equal(annualValueFor(plan, 2028), 16000);
+  assert.equal(annualValueFor(plan, 2031), 16000, "a raise stays until the next one");
+  assert.deepEqual(
+    expandAnnual(plan, 2029).map((g) => g.valueUsd),
+    [10000, 12000, 16000, 16000]
+  );
+});
+
+test("RSU: the rule reaches back, so years still vesting are one number", () => {
+  // Someone four years in has four awards still vesting. Typing them one by
+  // one was the work the rule removes: here it is `fromYear`.
+  const plan = { ...initialAnnual("2026-09-18"), fromYear: 2023 };
+  const g = expandAnnual(plan, 2026);
+  assert.deepEqual(g.map((x) => x.date.slice(0, 4)), ["2023", "2024", "2025", "2026"]);
 });
 
 test("RSU: dividend equivalents credit extra units on what has not vested", () => {
