@@ -15,8 +15,28 @@ on:
   push:
     branches: [main]
   schedule:
-    # 06:00 UTC Tuesday to Saturday: covers the Monday to Friday closes.
-    - cron: "0 6 * * 2-6"
+    # 22:37 UTC, Monday to Friday: **after the close**, on the day of it.
+    #
+    # It used to be 06:00 the next morning, which read well and did not work:
+    # a scheduled workflow is best effort, and the three runs that existed
+    # started 4h26m, 4h41m and 5h05m late — every single one. So the price
+    # arrived at one in the afternoon, and the site served the previous close
+    # all morning, which is the one thing this schedule is for.
+    #
+    # Two changes, and both matter.
+    #
+    # **The hour.** 22:37 UTC is past the New York close in both halves of the
+    # year: the close is 20:00 UTC on summer time and 21:00 UTC on winter time,
+    # and cron does not follow daylight saving. That leaves a margin of 1h37m
+    # in the worst case, and a delay of five hours lands at 03:37 — deep in the
+    # night here, hours before anyone opens the page. The lateness stops being
+    # something to fix and becomes something that does not matter.
+    #
+    # **The minute.** `0` is the most contended minute there is: almost
+    # everyone writes the round hour, and the queue forms exactly there. 37 is
+    # not magic and guarantees nothing — best effort stays best effort — but it
+    # asks for a slot nobody else is asking for.
+    - cron: "37 22 * * 1-5"
   workflow_dispatch:
 
 permissions:

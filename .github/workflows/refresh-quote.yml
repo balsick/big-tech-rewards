@@ -5,9 +5,15 @@ name: Refresh reference prices
 # October.
 #
 # This job **commits**, it does not publish. It is not what triggers the deploy
-# (a GITHUB_TOKEN commit does not start other workflows, by design): the next
-# morning's scheduled deploy takes it online. For a historical close from
-# yesterday, waiting a day changes nothing.
+# (a GITHUB_TOKEN commit does not start other workflows, by design): the
+# scheduled deploy that evening takes it online. For a historical close from
+# yesterday, waiting a few hours changes nothing.
+#
+# That gap used to be half an hour, and was the fragile part: this job runs at
+# 06:30 and the deploy ran at 06:00 the next morning — which only worked
+# because neither is ever on time. Now the deploy is at 22:37 the same day, so
+# there are sixteen hours between them, and both can be hours late without the
+# order changing.
 #
 # It also refreshes the committed quote.json, which serves as a fallback when
 # the provider is down and lets `npm run dev` work without the secret.
