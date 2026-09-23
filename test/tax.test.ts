@@ -44,6 +44,7 @@ import {
   type Grant,
 } from "../src/lib/rsu.ts";
 import { toField, parseNum, eur0, num, usd } from "../src/lib/format.ts";
+import { soloSeduteChiuse } from "../scripts/lib/sessione.mjs";
 
 const near = (a: number, b: number, eps = 0.01) =>
   assert.ok(Math.abs(a - b) < eps, `${a} != ${b} (tolerance ${eps})`);
@@ -1108,4 +1109,56 @@ test("calendario: l'ESPP trattiene da ogni CEDOLINO, non un dodicesimo al mese",
       Math.abs(m.esppContribution - expectedContribution(60000, 7, ESPP_PLAN.months) / 6) > 1e-6,
       `${m.ym} is still using a flat sixth`
     );
+});
+
+// Il fornitore delle quotazioni, e le due volte che ci ha ingannati. Sta in
+// `scripts/` e non in `src/`: è roba della CI, nel bundle non ci deve andare.
+const BARRE = [
+  { date: "2026-09-18", close: 177.72 },
+  { date: "2026-09-21", close: 194.23 },
+];
+// −4h: New York con l'ora legale. 20:00 UTC sono le 16:00 lì, cioè la campana.
+const EDT = -14400;
+const utc = (iso: string) => Math.floor(Date.parse(iso) / 1000);
+
+test("quotazioni: dopo la campana la chiusura sta nel meta, se la barra non c'è", () => {
+  // Il caso del 22 settembre: la barra del giorno esiste col `close` a null,
+  // quindi viene scartata prima di arrivare qui, e senza questa regola
+  // l'ultima chiusura utile resta quella di lunedì — il sito indietro di una
+  // seduta.
+  const out = soloSeduteChiuse(BARRE, {
+    regularMarketTime: utc("2026-09-22T20:00:00Z"),
+    gmtoffset: EDT,
+    regularMarketPrice: 198.27,
+  });
+  assert.deepEqual(out.at(-1), { date: "2026-09-22", close: 198.27 });
+  assert.equal(out.length, 3, "le altre non si toccano");
+});
+
+test("quotazioni: a mercato aperto il prezzo di adesso non è una chiusura", () => {
+  // Il caso del 17 settembre: un giro delle 14:16 di New York scrisse «la
+  // chiusura del 17» quattro ore prima che il 17 chiudesse.
+  const conOggi = [...BARRE, { date: "2026-09-22", close: 191.4 }];
+  const out = soloSeduteChiuse(conOggi, {
+    regularMarketTime: utc("2026-09-22T18:16:00Z"), // 14:16 a New York
+    gmtoffset: EDT,
+    regularMarketPrice: 191.4,
+  });
+  assert.deepEqual(out, BARRE, "la barra di oggi se ne va, e non ne entra una dal meta");
+});
+
+test("quotazioni: se la barra del giorno c'è già, il meta non la duplica", () => {
+  const conOggi = [...BARRE, { date: "2026-09-22", close: 198.27 }];
+  const out = soloSeduteChiuse(conOggi, {
+    regularMarketTime: utc("2026-09-22T20:00:00Z"),
+    gmtoffset: EDT,
+    regularMarketPrice: 198.27,
+  });
+  assert.deepEqual(out, conOggi);
+});
+
+test("quotazioni: senza l'orologio della borsa non si indovina", () => {
+  // È il caso del cambio, che una campana non ce l'ha: l'elenco passa intero.
+  assert.deepEqual(soloSeduteChiuse(BARRE, {}), BARRE);
+  assert.deepEqual(soloSeduteChiuse(BARRE, { regularMarketPrice: 999 }), BARRE);
 });

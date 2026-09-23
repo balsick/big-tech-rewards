@@ -23,6 +23,8 @@
 import fs from "node:fs";
 import path from "node:path";
 
+import { soloSeduteChiuse } from "./lib/sessione.mjs";
+
 const ROOT = path.resolve(import.meta.dirname, "..");
 const QUOTE = path.join(ROOT, "public", "quote.json");
 const HISTORY = path.join(ROOT, "src", "data", "reference-prices.json");
@@ -51,7 +53,7 @@ if (!SYMBOL) die("QUOTE_SYMBOL is missing from the environment (set it as a GitH
  * investor-relations page: that URL contains the company's name, and no source
  * file in this repository is allowed to.
  */
-async function closes(symbol, fromSec, toSec, withEvents = false) {
+async function closes(symbol, fromSec, toSec, { withEvents = false, regularHours = false } = {}) {
   const url =
     `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}` +
     `?interval=1d&period1=${fromSec}&period2=${toSec}${withEvents ? "&events=div" : ""}`;
@@ -61,13 +63,21 @@ async function closes(symbol, fromSec, toSec, withEvents = false) {
   const r = j?.chart?.result?.[0];
   const stamps = r?.timestamp ?? [];
   const close = r?.indicators?.quote?.[0]?.close ?? [];
-  const out = [];
+  const barre = [];
   stamps.forEach((t, i) => {
     const c = close[i];
     if (typeof c === "number" && Number.isFinite(c)) {
-      out.push({ date: new Date(t * 1000).toISOString().slice(0, 10), close: c });
+      barre.push({ date: new Date(t * 1000).toISOString().slice(0, 10), close: c });
     }
   });
+
+  // Una barra giornaliera non è una chiusura finché il giorno non è finito:
+  // la regola, col perché, sta in `scripts/lib/sessione.mjs`, che è anche
+  // dove i test la interrogano. Niente mutazioni sul posto: senza
+  // `regularHours` il filtro torna **lo stesso array**, e svuotarlo per
+  // riempirlo svuotava la sorgente — il cambio tornava vuoto.
+  const out = regularHours ? soloSeduteChiuse(barre, r?.meta ?? {}) : barre;
+
   if (!out.length) throw new Error("the provider returned no closes at all");
   out.dividends = Object.values(r?.events?.dividends ?? {})
     .map((d) => ({ date: new Date(d.date * 1000).toISOString().slice(0, 10), amount: d.amount }))
@@ -108,7 +118,10 @@ const TO = Math.floor(Date.now() / 1000) + 86400;
 
 let equity, fx;
 try {
-  [equity, fx] = await Promise.all([closes(SYMBOL, FROM, TO, true), closes(FX_SYMBOL, FROM, TO)]);
+  [equity, fx] = await Promise.all([
+    closes(SYMBOL, FROM, TO, { withEvents: true, regularHours: true }),
+    closes(FX_SYMBOL, FROM, TO),
+  ]);
 } catch (e) {
   die(`quotes unavailable: ${e.message}`);
 }
