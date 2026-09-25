@@ -12,6 +12,7 @@ import {
   enrolmentDates,
   esppWindows,
   expectedContribution,
+  fxDayFor,
   guaranteedFloor,
   simulateEspp,
   type EsppPlan,
@@ -131,7 +132,20 @@ export default function EsppTool() {
   const defaultStart = historyStart?.close ?? quote?.close ?? 0;
   const defaultEnd =
     (purchase > (quote?.date ?? "") ? quote?.close : historyEnd?.close) ?? quote?.close ?? historyEnd?.close ?? 0;
-  const defaultFx = quote?.eurusd ?? historyEnd?.eurusd ?? 1;
+  // Il cambio **non** è quello del giorno dell'acquisto: fuori dagli Stati
+  // Uniti la trattenuta esce dalla busta in euro e diventa dollari in un
+  // giorno solo, dichiarato dal piano — il 15 marzo per l'acquisto di aprile,
+  // il 15 settembre per quello di ottobre. Quindi quando la finestra si chiude
+  // il cambio è già un fatto, e usare quello dell'acquisto vuol dire
+  // rispondere con un numero che si muove ancora mentre quello vero si è
+  // fermato: il 15 settembre 2026 era 1,153762 e otto sedute dopo 1,140641.
+  //
+  // Per una finestra il cui giorno di conversione deve ancora arrivare quel
+  // tasso non esiste, e si ripiega sull'ultimo che c'è, dicendolo — la stessa
+  // regola del prezzo d'acquisto.
+  const fxDay = fxDayFor(purchase, plan);
+  const fxFixed = fxDay && fxDay <= today ? historyAt(fxDay) : null;
+  const defaultFx = fxFixed?.eurusd ?? quote?.eurusd ?? historyEnd?.eurusd ?? 1;
 
   const startPrice = typedStartPrice ?? defaultStart;
   const endPrice = typedEndPrice ?? defaultEnd;
@@ -414,7 +428,13 @@ export default function EsppTool() {
             dec={4}
             value={fx}
             onChange={setTypedFx}
-            hint={typedFx !== null ? (fxNote ?? t.common.manual) : t.common.fxHint}
+            hint={
+              typedFx !== null
+                ? (fxNote ?? t.common.manual)
+                : fxFixed && fxDay
+                  ? t.espp.fxFixedOn(dateShort(fxDay, lang))
+                  : t.common.fxHint
+            }
           />
           <button
             className="btn link"

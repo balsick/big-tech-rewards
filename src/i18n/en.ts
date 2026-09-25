@@ -165,6 +165,7 @@ export const en: Dict = {
     flatStockOn: "flat stock: only the discount is left",
     youGain: "You gain",
     gainRoi: (roi: string, outlay: string) => `${roi} of what it costs you: ${outlay}`,
+    fxFixedOn: (d: string) => `fixed on ${d}: the plan turns euros into dollars that day`,
     answerCost: "What it costs you",
     answerShares: "Shares you buy",
     answerValue: "What they are worth",

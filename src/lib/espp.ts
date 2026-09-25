@@ -40,6 +40,23 @@ export interface EsppPlan {
   maxUsd: number;
   /** the days of the year a purchase falls on, as MM-DD */
   purchaseDays: string[];
+  /**
+   * The days the exchange rate is fixed on, as MM-DD.
+   *
+   * Outside the United States the deduction leaves the payslip in local
+   * currency and has to become dollars before it can buy anything. The plan
+   * does not do that at the purchase: it does it on **one declared day**, two
+   * weeks earlier — 15 March for the April purchase, 15 September for the
+   * October one.
+   *
+   * So by the time the window closes the rate is already a fact, not a
+   * forecast. Using the rate of the purchase day instead, which is what this
+   * tool did, means answering with a number that is still moving when the
+   * real one has stopped: on 15 September 2026 it was 1.153762, and eight
+   * trading days later 1.140641 — one percent and change, which on a
+   * six-month contribution is most of a share.
+   */
+  fxDays: string[];
   /** does the plan buy fractional shares? almost never */
   fractionalShares: boolean;
 }
@@ -51,6 +68,7 @@ export const ESPP_PLAN: EsppPlan = {
   maxPct: 15,
   maxUsd: 10625,
   purchaseDays: ["04-01", "10-01"],
+  fxDays: ["03-15", "09-15"],
   fractionalShares: false,
 };
 
@@ -118,6 +136,25 @@ export interface EsppResult {
 /** The gross return the plan guarantees with a flat stock: d/(1-d). */
 export const guaranteedFloor = (discount: number) =>
   discount >= 100 ? Infinity : discount / (100 - discount);
+
+/**
+ * The day the rate was fixed for a purchase: the last declared one before it.
+ *
+ * Declared and not derived, because that is what the plan document says. The
+ * conversion day belongs to the window that ends at that purchase, so it is
+ * the most recent one strictly earlier — 15 September for 1 October, and 15
+ * March for 1 April. Strictly: a purchase falling exactly on a conversion day
+ * would take the one before, which is the conservative reading and a case the
+ * calendar does not produce.
+ */
+export function fxDayFor(purchase: string, plan: EsppPlan = ESPP_PLAN): string | null {
+  const year = Number(purchase.slice(0, 4));
+  const candidati = [year - 1, year]
+    .flatMap((y) => plan.fxDays.map((md) => `${y}-${md}`))
+    .filter((d) => d < purchase)
+    .sort();
+  return candidati.length ? candidati[candidati.length - 1] : null;
+}
 
 /** How much is set aside over a period, given pay and percentage. */
 export function expectedContribution(salary: number, pct: number, months: number): number {

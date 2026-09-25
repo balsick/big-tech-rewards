@@ -21,6 +21,7 @@ import {
   guaranteedFloor,
   simulateEspp,
   ESPP_PLAN,
+  fxDayFor,
   expectedContribution,
   esppWindows,
   defaultWindow,
@@ -1161,4 +1162,23 @@ test("quotazioni: senza l'orologio della borsa non si indovina", () => {
   // È il caso del cambio, che una campana non ce l'ha: l'elenco passa intero.
   assert.deepEqual(soloSeduteChiuse(BARRE, {}), BARRE);
   assert.deepEqual(soloSeduteChiuse(BARRE, { regularMarketPrice: 999 }), BARRE);
+});
+
+test("ESPP: il cambio si blocca il 15, non il giorno dell'acquisto", () => {
+  // Fuori dagli Stati Uniti la trattenuta esce in euro e diventa dollari in un
+  // giorno solo, dichiarato: il 15 marzo per l'acquisto di aprile, il 15
+  // settembre per quello di ottobre. Quando la finestra si chiude il cambio è
+  // già un fatto.
+  assert.equal(fxDayFor("2026-10-01"), "2026-09-15");
+  assert.equal(fxDayFor("2026-04-01"), "2026-03-15");
+  // A cavallo dell'anno si torna indietro, non avanti: la finestra che chiude
+  // ad aprile 2027 converte il 15 marzo 2027, quella di ottobre 2026 il 15
+  // settembre 2026 — e una data di gennaio guarda al settembre prima.
+  assert.equal(fxDayFor("2027-01-15"), "2026-09-15");
+  assert.equal(fxDayFor("2027-04-01"), "2027-03-15");
+  // Il giorno stesso della conversione non converte sé stesso: si prende il
+  // precedente, che è la lettura prudente.
+  assert.equal(fxDayFor("2026-09-15"), "2026-03-15");
+  // Un piano senza giorni dichiarati non ne inventa uno.
+  assert.equal(fxDayFor("2026-10-01", { ...ESPP_PLAN, fxDays: [] }), null);
 });

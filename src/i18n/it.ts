@@ -163,6 +163,7 @@ export const it = {
     flatStockOn: "titolo fermo: resta solo lo sconto",
     youGain: "Ci guadagni",
     gainRoi: (roi: string, outlay: string) => `${roi} di quello che ti costa: ${outlay}`,
+    fxFixedOn: (d: string) => `bloccato il ${d}: il piano converte gli euro in dollari quel giorno`,
     answerCost: "Quanto ti costa",
     answerShares: "Azioni che compri",
     answerValue: "Quanto valgono",
